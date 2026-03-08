@@ -1,0 +1,80 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="slate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9AA0A6"/>
+      <stop offset="100%" stop-color="#80868B"/>
+    </linearGradient>
+    <radialGradient id="steak" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 0) rotate(90) scale(180 240)">
+      <stop offset="0%" stop-color="#B84545"/>
+      <stop offset="60%" stop-color="#8B2D2D"/>
+      <stop offset="100%" stop-color="#6B1F1F"/>
+    </radialGradient>
+    <radialGradient id="marble" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 0) rotate(90) scale(70 100)">
+      <stop offset="0%" stop-color="#F4D9D9" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#E3B3B3" stop-opacity="0.6"/>
+    </radialGradient>
+    <radialGradient id="chicken" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 0) rotate(90) scale(140 200)">
+      <stop offset="0%" stop-color="#F3DCC6"/>
+      <stop offset="100%" stop-color="#E7C3A5"/>
+    </radialGradient>
+    <linearGradient id="salmon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F89A36"/>
+      <stop offset="100%" stop-color="#E8741F"/>
+    </linearGradient>
+    <linearGradient id="salmon-lines" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFD4A3"/>
+      <stop offset="100%" stop-color="#F7B36E"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#1B1B1B" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#slate)"/>
+
+  <g opacity="0.25">
+    <circle cx="220" cy="140" r="60" fill="#CFE3D3"/>
+    <circle cx="120" cy="240" r="40" fill="#DCEDE0"/>
+    <circle cx="320" cy="210" r="48" fill="#CFE3D3"/>
+  </g>
+
+  <g filter="url(#soft-shadow)">
+    <g transform="translate(260 250)">
+      <ellipse cx="260" cy="220" rx="240" ry="180" fill="url(#steak)"/>
+      <ellipse cx="260" cy="220" rx="90" ry="60" fill="url(#marble)"/>
+      <path d="M160 180 C210 150 280 150 340 180" stroke="#F0C8C8" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+    </g>
+
+    <g transform="translate(980 140)">
+      <ellipse cx="260" cy="200" rx="250" ry="160" fill="url(#steak)"/>
+      <ellipse cx="260" cy="200" rx="110" ry="70" fill="url(#marble)"/>
+      <path d="M170 190 C230 160 300 160 360 190" stroke="#F0C8C8" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+    </g>
+
+    <g transform="translate(650 80)">
+      <ellipse cx="180" cy="200" rx="160" ry="130" fill="url(#chicken)"/>
+      <ellipse cx="360" cy="260" rx="120" ry="90" fill="url(#chicken)"/>
+      <ellipse cx="460" cy="340" rx="90" ry="70" fill="url(#chicken)"/>
+    </g>
+
+    <g transform="translate(1100 560)">
+      <rect x="0" y="0" width="320" height="140" rx="36" fill="url(#salmon)"/>
+      <rect x="40" y="24" width="240" height="8" rx="4" fill="url(#salmon-lines)"/>
+      <rect x="30" y="58" width="260" height="8" rx="4" fill="url(#salmon-lines)"/>
+      <rect x="50" y="92" width="220" height="8" rx="4" fill="url(#salmon-lines)"/>
+    </g>
+
+    <g transform="translate(1350 670)">
+      <rect x="0" y="0" width="300" height="140" rx="36" fill="url(#salmon)"/>
+      <rect x="40" y="24" width="220" height="8" rx="4" fill="url(#salmon-lines)"/>
+      <rect x="30" y="58" width="240" height="8" rx="4" fill="url(#salmon-lines)"/>
+      <rect x="60" y="92" width="200" height="8" rx="4" fill="url(#salmon-lines)"/>
+    </g>
+  </g>
+
+  <g opacity="0.2">
+    <circle cx="1640" cy="210" r="60" fill="#DCEDE0"/>
+    <circle cx="1760" cy="270" r="40" fill="#CFE3D3"/>
+    <circle cx="1540" cy="280" r="30" fill="#DCEDE0"/>
+  </g>
+</svg>

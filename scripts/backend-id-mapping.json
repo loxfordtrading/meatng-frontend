@@ -1,0 +1,31 @@
+{
+  "categories": {
+    "premium-cuts": "69a94f1e190d41dcb57232d6",
+    "offals": "69a94f1d190d41dcb57232d3",
+    "bones": "69a94f1d190d41dcb57232d0",
+    "sausage": "69a94f1c190d41dcb57232cd",
+    "goat": "69a94f1b190d41dcb57232ca",
+    "ram": "69a94f1b190d41dcb57232c7",
+    "beef": "69a94f1a190d41dcb57232c3",
+    "chicken": "69a94f19190d41dcb57232c0",
+    "raw-meat": "699367c86fffd9f3aee24341"
+  },
+  "products": {
+    "agemawo": "69a94f39190d41dcb5723375",
+    "minced-meat": "69a94f3a190d41dcb572337a",
+    "plain-beef": "69a94f3b190d41dcb572337f",
+    "torso-beef": "69a94f3c190d41dcb5723384",
+    "shin": "69a94f3d190d41dcb5723389",
+    "lungs": "69a94f3e190d41dcb572338e",
+    "minced-chicken": "69a94f3e190d41dcb5723394",
+    "chicken-cut4": "69a94f3f190d41dcb5723399",
+    "chicken-laps": "69a94f40190d41dcb572339e",
+    "sausages-generic": "69a94f41190d41dcb57233a3"
+  },
+  "plans": {
+    "value-pack": "69a94fa5190d41dcb5723426",
+    "essential": "69a94fa8190d41dcb5723438",
+    "signature": "69a94fab190d41dcb5723449",
+    "premium": "69a94faf190d41dcb572345e"
+  }
+}

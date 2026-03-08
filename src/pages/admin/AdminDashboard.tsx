@@ -1,0 +1,381 @@
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
+import {
+  ArrowUpRight,
+  CircleDot,
+  DollarSign,
+  Package,
+  ShoppingBag,
+  UserPlus,
+} from "lucide-react";
+import { tokenStorage } from "@/lib/auth/tokenStorage";
+import { listOrders, listAdminUsers, type Order as ApiOrder } from "@/lib/api/admin";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Line,
+  Pie,
+  PieChart,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import {
+  formatAdminPrice,
+  mockAdminOrders,
+  mockKPIs,
+  mockPlanDistribution,
+  mockProductPopularity,
+  mockRevenueData,
+} from "@/data/adminData";
+
+const statusColors: Record<string, string> = {
+  Processing: "bg-amber-500/15 text-amber-700 border-amber-500/20",
+  "In Transit": "bg-blue-500/15 text-blue-700 border-blue-500/20",
+  Delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
+  Cancelled: "bg-red-500/15 text-red-700 border-red-500/20",
+};
+
+const revenueChartConfig = {
+  revenue: { label: "Revenue", color: "hsl(var(--primary))" },
+  orders: { label: "Orders", color: "hsl(var(--accent))" },
+} satisfies ChartConfig;
+
+const productChartConfig = {
+  orders: { label: "Orders", color: "hsl(var(--primary))" },
+} satisfies ChartConfig;
+
+const compactCurrencyTick = (value: number) => {
+  if (value >= 1000000) return `${Math.round(value / 1000000)}m`;
+  if (value >= 1000) return `${Math.round(value / 1000)}k`;
+  return value.toString();
+};
+
+const normalizeStatus = (s?: string): string => {
+  if (!s) return "Processing";
+  const lower = s.toLowerCase();
+  if (lower.includes("transit")) return "In Transit";
+  if (lower.includes("deliver")) return "Delivered";
+  if (lower.includes("cancel")) return "Cancelled";
+  return "Processing";
+};
+
+const formatDate = (iso?: string): string => {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  } catch { return iso; }
+};
+
+const AdminDashboard = () => {
+  const token = tokenStorage.getAdminToken();
+
+  const { data: apiOrders } = useQuery({
+    queryKey: ["admin-orders"],
+    queryFn: async () => {
+      try { return await listOrders(token); } catch { return null; }
+    },
+    staleTime: 30_000,
+  });
+
+  const { data: apiUsers } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: async () => {
+      try { return await listAdminUsers(token); } catch { return null; }
+    },
+    staleTime: 60_000,
+  });
+
+  const recentOrders = useMemo(() => {
+    if (apiOrders) {
+      return apiOrders.slice(0, 5).map((o: ApiOrder) => {
+        const raw = o.raw ?? {};
+        const customer = (raw.customer ?? raw.user ?? {}) as Record<string, unknown>;
+        return {
+          id: o.id,
+          customerName: String(raw.customerName ?? raw.customer_name ?? customer.name ?? "—"),
+          date: formatDate(o.createdAt ?? String(raw.createdAt ?? "")),
+          total: o.total ?? 0,
+          status: normalizeStatus(o.status),
+        };
+      });
+    }
+    return mockAdminOrders.slice(0, 5).map((o) => ({
+      id: o.id, customerName: o.customerName, date: o.date, total: o.total, status: o.status,
+    }));
+  }, [apiOrders]);
+
+  const computedKpis = useMemo(() => {
+    const orders = apiOrders ?? [];
+    const users = apiUsers ?? [];
+
+    const totalRevenue = orders.length > 0
+      ? orders.reduce((sum, o) => sum + (o.total ?? 0), 0)
+      : mockKPIs.totalRevenue;
+
+    const pendingOrders = orders.length > 0
+      ? orders.filter((o) => normalizeStatus(o.status).toLowerCase().includes("pending") || normalizeStatus(o.status).toLowerCase().includes("processing")).length
+      : mockKPIs.pendingOrders;
+
+    const totalCustomers = users.length > 0 ? users.length : mockKPIs.newCustomers30d;
+
+    const activeSubscriptions = users.length > 0
+      ? users.filter((u) => u.isActive).length
+      : mockKPIs.activeSubscriptions;
+
+    return { totalRevenue, pendingOrders, totalCustomers, activeSubscriptions };
+  }, [apiOrders, apiUsers]);
+
+  const usingMockKpis = !apiOrders && !apiUsers;
+
+  const kpis = [
+    {
+      label: "Total Revenue",
+      value: formatAdminPrice(computedKpis.totalRevenue),
+      change: usingMockKpis ? mockKPIs.revenueGrowth : null,
+      icon: DollarSign,
+      tone: "emerald" as const,
+    },
+    {
+      label: "Active Subscriptions",
+      value: computedKpis.activeSubscriptions.toString(),
+      change: usingMockKpis ? mockKPIs.subscriptionGrowth : null,
+      icon: Package,
+      tone: "blue" as const,
+    },
+    {
+      label: "Pending Orders",
+      value: computedKpis.pendingOrders.toString(),
+      change: null,
+      icon: ShoppingBag,
+      tone: "amber" as const,
+    },
+    {
+      label: "Total Customers",
+      value: computedKpis.totalCustomers.toString(),
+      change: usingMockKpis ? mockKPIs.customerGrowth : null,
+      icon: UserPlus,
+      tone: "teal" as const,
+    },
+  ];
+
+  const totalPlanCount = mockPlanDistribution.reduce((sum, plan) => sum + plan.count, 0);
+  const topProducts = mockProductPopularity.slice(0, 7).map((product) => ({
+    ...product,
+    shortName: product.name.length > 14 ? `${product.name.slice(0, 14)}...` : product.name,
+  }));
+
+  return (
+    <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-display font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground text-sm mt-1">Business overview and key metrics.{usingMockKpis && " (demo data)"}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((kpi, index) => (
+          <AdminMetricCard
+            key={kpi.label}
+            label={kpi.label}
+            value={kpi.value}
+            icon={kpi.icon}
+            tone={kpi.tone}
+            change={kpi.change}
+            delayMs={index * 70}
+          />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="admin-card admin-animate-up lg:col-span-2" style={{ animationDelay: "170ms" }}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">Revenue Momentum</CardTitle>
+              <span className="text-xs text-muted-foreground">Last 6 months</span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <ChartContainer config={revenueChartConfig} className="h-[260px] w-full">
+              <AreaChart data={mockRevenueData} margin={{ left: 10, right: 10, top: 14, bottom: 4 }}>
+                <defs>
+                  <linearGradient id="revenueFillDashboard" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0.04} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="3 5" />
+                <XAxis dataKey="month" tickLine={false} axisLine={false} tickMargin={10} />
+                <YAxis
+                  yAxisId="revenue"
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={compactCurrencyTick}
+                />
+                <YAxis
+                  yAxisId="orders"
+                  orientation="right"
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(value) => `${value}`}
+                />
+                <ChartTooltip content={<ChartTooltipContent indicator="line" />} />
+                <Area
+                  yAxisId="revenue"
+                  type="monotone"
+                  dataKey="revenue"
+                  fill="url(#revenueFillDashboard)"
+                  stroke="var(--color-revenue)"
+                  strokeWidth={2.2}
+                  activeDot={{ r: 5 }}
+                />
+                <Line
+                  yAxisId="orders"
+                  type="monotone"
+                  dataKey="orders"
+                  stroke="var(--color-orders)"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "var(--color-orders)" }}
+                  activeDot={{ r: 5 }}
+                />
+              </AreaChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="admin-card admin-animate-up" style={{ animationDelay: "240ms" }}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Plan Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-2">
+            <div className="relative">
+              <ChartContainer
+                config={mockPlanDistribution.reduce<ChartConfig>((acc, plan) => {
+                  acc[plan.plan] = { label: plan.plan, color: plan.color };
+                  return acc;
+                }, {})}
+                className="h-[220px] w-full"
+              >
+                <PieChart>
+                  <Pie
+                    data={mockPlanDistribution}
+                    dataKey="count"
+                    nameKey="plan"
+                    innerRadius={54}
+                    outerRadius={82}
+                    paddingAngle={3}
+                    stroke="hsl(var(--background))"
+                    strokeWidth={3}
+                  >
+                    {mockPlanDistribution.map((plan) => (
+                      <Cell key={plan.plan} fill={plan.color} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent labelKey="plan" nameKey="plan" />} />
+                </PieChart>
+              </ChartContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-3xl font-bold text-foreground">{totalPlanCount}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Active plans
+                </span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {mockPlanDistribution.map((plan) => (
+                <div key={plan.plan} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: plan.color }} />
+                    <span className="font-medium">{plan.plan}</span>
+                  </div>
+                  <span className="text-muted-foreground">
+                    {plan.count} ({Math.round((plan.count / totalPlanCount) * 100)}%)
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="admin-card admin-animate-up" style={{ animationDelay: "300ms" }}>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">Recent Orders</CardTitle>
+              <Link
+                to="/admin/orders"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                View all <ArrowUpRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div>
+              {recentOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between px-6 py-3.5 border-t border-border/50 first:border-t-0 hover:bg-muted/35 transition-colors"
+                >
+                  <div>
+                    <p className="text-sm font-semibold">{order.customerName}</p>
+                    <p className="text-xs text-muted-foreground">{order.id} | {order.date}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold">{formatAdminPrice(order.total)}</p>
+                    <span
+                      className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[order.status]}`}
+                    >
+                      {order.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="admin-card admin-animate-up" style={{ animationDelay: "360ms" }}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Top Products</CardTitle>
+              <span className="text-xs text-muted-foreground">By order volume</span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <ChartContainer config={productChartConfig} className="h-[260px] w-full">
+              <BarChart data={topProducts} layout="vertical" margin={{ left: 0, right: 8, top: 2, bottom: 2 }}>
+                <CartesianGrid horizontal={false} strokeDasharray="3 5" />
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="shortName" width={110} tickLine={false} axisLine={false} />
+                <ChartTooltip content={<ChartTooltipContent indicator="dot" labelKey="name" />} />
+                <Bar dataKey="orders" fill="var(--color-orders)" radius={[0, 8, 8, 0]} maxBarSize={18} />
+              </BarChart>
+            </ChartContainer>
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <CircleDot className="h-3.5 w-3.5 text-primary" />
+              Product bars update as order volume changes.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;

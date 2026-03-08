@@ -1,0 +1,126 @@
+import { Link } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Facebook, Instagram, Twitter, Mail } from "lucide-react";
+import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
+import { ROUTES } from "@/lib/routes";
+
+const Footer = () => {
+  const [email, setEmail] = useState("");
+
+  const handleNewsletterSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      toast({
+        title: "Subscribed!",
+        description: "Thank you for subscribing to our newsletter.",
+      });
+      setEmail("");
+    }
+  };
+
+  return (
+    <footer className="bg-secondary text-secondary-foreground">
+      <div className="container py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Brand & Newsletter */}
+          <div className="md:col-span-2">
+            <h2 className="text-2xl font-display font-bold text-primary mb-4">Join and Subscribe</h2>
+            <p className="text-secondary-foreground/80 mb-6 max-w-md">
+              Premium meat, delivered. Manage your plan anytime.
+            </p>
+            <form onSubmit={handleNewsletterSubmit} className="flex gap-2 max-w-sm">
+              <Input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-secondary-foreground/10 border-secondary-foreground/20 text-secondary-foreground placeholder:text-secondary-foreground/50"
+              />
+              <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Mail className="h-4 w-4" />
+              </Button>
+            </form>
+          </div>
+
+          {/* Quick Links */}
+          <div>
+            <h3 className="font-semibold mb-4 text-primary">Quick Links</h3>
+            <ul className="space-y-2">
+              <li>
+                <Link to={ROUTES.howItWorks} className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                  How It Works
+                </Link>
+              </li>
+              <li>
+                <Link to={ROUTES.plans} className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                  Plans
+                </Link>
+              </li>
+              <li>
+                <Link to={ROUTES.club} className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                  Meat Lovers Club
+                </Link>
+              </li>
+              <li>
+                <Link to={ROUTES.sourcing} className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                  Sourcing
+                </Link>
+              </li>
+              <li>
+                <Link to={ROUTES.faqs} className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                  FAQs
+                </Link>
+              </li>
+              <li>
+                <Link to={ROUTES.about} className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                  About
+                </Link>
+              </li>
+              <li>
+                <Link to={ROUTES.contact} className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                  Contact
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h3 className="font-semibold mb-4 text-primary">Contact</h3>
+            <ul className="space-y-2 text-secondary-foreground/80">
+              <li>+234 708 644 4603</li>
+              <li>foodingmeatng@gmail.com</li>
+              <li>Available nationwide</li>
+            </ul>
+            <div className="flex gap-4 mt-4">
+              <a href="#" className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                <Facebook className="h-5 w-5" />
+              </a>
+              <a href="#" className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                <Instagram className="h-5 w-5" />
+              </a>
+              <a href="#" className="text-secondary-foreground/80 hover:text-primary transition-colors">
+                <Twitter className="h-5 w-5" />
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-secondary-foreground/20 mt-8 pt-8 text-center text-secondary-foreground/60 text-sm space-y-2">
+          <p>&copy; {new Date().getFullYear()} MeatNG. All rights reserved.</p>
+          <div className="flex flex-wrap justify-center gap-4 text-xs text-secondary-foreground/60">
+            <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
+            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-primary transition-colors">Shipping Policy</a>
+            <span className="text-secondary-foreground/20">|</span>
+            <Link to={ROUTES.adminLogin} className="hover:text-primary transition-colors">Admin</Link>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default Footer;

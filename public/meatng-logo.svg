@@ -1,0 +1,19 @@
+<svg width="240" height="64" viewBox="0 0 240 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2ACC32"/>
+      <stop offset="100%" stop-color="#218225"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="64" fill="none"/>
+  <g transform="translate(4 4)">
+    <path d="M28 2C14 4 6 16 6 30C6 44 14 56 28 58C24 46 24 14 28 2Z" fill="url(#leaf)"/>
+    <path d="M28 10C38 12 48 18 52 30C48 28 40 26 34 26C30 26 28 20 28 10Z" fill="url(#leaf)"/>
+    <path d="M26 34C34 36 44 40 50 50C42 46 34 44 28 44C26 44 24 40 26 34Z" fill="url(#leaf)"/>
+  </g>
+  <g transform="translate(64 14)">
+    <text x="0" y="30" font-family="Montserrat, sans-serif" font-size="30" font-weight="700" fill="#0F0F0F">
+      Meat<tspan fill="#218225">NG</tspan>
+    </text>
+  </g>
+</svg>
