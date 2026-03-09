@@ -6,8 +6,12 @@ import { useCart } from "@/contexts/CartContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import CartDrawer from "@/components/cart/CartDrawer";
 import { ROUTES } from "@/lib/routes";
+import { useSubscriptionStore } from "@/store/subscriptionStore";
+import { useCartStore } from "@/store/cartStore";
+import { useAddonStore } from "@/store/addonStore";
 
 const Header = () => {
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const { itemCount, clearCart } = useCart();
@@ -15,9 +19,18 @@ const Header = () => {
   const navigate = useNavigate();
 
   const subscriptionCount =
-    subscription.state.boxItems.reduce((sum, item) => sum + item.quantity, 0) +
-    subscription.state.addOns.reduce((sum, addon) => sum + addon.quantity, 0);
+  subscription.state.boxItems.reduce((sum, item) => sum + item.quantity, 0) +
+  subscription.state.addOns.reduce((sum, addon) => sum + addon.quantity, 0);
   const totalCount = itemCount + subscriptionCount;
+
+  const { subInfo } = useSubscriptionStore();
+  const { totalItems } = useCartStore();
+  const { totalAddonItems } = useAddonStore();
+
+  const totalBaseitems = totalItems()
+  const totalAddons = totalAddonItems()
+
+  const total = totalBaseitems + totalAddons
 
   const navLinks = [
     { href: ROUTES.home, label: "Home" },
@@ -67,21 +80,21 @@ const Header = () => {
               size="icon"
               className="relative text-foreground hover:bg-muted hover:text-foreground"
               onClick={() => {
-                if (itemCount > 0) {
-                  setIsCartOpen(true);
-                  return;
-                }
-                if (subscriptionCount > 0) {
+                // if (itemCount > 0) {
+                //   setIsCartOpen(true);
+                //   return;
+                // }
+                if (subInfo?.subscription) {
                   navigate(ROUTES.cartReview);
                   return;
                 }
-                setIsCartOpen(true);
+                // setIsCartOpen(true);
               }}
             >
               <ShoppingCart className="h-5 w-5" />
-              {totalCount > 0 && (
+              {total > 0 && (
                 <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
-                  {totalCount > 99 ? "99+" : totalCount}
+                  {total > 99 ? "99+" : total}
                 </span>
               )}
             </Button>

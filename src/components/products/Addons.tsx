@@ -5,12 +5,13 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import displayCurrency from "@/utils/displayCurrency";
 import { useCartStore } from "@/store/cartStore";
+import { useAddonStore } from "@/store/addonStore";
 
 export default function Addons({ products}: {products: any}) {
 
-  const { items, add, setQty, totalItems } = useCartStore();
+  const { addonItems, addAddon, setAddonQty, totalAddonItems } = useAddonStore();
 
-  const total = totalItems();
+  const total = totalAddonItems();
 
   const cantAdd = total >= products?.max_items;
   const cantIncrease = total >= products?.max_items;
@@ -19,7 +20,7 @@ export default function Addons({ products}: {products: any}) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {products.map((item) => {
 
-            const cartItem = items.find((i) => i.id === item.id);
+            const cartItem = addonItems.find((i) => i.id === item.id);
             const qty = cartItem?.qty || 0;
 
             return (
@@ -49,16 +50,16 @@ export default function Addons({ products}: {products: any}) {
                 </div>
 
                 {qty === 0 ? (
-                  <Button size="sm" variant="outline" className="mt-1 w-full" disabled={cantAdd} onClick={() => add(item, 1)}>
+                  <Button size="sm" variant="outline" className="mt-1 w-full" disabled={cantAdd} onClick={() => addAddon(item, 1, "addon")}>
                     <Plus className="mr-1 h-3 w-3" /> Add
                   </Button>
                 ) : (
                   <div className="mt-1 flex items-center gap-2">
-                    <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => setQty(item, qty - 1)}>
+                    <Button size="sm" variant="outline" className="h-8 w-8 p-0" onClick={() => setAddonQty(item, qty - 1)}>
                       <Minus className="h-3.5 w-3.5" />
                     </Button>
                     <span className="flex-1 text-center text-sm font-semibold">{qty}</span>
-                    <Button size="sm" className="h-8 w-8 p-0" disabled={cantIncrease} onClick={() => setQty(item, qty + 1)}>
+                    <Button size="sm" className="h-8 w-8 p-0" disabled={cantIncrease} onClick={() => setAddonQty(item, qty + 1)}>
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>

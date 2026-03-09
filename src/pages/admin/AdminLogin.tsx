@@ -14,9 +14,9 @@ const AdminLogin = () => {
     const { isAuthenticated, login } = useAdmin();
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (isAuthenticated) navigate("/admin", { replace: true });
-    }, [isAuthenticated, navigate]);
+    // useEffect(() => {
+    //     if (isAuthenticated) navigate("/admin", { replace: true });
+    // }, [isAuthenticated, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

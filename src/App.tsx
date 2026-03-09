@@ -11,6 +11,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { ROUTES } from "@/lib/routes";
+import { ToastContainer } from 'react-toastify';
 
 // Customer Pages
 import Index from "@/pages/Index";
@@ -51,6 +52,9 @@ import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
 import AdminDeliveries from "@/pages/admin/AdminDeliveries";
 import AdminAnalytics from "@/pages/admin/AdminAnalytics";
 import AdminSettings from "@/pages/admin/AdminSettings";
+import VerifyPayment from "./pages/VerifyPayment";
+import VerificationEmailSent from "./pages/VerificationEmailSent";
+import UserGuard from "./protect/UserGuard";
 
 const queryClient = new QueryClient();
 
@@ -89,13 +93,21 @@ const App = () => (
                     <Header />
                     <main className="flex-1">
                       <Routes>
+
+                        <Route element={<UserGuard />}>
+                          <Route path={ROUTES.checkout} element={<Checkout />} />
+                          <Route path={ROUTES.dashboard} element={<Dashboard />} />
+                        </Route>
+
+
                         <Route path={ROUTES.home} element={<Index />} />
                         <Route path={ROUTES.plans} element={<Plans />} />
                         <Route path={ROUTES.planSize} element={<PlanSize />} />
                         <Route path={ROUTES.planFrequency} element={<PlanFrequency />} />
                         <Route path={ROUTES.buildBox} element={<BuildBox />} />
                         <Route path={ROUTES.cartReview} element={<CartReview />} />
-                        <Route path={ROUTES.checkout} element={<Checkout />} />
+                        <Route path={ROUTES.verifyPayment} element={<VerifyPayment />} />
+                        <Route path={ROUTES.verificationEmailSent} element={<VerificationEmailSent />} />
                         <Route path={ROUTES.confirmation} element={<Confirmation />} />
                         <Route path={ROUTES.products} element={<Products />} />
                         <Route path="/product/:id" element={<ProductDetail />} />
@@ -118,7 +130,6 @@ const App = () => (
                         <Route path={ROUTES.authVerifyEmail} element={<AuthVerifyEmail />} />
                         <Route path={ROUTES.authResetPassword} element={<AuthResetPassword />} />
                         <Route path={ROUTES.authAcceptInvitation} element={<AuthAcceptInvitation />} />
-                        <Route path={ROUTES.dashboard} element={<Dashboard />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </main>
@@ -132,6 +143,7 @@ const App = () => (
         </SubscriptionProvider>
       </CartProvider>
     </TooltipProvider>
+    <ToastContainer />
   </QueryClientProvider>
 );
 

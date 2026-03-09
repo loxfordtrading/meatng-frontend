@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -19,6 +19,19 @@ import { ROUTES } from "@/lib/routes";
 import { loginWithEmail, forgotPassword } from "@/lib/api/customer";
 import { getErrorMessage } from "@/lib/api/errors";
 import { tokenStorage } from "@/lib/auth/tokenStorage";
+import z from "zod";
+import { useAuthStore } from "@/store/AuthStore";
+import { debounce } from "lodash"
+import { axiosClient } from "@/GlobalApi";
+import { toast } from "react-toastify";
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(2, "Invalid Password"),
+})
+
+type LoginFormValues = z.infer<typeof loginSchema>
+
 
 const benefits = [
   { icon: Beef, text: "Premium cuts selected for your routine" },
@@ -44,60 +57,163 @@ const Auth = () => {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMessage, setForgotMessage] = useState("");
   const [forgotError, setForgotError] = useState("");
+  const [resendMessage, setResendMessage] = useState("");
+
+  const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({})
+  const [touched, setTouched] = useState<Partial<Record<keyof LoginFormValues, boolean>>>({})
+  const [form, setForm] = useState<LoginFormValues>({
+    email: '',
+    password: ''
+  })
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const subscription = useSubscription();
   const admin = useAdmin();
   const navigate = useNavigate();
 
-  const ADMIN_DOMAIN = "@loxfordtrading.com";
-  const ADMIN_ROLES = ["admin", "super_admin", "manager"];
+  const userInfo = useAuthStore((state) => state.setUserInfo)
 
-  const isAdminUser = (email: string, role?: string) =>
-    email.toLowerCase().endsWith(ADMIN_DOMAIN) ||
-    (!!role && ADMIN_ROLES.includes(role.toLowerCase()));
+  const validation = loginSchema.safeParse(form);
+
+  const canSubmit = validation.success;
+
+  // Debounced validation
+  const validateForm = debounce((updatedForm: LoginFormValues) => {
+    const result = loginSchema.safeParse(updatedForm)
+    if (!result.success) {
+      const fieldErrors: typeof errors = {}
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof LoginFormValues
+        fieldErrors[field] = err.message
+      })
+      setErrors(fieldErrors)
+    } else {
+      setErrors({})
+    }
+  }, 300)
 
   useEffect(() => {
-    if (subscription.state.user) {
-      navigate(ROUTES.dashboard, { replace: true });
+    validateForm(form)
+    return () => validateForm.cancel()
+  }, [form])
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setResendMessage("")
+    
+    const result = loginSchema.safeParse(form)
+
+    if (!result.success) {
+      const fieldErrors: typeof errors = {}
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof LoginFormValues
+        fieldErrors[field] = err.message
+      })
+      setErrors(fieldErrors)
+      setTouched({
+        email: true,
+        password: true,
+      })
+      return
     }
-  }, [subscription.state.user, navigate]);
 
-  const canSubmit = email.trim().length > 0 && password.trim().length >= 6;
+    setErrors({})
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canSubmit) return;
+      try {
 
-    setError("");
-    setIsLoading(true);
+      setIsSubmitting(true)
+      
+      const response = await axiosClient.post("/auth/login", form)
+      toast.success(response.data.message);
 
-    try {
-      const result = await loginWithEmail({ email, password });
+      userInfo({
+        access: response.data?.data?.attributes?.data?.token?.accessToken,
+        refresh: response.data?.data?.attributes?.data?.token?.refreshToken,
+        first_name: response.data?.data?.attributes?.data?.user?.first_name,
+        last_name: response.data?.data?.attributes?.data?.user?.display_name,
+        userId: response.data?.data?.attributes?.data?.user?.id,
+        email: response.data?.data?.attributes?.data?.user?.email
+      });
 
-      if (isAdminUser(result.user.email || email, result.user.role)) {
-        // Staff account — hand off to admin context and redirect to admin panel
-        admin.loginWithResult(
-          { ...result.user, email: result.user.email || email },
-          result.token,
-        );
-        navigate(ROUTES.admin, { replace: true });
-        return;
+      toast.success("Login Succcessful")
+      navigate(ROUTES.home)
+      setForm({
+        email: '',
+        password: ''
+      })
+
+    } catch (error: any) {
+      setError(error.response?.data?.message)
+
+      if(error.response?.data?.message === "Please verify your email before signing in"){
+        try {
+          const response = await axiosClient.post("/auth/resend-verification", { email: form.email })
+
+          toast.success("Verification email resent")
+          setResendMessage(response.data?.data?.attributes?.message);
+        } catch (error: any) {
+          setResendMessage(error.response?.data?.message);
+        }
+        
       }
 
-      subscription.login({ id: result.user.id, name: result.user.name, email: result.user.email || email });
-      if (result.token) tokenStorage.setCustomerToken(result.token);
-
-      if (subscription.state.boxItems.length > 0) {
-        navigate(ROUTES.checkout);
-        return;
-      }
-      navigate(ROUTES.dashboard);
-    } catch (error) {
-      setError(getErrorMessage(error, "Unable to sign in right now. Please try again."));
     } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsSubmitting(false)
+    } 
+    
+  }
+
+  // const ADMIN_DOMAIN = "@loxfordtrading.com";
+  // const ADMIN_ROLES = ["admin", "super_admin", "manager"];
+
+  // const isAdminUser = (email: string, role?: string) =>
+  //   email.toLowerCase().endsWith(ADMIN_DOMAIN) ||
+  //   (!!role && ADMIN_ROLES.includes(role.toLowerCase()));
+
+  // useEffect(() => {
+  //   if (subscription.state.user) {
+  //     navigate(ROUTES.dashboard, { replace: true });
+  //   }
+  // }, [subscription.state.user, navigate]);
+
+  // const canSubmit = email.trim().length > 0 && password.trim().length >= 6;
+
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (!canSubmit) return;
+
+  //   setError("");
+  //   setIsLoading(true);
+
+  //   try {
+  //     const result = await loginWithEmail({ email, password });
+
+  //     if (isAdminUser(result.user.email || email, result.user.role)) {
+  //       // Staff account — hand off to admin context and redirect to admin panel
+  //       admin.loginWithResult(
+  //         { ...result.user, email: result.user.email || email },
+  //         result.token,
+  //       );
+  //       navigate(ROUTES.admin, { replace: true });
+  //       return;
+  //     }
+
+  //     subscription.login({ id: result.user.id, name: result.user.name, email: result.user.email || email });
+  //     if (result.token) tokenStorage.setCustomerToken(result.token);
+
+  //     if (subscription.state.boxItems.length > 0) {
+  //       navigate(ROUTES.checkout);
+  //       return;
+  //     }
+  //     navigate(ROUTES.dashboard);
+  //   } catch (error) {
+  //     setError(getErrorMessage(error, "Unable to sign in right now. Please try again."));
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -136,7 +252,7 @@ const Auth = () => {
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {benefits.map((benefit) => (
                   <div
                     key={benefit.text}
@@ -162,7 +278,7 @@ const Auth = () => {
                     <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{stat.label}</p>
                   </div>
                 ))}
-              </div>
+              </div> */}
             </CardContent>
           </Card>
 
@@ -190,11 +306,15 @@ const Auth = () => {
                     id="auth-email"
                     type="email"
                     autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={form.email} 
+                    onChange={(e: any) => setForm({ ...form, email: e.target.value})} 
+                    onBlur={() => setTouched((prev) => ({ ...prev, email: true }))} 
                     placeholder="you@example.com"
                     className="h-12 rounded-xl bg-white"
                   />
+                  {touched.email && errors.email && (
+                    <p className="text-xs text-red-500">{errors.email}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -213,8 +333,9 @@ const Auth = () => {
                       id="auth-password"
                       type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      value={form.password} 
+                      onChange={(e: any) => setForm({ ...form, password: e.target.value})} 
+                      onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
                       placeholder="Min. 6 characters"
                       className="h-12 rounded-xl pr-11 bg-white"
                     />
@@ -227,6 +348,9 @@ const Auth = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  {touched.password && errors.password && (
+                    <p className="text-xs text-red-500">{errors.password}</p>
+                  )}
                 </div>
 
                 {error && (
@@ -234,13 +358,14 @@ const Auth = () => {
                     {error}
                   </div>
                 )}
+                {resendMessage && <p className="text-xs text-muted-foreground">{resendMessage}</p>}
 
                 <Button
                   type="submit"
                   className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20"
-                  disabled={!canSubmit || isLoading}
+                  disabled={!canSubmit || isSubmitting}
                 >
-                  {isLoading ? (
+                  {isSubmitting ? (
                     <span className="flex items-center gap-2">
                       <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                       Signing in...
@@ -257,7 +382,7 @@ const Auth = () => {
               <p className="mt-6 text-center text-sm text-muted-foreground">
                 Not a member yet?{" "}
                 <Link
-                  to={ROUTES.plans}
+                  to={ROUTES.authSignUp}
                   className="font-semibold text-primary hover:text-primary/80 transition-colors"
                 >
                   Sign Up
@@ -318,21 +443,26 @@ const ForgotPasswordModal = ({
 }) => {
   if (!open) return null;
 
-  const handleForgotSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forgotEmail.trim()) return;
-    setForgotLoading(true);
-    setForgotError("");
-    setForgotMessage("");
-    try {
-      await forgotPassword(forgotEmail.trim());
-      setForgotMessage("If an account with that email exists, a password reset link has been sent.");
-    } catch (err) {
-      setForgotError(getErrorMessage(err, "Unable to send reset email. Please try again."));
-    } finally {
-      setForgotLoading(false);
+    const handleForgotEmail = async (e: FormEvent) => {
+      e.preventDefault()
+
+      if(!forgotEmail.trim()) return;
+
+      try {
+        setForgotLoading(true)
+        setForgotError("");
+        setForgotMessage("");
+        const response = await axiosClient.post("/auth/forgot-password", { email: forgotEmail})
+        console.log("email=",response.data)
+        setForgotMessage(response.data?.data?.attributes?.message)
+        setForgotEmail("")
+      } catch (error) {
+        toast.error(error.response?.data?.message)
+        setForgotError(error.response?.data?.message)
+      } finally {
+        setForgotLoading(false)
+      }
     }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -343,7 +473,7 @@ const ForgotPasswordModal = ({
           <p className="mt-1 text-sm text-muted-foreground">
             Enter your email and we'll send you a reset link.
           </p>
-          <form onSubmit={handleForgotSubmit} className="mt-4 space-y-4">
+          <form onSubmit={handleForgotEmail} className="mt-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="forgot-email">Email</Label>
               <Input
@@ -370,7 +500,7 @@ const ForgotPasswordModal = ({
                 {forgotLoading ? "Sending..." : "Send Reset Link"}
               </Button>
               <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
+                Close
               </Button>
             </div>
           </form>

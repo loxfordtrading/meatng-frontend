@@ -23,6 +23,8 @@ import { axiosClient } from "@/GlobalApi";
 import { useEffect, useState } from "react";
 import Addons from "@/components/products/Addons";
 import displayCurrency from "@/utils/displayCurrency";
+import { useAddonStore } from "@/store/addonStore";
+import { toGrams } from "@/utils/conversion";
 
 const CartReview = () => {
   const subscription = useSubscription();
@@ -32,7 +34,7 @@ const CartReview = () => {
     totalWeightG,
     categoryWeightUsed,
     getCategoryBudget,
-    addAddon,
+    // addAddon,
     removeAddon,
     setSelectedOffals,
     setBuildSelections,
@@ -42,9 +44,23 @@ const CartReview = () => {
 
   const navigate = useNavigate()
   const { subInfo } = useSubscriptionStore();
-  const { items, add, setQty, totalItems } = useCartStore();
+  const { items, add, setQty, totalItems, totalGramWeight } = useCartStore();
+  const { addonItems, addAddon, setAddonQty, totalAddonItems, totalAddonPrice } = useAddonStore();
+  const addonTotal = totalAddonPrice();
   const [products, setProducts] = useState([]);
+  const [addingToCart, setAddingToCart] = useState(false)
   const userEmail = subscription.state.user?.email || "";
+
+  const totalGransInCart = totalGramWeight()
+  
+  const subscriptionWeightG = toGrams(
+    subInfo?.subscription?.attributes?.weight ?? 0,
+    subInfo?.subscription?.attributes?.weight_unit as "kg" | "g"
+  );
+  
+  const progress = subscriptionWeightG
+  ? (totalGransInCart / subscriptionWeightG) * 100
+  : 0;
 
   if (!subInfo?.subscription || !subInfo?.selectedFrequency) {
     return <Navigate to={ROUTES.plans} replace />;
@@ -87,20 +103,29 @@ const CartReview = () => {
     }
   };
 
+  const cartItems = [
+    ...items,
+    ...addonItems
+  ].map((item) => ({
+    productId: item.id,
+    quantity: item.qty,
+    itemType: item.item_type,
+  }));
+
   const addToRemoteCart = async () => {
     try {
       console.log(axiosClient.defaults.baseURL);
+      setAddingToCart(true)
       const res = await axiosClient.post("/carts/items", {
         email: userEmail,
         planId: subInfo.subscription.id,
-        items: items.map((item) => ({
-          productId: item.id,
-          quantity: item.qty
-        }))
+        items: cartItems,
       });
       navigate(ROUTES.checkout)
     } catch (err) {
       console.error(err);
+    } finally {
+      setAddingToCart(false)
     }
   }
 
@@ -142,10 +167,10 @@ const CartReview = () => {
                 <div className="flex items-center justify-between">
                   <CardTitle>Your Box Contents</CardTitle>
                   <span className="text-sm text-muted-foreground">
-                    {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
+                    {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
                   </span>
                 </div>
-                <Progress value={80} className="h-2 mt-2" />
+                <Progress value={progress} className="h-2 mt-2" />
               </CardHeader>
               <CardContent>
                 {!subInfo.subscription ? (
@@ -294,10 +319,10 @@ const CartReview = () => {
                     <span className="text-muted-foreground">Plan price </span>
                     <span className="font-medium">{displayCurrency(subInfo?.subscription?.attributes?.price,"NGN")}</span>
                   </div>
-                  {addOnsTotal > 0 && (
+                  {addonItems?.length > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Add-ons total</span>
-                      <span className="font-medium">{displayCurrency(addOnsTotal,"NGN")}</span>
+                      <span className="font-medium">{displayCurrency(addonTotal,"NGN")}</span>
                     </div>
                   )}
                 </div>
@@ -306,7 +331,7 @@ const CartReview = () => {
 
                 <div className="flex items-center justify-between text-lg font-bold">
                   <span>Total due </span>
-                  <span className="text-primary">{displayCurrency(grandTotal, "NGN")}</span>
+                  <span className="text-primary">{displayCurrency(subInfo?.subscription?.attributes?.price + addonTotal, "NGN")}</span>
                 </div>
 
                 {/* {billingDate && cutoffDate && (
@@ -326,13 +351,19 @@ const CartReview = () => {
                 )} */}
 
                 {items.length > 0 ? (
-                  <Button className="w-full" size="lg" asChild onClick={addToRemoteCart}>
-                    {/* <Link to={ROUTES.checkout}> */}
-                    <span>
-                      Continue to Checkout
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </span>
-                    {/* </Link> */}
+                  <Button className="w-full" size="lg" asChild onClick={addToRemoteCart} disabled={addingToCart}>
+                    {
+                      addingToCart ? (
+                      <span className="cursor-pointer">
+                        Loading...
+                      </span>
+                      ) : (
+                        <span className="cursor-pointer">
+                          Continue to Checkout
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </span>
+                      )
+                    }
                   </Button>
                 ) : (
                   <>
@@ -363,11 +394,19 @@ const CartReview = () => {
             <p className="text-lg font-bold text-primary">{formatPrice(grandTotal)}</p>
           </div>
           {items.length > 0 ? (
-            <Button size="lg" asChild className="flex-1 max-w-[200px]" onClick={addToRemoteCart}>
-              <span>
-                Checkout
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </span>
+            <Button size="lg" asChild className="flex-1 max-w-[200px]" onClick={addToRemoteCart} disabled={addingToCart}>
+              {
+                addingToCart ? (
+                  <span className="cursor-pointer">
+                    Loading...
+                  </span>
+                ) : (
+                  <span className="cursor-pointer">
+                    Checkout
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </span>
+                )
+              }
             </Button>
           ) : (
             <Button size="lg" disabled className="flex-1 max-w-[200px]">

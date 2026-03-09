@@ -18,6 +18,8 @@ import { ROUTES } from "@/lib/routes";
 import { frequencies } from "@/data/plans";
 import displayCurrency from "@/utils/displayCurrency";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
+import { useCartStore } from "@/store/cartStore";
+import { useAddonStore } from "@/store/addonStore";
 
 const planIcons: Record<string, any> = {
   "value-pack": Layers3,
@@ -29,6 +31,8 @@ const planIcons: Record<string, any> = {
 const Plans = () => {
   const navigate = useNavigate();
   const { setSubInfo } = useSubscriptionStore();
+   const { clearCart } = useCartStore();
+   const { clearAddon } = useAddonStore();
 
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +68,9 @@ const Plans = () => {
   const handleContinue = () => {
     if (!selectedPlan || !selectedFrequency) return;
 
+    clearCart()
+    clearAddon()
+    
     setSubInfo({
       subscription: selectedPlan,
       selectedFrequency,
@@ -289,7 +296,7 @@ function PlanCard({ plan, selected, icon: Icon, onClick }: any) {
 
       <div className="text-xs text-primary mt-1">{plan?.attributes?.weight}{plan?.attributes?.weight_unit} box</div>
 
-      <div className="mt-2 text-[11px] text-muted-foreground"><span>5kg fixed + build 5kg</span></div>
+      {/* <div className="mt-2 text-[11px] text-muted-foreground"><span>5kg fixed + build 5kg</span></div> */}
 
     </button>
   );

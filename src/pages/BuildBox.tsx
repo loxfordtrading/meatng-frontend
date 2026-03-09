@@ -5,13 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { formatPrice, formatWeight } from "@/data/plans";
 import { ROUTES } from "@/lib/routes";
 import { axiosClient } from "@/GlobalApi";
 import displayCurrency from "@/utils/displayCurrency";
 import BuildCatalog from "@/components/products/BuildCatalog";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { useCartStore } from "@/store/cartStore";
+import { formatWeight, toGrams } from "@/utils/conversion";
 
 // const PRODUCT_IMAGES: Record<string, string> = {
 //   "Boneless Beef": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
@@ -57,7 +57,7 @@ import { useCartStore } from "@/store/cartStore";
 const BuildBox = () => {
 
   const { subInfo } = useSubscriptionStore();
-  const { items } = useCartStore();
+  const { items, totalItems, totalGramWeight } = useCartStore();
   const storePlan = {
     id: subInfo?.subscription?.id,
     name: subInfo?.subscription?.attributes.name,
@@ -77,6 +77,18 @@ const BuildBox = () => {
   const [plan, setPlan] = useState(storePlan || null)
   const [activeCategory, setActiveCategory] = useState("all")
   const navigate = useNavigate();
+
+   const totalGransInCart = totalGramWeight()
+   const totalItemsinCart = totalItems();
+  
+    const subscriptionWeightG = toGrams(
+      subInfo?.subscription?.attributes?.weight ?? 0,
+      subInfo?.subscription?.attributes?.weight_unit as "kg" | "g"
+    );
+  
+    const progress = subscriptionWeightG
+    ? (totalGransInCart / subscriptionWeightG) * 100
+    : 0;
  
   if (!subInfo?.subscription || !subInfo?.selectedFrequency) {
     return (
@@ -95,7 +107,7 @@ const BuildBox = () => {
 
   // Parse query params
   const params = new URLSearchParams(location.search);
-  const planId = params.get("planId");
+  const planId = params.get("planId") || subInfo?.subscription?.id;
 
   useEffect(() => {
     const loadData = async () => {
@@ -110,12 +122,14 @@ const BuildBox = () => {
 
     if (planId) {
       loadData();
+    }else{
+      navigate(ROUTES.plans, { replace: true })
     }
   }, [planId]);
 
   const getProducts = async () => {
     try {
-      const res = await axiosClient.get("/products");
+      const res = await axiosClient.get("/products?limit=30");
 
       const formattedProducts = res.data.data.map((item: any) => ({
         id: item.id,
@@ -125,6 +139,7 @@ const BuildBox = () => {
         weight_unit: item.attributes.unit,
         formatted_weight: item.attributes.formattedWeight,
         category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
+        stock: item.stockQuantity
       }));
 
       setProducts(formattedProducts);
@@ -255,48 +270,34 @@ const BuildBox = () => {
                   </div>
                 </div>
 
-                {/* <div>
+                <div>
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {hasBuildYourBox ? "Build Budget" : "Weight Budgets"}
+                    Build Budget
                   </p>
-                  {hasBuildYourBox && plan?.buildYourBox ? (
-                    <div className="space-y-3">
-                      <div>
+                    
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      {subInfo?.subscription?.attributes?.prefilled_items.length > 0 && (
+                        <div>
                         <div className="mb-1 flex items-center justify-between text-xs">
                           <span>Prefilled</span>
-                          <span>{formatWeight(mandatoryWeightG)} / {formatWeight((plan.weightKg * 1000) - plan.buildYourBox.remainingWeightG)}</span>
+                          {/* <span>{formatWeight(mandatoryWeightG)} / {formatWeight((plan.weightKg * 1000) - plan.buildYourBox.remainingWeightG)}</span> */}
                         </div>
-                        <Progress value={100} className="h-1.5" />
-                      </div>
-                      <div>
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span>Build selections</span>
-                          <span>{formatWeight(buildWeightG)} / {formatWeight(plan.buildYourBox.remainingWeightG)}</span>
+                          <Progress value={100} className="h-1.5" />
                         </div>
-                        <Progress value={Math.min((buildWeightG / plan.buildYourBox.remainingWeightG) * 100, 100)} className="h-1.5" />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {plan?.categoryBudgets.map((budget) => {
-                        const category = budget.category as "beef" | "chicken" | "offals";
-                        const used = usedWeightByCategory(category);
-                        const pct = Math.min((used / budget.budgetG) * 100, 100);
-                        return (
-                          <div key={budget.category}>
-                            <div className="mb-1 flex items-center justify-between text-xs">
-                              <span>{CATEGORY_LABELS[budget.category]?.label ?? budget.category}</span>
-                              <span>
-                                {formatWeight(used)} / {formatWeight(budget.budgetG)}
-                              </span>
-                            </div>
-                            <Progress value={pct} className="h-1.5" />
+                      )}
+                      {subInfo?.subscription?.attributes?.weight && (
+                        <div>
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <span>Build selections</span>
+                            <span>{formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}</span>
                           </div>
-                        );
-                      })}
+                          <Progress value={progress} className="h-1.5" />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div> */}
+                  </div>
+               </div>
               </CardContent>
             </Card>
           </div>
@@ -437,10 +438,10 @@ const BuildBox = () => {
                   <div className="mb-2 flex justify-between">
                     <span className="text-muted-foreground">Total weight</span>
                     <span className="font-medium">
-                      {`${plan?.weight}${plan?.weight_unit} / ${0}${plan?.weight_unit}`}
+                      {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
                     </span>
                   </div>
-                  <Progress value={(plan?.weight / 10) * 100} className="h-2" />
+                  <Progress value={progress} className="h-2" />
                   <div className="mt-3 space-y-1">
                     <p>
                       <span className="text-muted-foreground">Plan:</span> <span className="font-medium">{plan?.name}</span>
@@ -500,7 +501,7 @@ const BuildBox = () => {
                   </div>
                 </div>
 
-                <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products}>
+                <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalItemsinCart != subInfo?.subscription?.attributes?.max_items) || (totalGransInCart != subscriptionWeightG)}>
                   <ShoppingCart className="mr-2 h-4 w-4" />
                   Review Cart
                 </Button>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, ShieldCheck, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,42 @@ import { Label } from "@/components/ui/label";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { ROUTES } from "@/lib/routes";
 import { signupWithEmail, resendVerification } from "@/lib/api/customer";
-import { getErrorMessage } from "@/lib/api/errors";
-import { tokenStorage } from "@/lib/auth/tokenStorage";
+import z from "zod";
+import { toast } from "react-toastify"
+import { debounce } from "lodash"
+import { axiosClient } from "@/GlobalApi";
+
+const registerSchema = z.object({
+  first_name: z.string().min(1, "first name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  phone: z
+    .string()
+    .regex(/^\d+$/, "Phone number must contain only digits")
+    .refine((val) => {
+      if (val.startsWith("0")) return val.length === 11;
+      return val.length === 10;
+    }, {
+      message: "Phone number must be 11 digits if it starts with 0, otherwise 10 digits",
+    })
+    .transform((val) => (val.startsWith("0") ? val.slice(1) : val)),
+  email: z.string().email("Invalid email address"),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+  confirmPassword: z
+    .string()
+    .min(1, "Please confirm your password"),
+})
+.refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type RegisterFormValues = z.infer<typeof registerSchema>
 
 const AuthSignup = () => {
   const [fullName, setFullName] = useState("");
@@ -23,55 +57,141 @@ const AuthSignup = () => {
   const [verificationSent, setVerificationSent] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
+  const [form, setForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: ''
+  })
+  const [errors, setErrors] = useState<Partial<Record<keyof RegisterFormValues, string>>>({})
+  const [touched, setTouched] = useState<Partial<Record<keyof RegisterFormValues, boolean>>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const subscription = useSubscription();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const bypassFlow = useMemo(() => searchParams.get("bypass") === "1", [searchParams]);
 
-  const hasCheckoutReadySubscription =
-    !!subscription.state.plan &&
-    !!subscription.state.frequency &&
-    subscription.state.boxItems.length > 0;
+  // useEffect(() => {
+  //   if (subscription.state.user) {
+  //     navigate(ROUTES.dashboard, { replace: true });
+  //   }
+  // }, [subscription.state.user, navigate]);
+
+  // if (!hasCheckoutReadySubscription && !bypassFlow) {
+  //   return <Navigate to={ROUTES.plans} replace />;
+  // }
+
+  const validation = registerSchema.safeParse(form);
+
+  const canSubmit = validation.success;
+
+  // Debounced validation
+  const validateForm = debounce((updatedForm: RegisterFormValues) => {
+    const result = registerSchema.safeParse(updatedForm)
+    if (!result.success) {
+      const fieldErrors: typeof errors = {}
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof RegisterFormValues
+        fieldErrors[field] = err.message
+      })
+      setErrors(fieldErrors)
+    } else {
+      setErrors({})
+    }
+  }, 300)
 
   useEffect(() => {
-    if (subscription.state.user) {
-      navigate(ROUTES.dashboard, { replace: true });
-    }
-  }, [subscription.state.user, navigate]);
+    validateForm(form)
+    return () => validateForm.cancel()
+  }, [form])
 
-  if (!hasCheckoutReadySubscription && !bypassFlow) {
-    return <Navigate to={ROUTES.plans} replace />;
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+
+    const result = registerSchema.safeParse(form)
+
+    if (!result.success) {
+      const fieldErrors: typeof errors = {}
+      result.error.errors.forEach((err) => {
+        const field = err.path[0] as keyof RegisterFormValues
+        fieldErrors[field] = err.message
+      })
+      setErrors(fieldErrors)
+      setTouched({
+        first_name: true,
+        last_name: true,
+        email: true,
+        password: true,
+        confirmPassword: true
+      })
+      return
+    }
+
+    setErrors({})
+    
+    try {
+
+      setIsSubmitting(true)
+      
+      const { first_name, last_name, ...rest } = form;
+
+      const newForm = {
+        ...rest,
+        firstName: first_name,
+        lastName: last_name,
+      };
+
+      const result = await axiosClient.post("/auth/signup", newForm)
+      toast.success(result.data?.data?.attributes?.message);
+
+      setEmail(result.data?.data?.attributes?.data?.user?.email)
+      setForm({
+        first_name: '',
+        last_name: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: ''
+      })
+
+      setErrors({})
+      setTouched({})
+
+      setVerificationSent(true)
+
+    } catch (error: any) {
+      toast.error(error.response?.data?.message);
+
+      if(error.response.data.message === "User already exists"){
+        navigate("/login")
+      }
+
+    } finally {
+      setIsSubmitting(false)
+    } 
   }
 
-  const passwordsMatch = password === confirmPassword;
-  const canSubmit =
-    fullName.trim().length > 0 &&
-    email.trim().length > 0 &&
-    password.trim().length >= 6 &&
-    passwordsMatch;
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleResendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canSubmit) return;
-
-    setError("");
-    setIsLoading(true);
-
     try {
-      const result = await signupWithEmail({ fullName, email, password, confirmPassword });
-      subscription.login({ id: result.user.id, name: result.user.name || fullName, email: result.user.email || email });
-      if (result.token) tokenStorage.setCustomerToken(result.token);
-
-      // Show verification notice briefly, then navigate
-      setVerificationSent(true);
-      setTimeout(() => navigate(bypassFlow ? ROUTES.dashboard : ROUTES.checkout), 2500);
-    } catch (error) {
-      setError(getErrorMessage(error, "Unable to create account right now. Please try again."));
+      setResendLoading(true)
+      setResendMessage("")
+      const result = await axiosClient.post("/auth/resend-verification", {
+        email: email
+      })
+      setResendMessage("Verification email resent.");
+    } catch (error){
+      toast.error(error.response?.data?.message);
+      setResendMessage(error.response?.data?.message || "Could not resend. Please try again later.");
     } finally {
-      setIsLoading(false);
+      setResendLoading(false)
     }
-  };
+
+  }
+
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -108,18 +228,7 @@ const AuthSignup = () => {
                     size="sm"
                     className="h-auto p-0 text-xs"
                     disabled={resendLoading}
-                    onClick={async () => {
-                      setResendLoading(true);
-                      setResendMessage("");
-                      try {
-                        await resendVerification(email);
-                        setResendMessage("Verification email resent.");
-                      } catch {
-                        setResendMessage("Could not resend. Please try again later.");
-                      } finally {
-                        setResendLoading(false);
-                      }
-                    }}
+                    onClick={handleResendEmail}
                   >
                     {resendLoading ? "Resending..." : "Resend verification email"}
                   </Button>
@@ -128,16 +237,35 @@ const AuthSignup = () => {
               )}
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
-                  <Input
-                    id="signup-name"
-                    autoComplete="name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Adebola Okonkwo"
-                    className="h-12 rounded-xl bg-white"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">First Name</Label>
+                    <Input
+                      id="signup-firstname"
+                      value={form.first_name} 
+                      onChange={(e: any) => setForm({ ...form, first_name: e.target.value})} 
+                      onBlur={() => setTouched((prev) => ({ ...prev, first_name: true }))}
+                      placeholder="Adebola"
+                      className="h-12 rounded-xl bg-white w-full"
+                    />
+                    {touched.first_name && errors.first_name && (
+                      <p className="text-xs text-destructive">{errors.first_name}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-lastname">Last Name</Label>
+                    <Input
+                      id="signup-lastname"
+                      value={form.last_name} 
+                      onChange={(e: any) => setForm({ ...form, last_name: e.target.value})} 
+                      onBlur={() => setTouched((prev) => ({ ...prev, last_name: true }))}
+                      placeholder="Okonkwo"
+                      className="h-12 rounded-xl bg-white w-full"
+                    />
+                    {touched.last_name && errors.last_name && (
+                      <p className="text-xs text-destructive">{errors.last_name}</p>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -145,12 +273,31 @@ const AuthSignup = () => {
                   <Input
                     id="signup-email"
                     type="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    value={form.email} 
+                    onChange={(e: any) => setForm({ ...form, email: e.target.value})} 
+                    onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
                     placeholder="you@example.com"
                     className="h-12 rounded-xl bg-white"
                   />
+                  {touched.email && errors.email && (
+                    <p className="text-xs text-destructive">{errors.email}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone No</Label>
+                  <Input
+                    id="phone"
+                    type="number"
+                    value={form.phone} 
+                    onChange={(e: any) => setForm({ ...form, phone: e.target.value})} 
+                    onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
+                    placeholder="E.g 08123456789"
+                    className="h-12 rounded-xl bg-white"
+                  />
+                  {touched.phone && errors.phone && (
+                    <p className="text-xs text-destructive">{errors.phone}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -159,9 +306,9 @@ const AuthSignup = () => {
                     <Input
                       id="signup-password"
                       type={showPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      value={form.password} 
+                      onChange={(e: any) => setForm({ ...form, password: e.target.value})} 
+                      onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
                       placeholder="Min. 6 characters"
                       className="h-12 rounded-xl pr-11 bg-white"
                     />
@@ -174,6 +321,9 @@ const AuthSignup = () => {
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
+                  {touched.password && errors.password && (
+                    <p className="text-xs text-destructive">{errors.password}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -182,9 +332,9 @@ const AuthSignup = () => {
                     <Input
                       id="signup-confirm"
                       type={showConfirmPassword ? "text" : "password"}
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      value={form.confirmPassword} 
+                      onChange={(e: any) => setForm({ ...form, confirmPassword: e.target.value})} 
+                      onBlur={() => setTouched((prev) => ({ ...prev, confirmPassword: true }))}
                       placeholder="Confirm your password"
                       className="h-12 rounded-xl pr-11 bg-white"
                     />
@@ -197,8 +347,8 @@ const AuthSignup = () => {
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  {confirmPassword && !passwordsMatch && (
-                    <p className="text-xs text-destructive">Passwords do not match.</p>
+                  {touched.confirmPassword && errors.confirmPassword && (
+                    <p className="text-xs text-destructive">{errors.confirmPassword}</p>
                   )}
                 </div>
 
@@ -211,9 +361,9 @@ const AuthSignup = () => {
                 <Button
                   type="submit"
                   className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20"
-                  disabled={!canSubmit || isLoading}
+                  disabled={!canSubmit || isSubmitting}
                 >
-                  {isLoading ? (
+                  {isSubmitting ? (
                     <span className="flex items-center gap-2">
                       <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                       Creating account...
