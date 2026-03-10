@@ -1,4 +1,4 @@
-export type FormattedSubscription = {
+export type FormattedSubscriptionType = {
   id: string;
   userId: string;
   planId: string;
@@ -20,5 +20,30 @@ export type FormattedSubscription = {
     name: string;
     description: string;
     price: number;
+  };
+};
+
+export type FormattedOrderType = {
+  id: string;
+  userId: string;
+  planId: string;
+  status: string;
+  totalAmount: number;
+  createdAt: string;
+  updatedAt: string;
+
+  items: {
+    productId: string;
+    name: string;
+    unitPrice: number;
+    quantity: number;
+    itemType: string;
+    isPrefilled: boolean;
+  }[];
+
+  plan: {
+    id: string;
+    name: string;
+    maxItems: number;
   };
 };

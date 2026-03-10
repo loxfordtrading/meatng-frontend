@@ -5,7 +5,7 @@ import {
     Package,
     History,
     MapPin,
-    Settings,
+    Settings as SettingIcon,
     Gift,
     LogOut,
     ChevronRight,
@@ -57,6 +57,8 @@ import {
 import type { CustomerOrder } from "@/lib/api/customer/orders";
 import { tokenStorage } from "@/lib/auth/tokenStorage";
 import Subscription from "@/components/dashboard/Subscription";
+import OrderHistory from "@/components/dashboard/OrderHistory";
+import Settings from "@/components/dashboard/Settings";
 
 type DashboardSection = "overview" | "subscription" | "orders" | "addresses" | "settings";
 
@@ -71,7 +73,7 @@ const sidebarItems: SidebarItem[] = [
     { id: "subscription", label: "My Subscription", icon: Package },
     { id: "orders", label: "Order History", icon: History },
     { id: "addresses", label: "Addresses", icon: MapPin },
-    { id: "settings", label: "Settings", icon: Settings },
+    { id: "settings", label: "Settings", icon: SettingIcon },
     // Temporarily disabled: referrals feature
     // { id: "referrals", label: "Referrals", icon: Gift },
 ];
@@ -587,15 +589,6 @@ const Dashboard = () => {
         return s.charAt(0).toUpperCase() + s.slice(1);
     };
 
-    const getStatusColor = (status: string) => {
-        const s = status.toLowerCase();
-        if (s === "delivered") return statusColors["Delivered"];
-        if (s === "in_transit" || s === "shipped" || s === "in transit") return statusColors["In Transit"];
-        if (s === "processing" || s === "paid") return statusColors["Processing"];
-        if (s === "cancelled") return "bg-red-500/15 text-red-700 border-red-500/20";
-        return "bg-gray-500/15 text-gray-700 border-gray-500/20";
-    };
-
     const displayOrders = isUsingMockOrders
         ? mockOrders.map((o) => ({ id: o.id, date: o.date, items: o.items, total: o.total, status: o.status }))
         : orders.map((o) => ({
@@ -605,67 +598,6 @@ const Dashboard = () => {
             total: o.totalAmount,
             status: formatOrderStatus(o.status),
         }));
-
-    const renderOrders = () => (
-        <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
-            <div>
-                <h2 className="text-2xl font-display font-bold text-foreground">Order History</h2>
-                <p className="text-muted-foreground mt-1">
-                    Track your past and upcoming deliveries.
-                    {isUsingMockOrders && <span className="ml-2 text-xs text-amber-600">(demo data)</span>}
-                </p>
-            </div>
-
-            {isLoadingOrders ? (
-                <div className="flex justify-center py-12">
-                    <Clock className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-            ) : displayOrders.length === 0 ? (
-                <Card className="admin-card">
-                    <CardContent className="py-12 text-center">
-                        <Package className="mx-auto h-10 w-10 text-muted-foreground/50" />
-                        <p className="mt-3 text-muted-foreground">No orders yet. Start your first subscription!</p>
-                        <Button className="mt-4" onClick={() => navigate(ROUTES.plans)}>
-                            Browse Plans <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </CardContent>
-                </Card>
-            ) : (
-                <Card className="admin-card">
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border bg-muted/40">
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Reference</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Date</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Items</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Total</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {displayOrders.map((order) => (
-                                        <tr key={order.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                                            <td className="px-4 py-3 font-mono font-medium text-foreground">{order.id}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">{order.date}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">{order.items} items</td>
-                                            <td className="px-4 py-3 font-semibold">{formatPrice(order.total)}</td>
-                                            <td className="px-4 py-3">
-                                                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${getStatusColor(order.status)}`}>
-                                                    {order.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-    );
 
     // ─── ADDRESSES SECTION ───────────────────────────────────────
     const renderAddresses = () => (
@@ -864,93 +796,7 @@ const Dashboard = () => {
     );
 
     // ─── SETTINGS SECTION ────────────────────────────────────────
-    const renderSettings = () => (
-        <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
-            <div>
-                <h2 className="text-2xl font-display font-bold text-foreground">Account Settings</h2>
-                <p className="text-muted-foreground mt-1">Update your personal information and preferences.</p>
-            </div>
-
-            <Card className="admin-card">
-                <CardHeader>
-                    <CardTitle>Personal Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Full Name</Label>
-                            <Input
-                                value={settingsFullName}
-                                onChange={(event) => setSettingsFullName(event.target.value)}
-                                className="h-11 rounded-xl"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input value={settingsEmail} type="email" className="h-11 rounded-xl" readOnly />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Phone Number</Label>
-                            <Input
-                                value={settingsPhone}
-                                onChange={(event) => setSettingsPhone(event.target.value)}
-                                placeholder="+234..."
-                                className="h-11 rounded-xl"
-                            />
-                        </div>
-                    </div>
-                    {settingsError && <p className="text-sm text-destructive">{settingsError}</p>}
-                    {settingsSuccess && <p className="text-sm text-emerald-600">{settingsSuccess}</p>}
-                    <Button size="sm" onClick={handleSaveSettings} disabled={isSavingSettings || isLoadingProfile}>
-                        {isSavingSettings ? "Saving..." : isLoadingProfile ? "Syncing..." : "Save Changes"}
-                    </Button>
-                </CardContent>
-            </Card>
-
-            <Card className="admin-card">
-                <CardHeader>
-                    <CardTitle>Change Password</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Current Password</Label>
-                            <Input
-                                type="password"
-                                className="h-11 rounded-xl"
-                                value={currentPassword}
-                                onChange={(event) => setCurrentPassword(event.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>New Password</Label>
-                            <Input
-                                type="password"
-                                className="h-11 rounded-xl"
-                                value={newPassword}
-                                onChange={(event) => setNewPassword(event.target.value)}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Confirm Password</Label>
-                            <Input
-                                type="password"
-                                className="h-11 rounded-xl"
-                                value={confirmPassword}
-                                onChange={(event) => setConfirmPassword(event.target.value)}
-                            />
-                        </div>
-                    </div>
-                    {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
-                    {passwordSuccess && <p className="text-sm text-emerald-600">{passwordSuccess}</p>}
-                    <Button size="sm" variant="outline" onClick={handleChangePassword} disabled={isSavingPassword}>
-                        {isSavingPassword ? "Updating..." : "Update Password"}
-                    </Button>
-                </CardContent>
-            </Card>
-
-        </div>
-    );
+    
 
     // ─── REFERRALS SECTION ───────────────────────────────────────
     const renderReferrals = () => (
@@ -1043,9 +889,9 @@ const Dashboard = () => {
         switch (activeSection) {
             case "overview": return renderOverview();
             case "subscription": return <Subscription/>
-            case "orders": return renderOrders();
+            case "orders": return <OrderHistory/>
             case "addresses": return renderAddresses();
-            case "settings": return renderSettings();
+            case "settings": return <Settings/>
             // Temporarily disabled: referrals feature
             // case "referrals": return renderReferrals();
         }

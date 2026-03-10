@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { mockAdminOrders, formatAdminPrice, type AdminOrder, type AdminOrderLineItem } from "@/data/adminData";
 import { tokenStorage } from "@/lib/auth/tokenStorage";
 import { createOrder, getOrderById, listOrders, updateOrderStatus, type Order as ApiOrder } from "@/lib/api/admin";
+import { LoadingData } from "@/components/LoadingData";
 
 type StatusFilter = "all" | "Processing" | "In Transit" | "Delivered" | "Cancelled";
 
@@ -128,9 +129,7 @@ const AdminOrders = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-24 admin-page-bg rounded-3xl">
-                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-            </div>
+            <LoadingData/>
         );
     }
 

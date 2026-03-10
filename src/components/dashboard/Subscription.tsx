@@ -18,7 +18,7 @@ import { axiosClient } from "@/GlobalApi";
 import { useAuthStore } from "@/store/AuthStore";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { FormattedSubscription } from "@/types/types";
+import { FormattedSubscriptionType } from "@/types/types";
 import { getFrequencyWeeksString } from "@/utils/conversion";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +26,7 @@ const Subscription = () => {
 
     const navigate = useNavigate()
     const userInfo = useAuthStore(state => state.userInfo)
-    const [subscriptions, setSubscriptions] = useState<FormattedSubscription[]>([]);
+    const [subscriptions, setSubscriptions] = useState<FormattedSubscriptionType[]>([]);
     const [loading, setLoading] = useState(true)
 
     const currentSubscription = subscriptions[0] || null;
@@ -41,7 +41,7 @@ const Subscription = () => {
 
             const subs = res.data.data || [];
 
-            const formattedSubscriptions: FormattedSubscription[] = subs.map((sub: any) => ({
+            const formattedSubscriptions: FormattedSubscriptionType[] = subs.map((sub: any) => ({
                 id: sub.id,
                 userId: sub.attributes.user_id,
                 planId: sub.attributes.plan_id,
