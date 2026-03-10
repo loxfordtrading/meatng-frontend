@@ -273,7 +273,7 @@ const Auth = () => {
                 </div>
               </div>
 
-              {/* <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {benefits.map((benefit) => (
                   <div
                     key={benefit.text}
@@ -299,7 +299,7 @@ const Auth = () => {
                     <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{stat.label}</p>
                   </div>
                 ))}
-              </div> */}
+              </div>
             </CardContent>
           </Card>
 

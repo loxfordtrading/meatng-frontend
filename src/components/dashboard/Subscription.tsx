@@ -4,6 +4,7 @@ import {
     Edit3,
     Pause,
     Play,
+    Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,7 +69,15 @@ const Subscription = () => {
         } finally {
             setLoading(false);
         }
-        };
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-24 admin-page-bg rounded-3xl">
+                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
