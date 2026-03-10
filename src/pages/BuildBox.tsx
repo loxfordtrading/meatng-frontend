@@ -93,7 +93,7 @@ const BuildBox = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const currentPage = Number(searchParams.get("page")) || 1;
-  const activeCategory = searchParams.get("category") || "all";
+  const activeCategory = searchParams.get("slug") || "all";
   const [totalPages, setTotalPages] = useState(1);
   
 
@@ -106,7 +106,7 @@ const BuildBox = () => {
   const changePage = (page: number) => {
     setSearchParams({
       page: page.toString(),
-      category: activeCategory,
+      slug: activeCategory,
     });
   };
 
@@ -115,7 +115,7 @@ const BuildBox = () => {
       // reset to fetch all products
       setSearchParams({ page: "1" });
     } else {
-      setSearchParams({ page: "1", category });
+      setSearchParams({ page: "1", slug: category });
     }
   };
 
@@ -179,7 +179,7 @@ const BuildBox = () => {
       let url = `/products?page=${currentPage}&limit=30`;
 
       if (activeCategory && activeCategory !== "all") {
-        url += `&categoryId=${activeCategory}`;
+        url += `&slug=${activeCategory}`;
       }
 
       const res = await axiosClient.get(url);
@@ -497,6 +497,10 @@ const BuildBox = () => {
 
             {loadingProducts && (
               <LoadingData />
+            )}
+
+            {!loadingProducts && products.length <= 0 && (
+              <h2 className="text-muted-foreground font-semibold text-2xl py-20 text-center">No Product Found</h2>
             )}
 
             {products.length > 0 && !loadingProducts && (
