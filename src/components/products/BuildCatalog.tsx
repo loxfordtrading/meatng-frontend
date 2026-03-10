@@ -67,7 +67,7 @@ export default function BuildCatalog({ products}: {products: any}) {
 
             return (
               <div
-                key={item.name}
+                key={item.id}
                 className={`rounded-2xl border p-4 transition ${
                   qty > 0 ? "border-primary/40 bg-primary/[0.03] ring-1 ring-primary/20" : "border-border"
                 }

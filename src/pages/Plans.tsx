@@ -20,6 +20,7 @@ import displayCurrency from "@/utils/displayCurrency";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { useCartStore } from "@/store/cartStore";
 import { useAddonStore } from "@/store/addonStore";
+import { LoadingData } from "@/components/LoadingData";
 
 const planIcons: Record<string, any> = {
   "value-pack": Layers3,
@@ -119,7 +120,7 @@ const Plans = () => {
       </section>
 
       {loading && (
-        <div className="p-10 text-center">Loading plans...</div>
+        <LoadingData/>
       )}
 
       {/* Main */}
@@ -203,6 +204,13 @@ const Plans = () => {
                       <span>Weight</span>
                       <span>{selectedPlan?.attributes.weight}{selectedPlan?.attributes.weight_unit}</span>
                     </div>
+
+                    {selectedFrequency && (
+                      <div className="flex justify-between">
+                        <span>Delivery Frequency</span>
+                        <span>{selectedFrequency}</span>
+                      </div>
+                    )}
 
                     <div className="flex justify-between">
                       <span>Price</span>

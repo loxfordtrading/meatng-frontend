@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   Beef,
@@ -67,12 +67,15 @@ const Auth = () => {
   })
 
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const subscription = useSubscription();
-  const admin = useAdmin();
   const navigate = useNavigate();
+  const {userInfo, setUserInfo } = useAuthStore()
 
-  const userInfo = useAuthStore((state) => state.setUserInfo)
+  useEffect(() => {
+    if (userInfo && userInfo?.access) {
+      navigate(ROUTES.home, { replace: true });
+    }
+  }, [userInfo, navigate]);
+
 
   const validation = loginSchema.safeParse(form);
 
@@ -97,6 +100,18 @@ const Auth = () => {
     validateForm(form)
     return () => validateForm.cancel()
   }, [form])
+
+  useEffect(() => {
+    if (userInfo) { // user just logged in
+      const redirectOption = localStorage.getItem("current-page");
+      if (redirectOption === "true") {
+        localStorage.removeItem("current-page");
+        navigate(ROUTES.cartReview, { replace: true });
+      } else {
+        navigate(ROUTES.home, { replace: true });
+      }
+    }
+  }, [userInfo, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -128,7 +143,7 @@ const Auth = () => {
       const response = await axiosClient.post("/auth/login", form)
       toast.success(response.data.message);
 
-      userInfo({
+      setUserInfo({
         access: response.data?.data?.attributes?.data?.token?.accessToken,
         refresh: response.data?.data?.attributes?.data?.token?.refreshToken,
         first_name: response.data?.data?.attributes?.data?.user?.first_name,
@@ -138,7 +153,13 @@ const Auth = () => {
       });
 
       toast.success("Login Succcessful")
-      navigate(ROUTES.home)
+      // const redirectOption = localStorage.getItem("current-page")
+      // if(redirectOption === "true"){
+      //   localStorage.removeItem("current-page");
+      //   navigate(ROUTES.cartReview, { replace: true });
+      // }else{
+      //   navigate(ROUTES.home)
+      // }
       setForm({
         email: '',
         password: ''

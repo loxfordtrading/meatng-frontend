@@ -26,6 +26,8 @@ import { useAddonStore } from "@/store/addonStore";
 import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
 import { useAuthStore } from "@/store/AuthStore";
+import Skeleton from "@/components/Skeleton";
+import { toast } from "react-toastify";
 
 export const checkoutSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -103,7 +105,7 @@ const Checkout = () => {
 
   const { subInfo } = useSubscriptionStore();
   const { items, add, setQty, totalItems } = useCartStore();
-  const { addonItems, totalAddonPrice } = useAddonStore();
+  const { addonItems, setAddonQty, totalAddonPrice } = useAddonStore();
   const { userInfo } = useAuthStore();
   const addonTotal = totalAddonPrice(); 
   const [cartItems, setCartItems] = useState<cartType | null>(null)
@@ -125,12 +127,15 @@ const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("paystack");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [paystackInitLoading, setPaystackInitLoading] = useState(false);
+  const [loadingCart, setLoadingCart] = useState(true)
   const [paystackError, setPaystackError] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [addressesLoaded, setAddressesLoaded] = useState(false);
+  const [addresses, setAddresses] = useState([])
+  const [loadingAddress, setLoadingAddress] = useState(true)
 
    const stateInfo = getDeliveryState(selectedState);
   const isLagos = stateInfo?.hasZones ?? false;
@@ -143,6 +148,95 @@ const Checkout = () => {
     const suffix = Math.floor(100000 + Math.random() * 900000).toString();
     return `MN-${suffix}`;
   });
+
+  const normalize = (v: string) => v?.trim().toLowerCase();
+
+  const isSameAddress = (addr: any, payload: any) => {
+    const attr = addr.attributes;
+
+    return (
+      normalize(attr.first_name) === normalize(payload.first_name) &&
+      normalize(attr.last_name) === normalize(payload.last_name) &&
+      normalize(attr.email) === normalize(payload.email) &&
+      normalize(attr.phone) === normalize(payload.phone) &&
+      normalize(attr.street_address) === normalize(payload.street_address) &&
+      normalize(attr.apartment_suite) === normalize(payload.apartment_suite) &&
+      normalize(attr.city) === normalize(payload.city) &&
+      normalize(attr.state) === normalize(payload.state) &&
+      normalize(attr.zip_code) === normalize(payload.zip_code)
+    );
+  };
+
+  const handleSetAddressAsDefault = () => {
+
+    const addressPayload = {
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone,
+      street_address: streetAddress,
+      apartment_suite: apartment,
+      city: city || selectedArea,
+      state: selectedState,
+      zip_code: zipCode
+    };
+
+    const sameAddress = addresses.find((addr) =>
+      isSameAddress(addr, addressPayload)
+    );
+
+    if (sameAddress) {
+      toast.error("Address already exists. Set it as default from your dashboard.");
+      return;
+    }
+
+    setIsDefaultAddress(!isDefaultAddresss);
+  };
+
+  const handleSelectSavedAddress = (id: string) => {
+    setSelectedAddressId(id)
+
+    if (!id) {
+      setFirstName("")
+      setLastName("")
+      setEmail("")
+      setPhone("")
+      setStreetAddress("")
+      setApartment("")
+      setCity("")
+      setSelectedArea("")
+      setSelectedState("")
+      setZipCode("")
+      return
+    }
+
+    const selected = addresses.find((addr) => addr.id === id)
+
+    if (!selected) return
+
+    const attr = selected.attributes
+
+    setFirstName(attr.first_name || "")
+    setLastName(attr.last_name || "")
+    setEmail(attr.email || "")
+    setPhone(attr.phone || "")
+    setStreetAddress(attr.street_address || "")
+    setApartment(attr.apartment_suite || "")
+    setSelectedState(attr.state || "")
+    setZipCode(attr.zip_code || "")
+    if(attr.state == "Lagos"){
+      setSelectedArea(attr.city)
+    }else{
+      setCity(attr.city || "")
+    }
+  }
+
+  useEffect(() => {
+    const defaultAddress = addresses.find(a => a.attributes.is_default)
+    if(defaultAddress){
+      handleSelectSavedAddress(defaultAddress.id)
+    }
+  }, [addresses])
 
   const validateForm = () => {
     const result = checkoutSchema.safeParse({
@@ -174,106 +268,40 @@ const Checkout = () => {
     return true;
   };
 
-  const isSubscriptionCheckout = !!state.plan && !!state.frequency && state.boxItems.length > 0;
-  const isOneTimeCheckout = !isSubscriptionCheckout && cart.items.length > 0;
-  const token = tokenStorage.getCustomerToken();
+  useEffect(() => {
+    getAddresses()
+    getCartItems()
+  }, [])
 
-  // Fetch saved addresses and auto-fill default on mount
-  // useEffect(() => {
-  //   if (!token) return;
-  //   let cancelled = false;
-  //   const fetchAddresses = async () => {
-  //     try {
-  //       const addresses = await listAddresses(token);
-  //       if (cancelled) return;
-  //       setSavedAddresses(addresses);
-  //       setAddressesLoaded(true);
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        setAutoSubscribe(false);
+        setAutoDebit(false);
+      }
+    };
 
-  //       // Pre-fill user profile info
-  //       const user = subscription.state.user;
-  //       if (user) {
-  //         const parts = (user.name || "").trim().split(/\s+/);
-  //         if (parts.length >= 2) {
-  //           setFirstName(parts[0]);
-  //           setLastName(parts.slice(1).join(" "));
-  //         } else if (parts[0]) {
-  //           setFirstName(parts[0]);
-  //         }
-  //         if (user.email) setEmail(user.email);
-  //       }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-  //       // Auto-fill from default address (or first if only one)
-  //       const defaultAddr = addresses.find((a) => a.isDefault) || (addresses.length === 1 ? addresses[0] : null);
-  //       if (defaultAddr) {
-  //         applyAddress(defaultAddr);
-  //         setSelectedAddressId(defaultAddr.id);
-  //       }
-  //     } catch {
-  //       if (!cancelled) setAddressesLoaded(true);
-  //     }
-  //   };
-  //   void fetchAddresses();
-  //   return () => { cancelled = true; };
-  // }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
-  // const applyAddress = (addr: Address) => {
-  //   if (addr.streetAddress) setStreetAddress(addr.streetAddress);
-  //   if (addr.apartmentSuite) setApartment(addr.apartmentSuite);
-  //   if (addr.state) {
-  //     setSelectedState(addr.state);
-  //     setSelectedArea("");
-  //     setCity("");
-  //     // If address has a city, set it (for non-Lagos states)
-  //     if (addr.city) setCity(addr.city);
-  //   }
-  // };
-  // const userEmail = email || subscription.state.user?.email || "";
+  const validation = checkoutSchema.safeParse({
+      firstName,
+      lastName,
+      email,
+      phone,
+      streetAddress,
+      apartment,
+      state: selectedState,
+      city: city || selectedArea,
+      zipCode,
+      deliveryNote,
+    });
 
-  const handleSelectSavedAddress = (addressId: string) => {
-    setSelectedAddressId(addressId);
-    if (addressId === "") return; // "Enter manually" selected
-    const addr = savedAddresses.find((a) => a.id === addressId);
-    // if (addr) applyAddress(addr);
-  };
-
-  // if (!isSubscriptionCheckout && !isOneTimeCheckout) {
-  //   return <Navigate to={ROUTES.cart} replace />;
-  // }
-
-  // Auth guard: require login before checkout
-  // if (!subscription.state.user && !token) {
-  //   if (isSubscriptionCheckout) {
-  //     return <Navigate to={ROUTES.authSignUp} replace />;
-  //   }
-  //   return <Navigate to={ROUTES.authSignIn} replace />;
-  // }
-
-  // const plan = isSubscriptionCheckout && state.plan ? getPlanById(state.plan) : null;
-  // const billingDate = isSubscriptionCheckout && state.frequency ? getNextBillingDate(state.frequency) : null;
-  // const cutoffDate = billingDate ? getCutoffDateTime(billingDate) : null;
-  // const deliveryWindow = billingDate ? getEstimatedDeliveryWindow(billingDate) : null;
-
-  // const selectedWeightLabel = state.planWeightG > 0 ? formatWeight(state.planWeightG) : (plan ? `${plan.weightKg}kg` : "-");
-
-  // const stateInfo = getDeliveryState(selectedState);
-  // const isLagos = stateInfo?.hasZones ?? false;
-  // const lagosZoneInfo = isLagos ? findLagosZoneByArea(selectedArea) : null;
-
-  const deliveryResolved = isLagos ? !!lagosZoneInfo : !!stateInfo;
-
-  // const hasDeliveryInfo =
-  //   firstName.trim() &&
-  //   lastName.trim() &&
-  //   email.trim() &&
-  //   phone.trim() &&
-  //   streetAddress.trim() &&
-  //   !!selectedState &&
-  //   (isLagos ? !!selectedArea : !!city.trim());
-
-  const handleCompletePayment = () => {
-    // if (!hasDeliveryInfo) return;
-    setShowSuccessModal(true);
-  };
+  const canSubmit = validation.success;
 
   const handlePaystackCheckout = async () => {
     if (!validateForm()) return;
@@ -298,10 +326,22 @@ const Checkout = () => {
         is_default: isDefaultAddresss
       }
 
-      const checkoutPayload = {
-        auto_subscribe: autoSubscribe,
-        frequency_weeks: getFrequencyWeeks(subInfo?.selectedFrequency),
-        enable_auto_debit: autoDebit
+      let checkoutPayload = {}
+
+      if(!autoSubscribe){
+
+        checkoutPayload = {
+          auto_subscribe: autoSubscribe
+        }
+
+      }else{
+
+        checkoutPayload = {
+          auto_subscribe: autoSubscribe,
+          frequency_weeks: getFrequencyWeeks(subInfo?.selectedFrequency),
+          enable_auto_debit: autoDebit
+        }
+
       }
 
       const [addressRes, checkoutRes] = await Promise.all([
@@ -339,6 +379,17 @@ const Checkout = () => {
     }
   };
 
+  const getAddresses = async () => {
+    try {
+      const response = await axiosClient.get("/addresses")
+      setAddresses(response.data?.data || [])
+    } catch (error) {
+      console.log(error)
+    } finally {
+      setLoadingAddress(false)
+    }
+  }
+
   // const handleSuccessContinue = () => {
   //   if (isOneTimeCheckout) {
   //     cart.clearCart();
@@ -354,10 +405,6 @@ const Checkout = () => {
   //   });
   // };
 
-  useEffect(() => {
-    getCartItems()
-  }, [])
-
   const getCartItems = async () => {
     try {
       const res = await axiosClient.get("/carts/my-cart");
@@ -365,6 +412,8 @@ const Checkout = () => {
       setCartItems(res.data.data);
     } catch (err) {
       console.error(err);
+    } finally{
+      setLoadingCart(false)
     }
   };
 
@@ -423,8 +472,19 @@ const Checkout = () => {
               </CardHeader>
               <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Saved address selector */}
-                {addressesLoaded && savedAddresses.length > 0 && (
-                  <div className="space-y-2 md:col-span-2">
+                {loadingAddress && (
+                  <div className="w-full space-y-2 col-span-2">
+                    <Label htmlFor="saved-address">Getting saved addresses</Label>
+                    <p className='capitalize p-5 bg-gray-200 animate-pulse rounded-md'></p>
+                  </div>
+                )}
+                {!loadingAddress && addresses.length <= 0 &&(
+                  <div className="w-full space-y-2 col-span-2">
+                    <Label htmlFor="saved-address">You have no saved address</Label>
+                  </div>
+                )}
+                {!loadingAddress && addresses.length > 0 && (
+                  <div className="space-y-2 col-span-2">
                     <Label htmlFor="saved-address">Use a saved address</Label>
                     <select
                       id="saved-address"
@@ -433,9 +493,12 @@ const Checkout = () => {
                       onChange={(e) => handleSelectSavedAddress(e.target.value)}
                     >
                       <option value="">Enter address manually</option>
-                      {savedAddresses.map((addr) => (
+
+                      {addresses.map((addr) => (
                         <option key={addr.id} value={addr.id}>
-                          {addr.label || addr.streetAddress || "Saved address"}{addr.isDefault ? " (Default)" : ""} — {addr.city || addr.state || ""}
+                          {addr?.attributes?.label || addr?.attributes?.street_address || ""}
+                          {addr?.attributes?.is_default ? " (Default)" : ""} —  
+                          {addr?.attributes?.city || addr?.attributes?.state || ""}
                         </option>
                       ))}
                     </select>
@@ -587,7 +650,7 @@ const Checkout = () => {
 
                 <div className="flex items-center space-x-2">
                   <Label htmlFor="airplane-mode">Set as default address</Label>
-                  <Switch id="airplane-mode" checked={isDefaultAddresss} onCheckedChange={setIsDefaultAddress}/>
+                  <Switch id="airplane-mode" checked={isDefaultAddresss} onCheckedChange={handleSetAddressAsDefault}/>
                 </div>
               </CardContent>
             </Card>
@@ -663,7 +726,7 @@ const Checkout = () => {
                 {paystackError && <p className="text-sm text-destructive">{paystackError}</p>}
                 <Button
                   type="button"
-                  disabled={paystackInitLoading}
+                  disabled={!canSubmit || !cartItems || paystackInitLoading}
                   onClick={handlePaystackCheckout}
                 >
                   {paymentMethod === "paystack"
@@ -679,138 +742,175 @@ const Checkout = () => {
               <CardHeader>
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {subInfo?.subscription && (
-                  <>
-                    {cartItems?.attributes?.prefilledCount > 0 && (
-                      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Mandatory cuts
-                        </p>
-                        {cartItems?.attributes?.items.map((item) => (
-                          <div key={item?.productId?.id} className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-medium text-foreground">{item?.productId?.name}</span>
-                            <span className="text-xs text-muted-foreground">{item?.productId?.formattedWeight}</span>
-                          </div>
-                        ))}
+              {loadingCart && (
+                <div className="p-6">
+                  <Skeleton/>
+                </div>
+              )}
 
-                        {/* Offal selections */}
-                        {/* {plan?.offalSelection && state.selectedOffals.length > 0 && (
-                          <>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-primary pt-1">Your offal picks</p>
-                            {state.selectedOffals.map((name) => {
-                              const opt = plan.offalSelection!.options.find((o) => o.name === name);
-                              return opt ? (
-                                <div key={name} className="flex items-center justify-between gap-2">
-                                  <span className="text-sm font-medium text-foreground">{opt.name}</span>
-                                  <span className="text-xs text-muted-foreground">{formatWeight(opt.weightG)}</span>
-                                </div>
-                              ) : null;
-                            })}
-                          </>
-                        )} */}
+              {!loadingCart && !cartItems && (
+                <div className="px-6 py-16">
+                  <p className="text-xs font-semibold text-center text-muted-foreground">
+                    Unable to fetch your cart, Please try refreshing again
+                  </p>
+                </div>
+              )}
 
-                        <Button variant="link" className="h-auto p-0 text-primary" asChild>
-                          <Link to={ROUTES.buildBox}>Edit full box</Link>
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Build-your-box selections */}
-                    {cartItems?.attributes?.items.filter((s) => s.item_type === 'base').length > 0 && (
-                      <>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-primary pt-1">Your custom picks</p>
-                        {cartItems?.attributes?.items.filter((s) => s.item_type === 'base').map((sel) => (
-                          <div key={sel?.productId?.id} className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-foreground">{sel?.productId?.name}</span>
-                              {sel.quantity > 1 && <Badge variant="secondary" className="text-xs">{sel?.quantity}x</Badge>}
-                            </div>
-                            <span className="text-xs text-muted-foreground">{sel?.productId?.formattedWeight}</span>
-                          </div>
-                        ))}
-                      </>
-                    )}
-
-                    {cartItems?.attributes?.addonTotal > 0 && (
-                      <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add-ons</p>
-                        {cartItems?.attributes?.items.filter((s) => s.item_type === 'addon').map((item) => (
-                          <div key={item?.productId?.id} className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
+              {!loadingCart && cartItems && (
+                <CardContent className="space-y-3">
+                  {subInfo?.subscription && (
+                    <>
+                      {cartItems?.attributes?.prefilledCount > 0 && (
+                        <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Mandatory cuts
+                          </p>
+                          {cartItems?.attributes?.items.map((item) => (
+                            <div key={item?.productId?.id} className="flex items-center justify-between gap-2">
                               <span className="text-sm font-medium text-foreground">{item?.productId?.name}</span>
-                              <Badge variant="outline" className="text-xs">{item?.quantity}x</Badge>
+                              <span className="text-xs text-muted-foreground">{item?.productId?.formattedWeight}</span>
                             </div>
-                            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setQty(item, item?.quantity - 1)}>
-                              <Minus className="h-4 w-4" />
-                            </Button>
+                          ))}
+
+                          {/* Offal selections */}
+                          {/* {plan?.offalSelection && state.selectedOffals.length > 0 && (
+                            <>
+                              <p className="text-xs font-semibold uppercase tracking-wider text-primary pt-1">Your offal picks</p>
+                              {state.selectedOffals.map((name) => {
+                                const opt = plan.offalSelection!.options.find((o) => o.name === name);
+                                return opt ? (
+                                  <div key={name} className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-medium text-foreground">{opt.name}</span>
+                                    <span className="text-xs text-muted-foreground">{formatWeight(opt.weightG)}</span>
+                                  </div>
+                                ) : null;
+                              })}
+                            </>
+                          )} */}
+
+                          <Button variant="link" className="h-auto p-0 text-primary" asChild>
+                            <Link to={ROUTES.buildBox}>Edit full box</Link>
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Build-your-box selections */}
+                      {cartItems?.attributes?.items.filter((s) => s.item_type === 'base').length > 0 && (
+                        <>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-primary pt-1">Your custom picks</p>
+                          {cartItems?.attributes?.items.filter((s) => s.item_type === 'base').map((sel) => (
+                            <div key={sel?.productId?.id} className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-foreground">{sel?.productId?.name}</span>
+                                {sel.quantity > 1 && <Badge variant="secondary" className="text-xs">{sel?.quantity}x</Badge>}
+                              </div>
+                              <span className="text-xs text-muted-foreground">{sel?.productId?.formattedWeight}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+
+                      {cartItems?.attributes?.items.filter((s) => s.item_type === 'addon').length > 0 && (
+                        <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add-ons</p>
+                          {cartItems?.attributes?.items.filter((s) => s.item_type === 'addon').map((item) => (
+                            <div key={item?.productId?.id} className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-foreground">{item?.productId?.name}</span>
+                                  <Badge variant="outline" className="text-xs">{item?.quantity}x</Badge>
+                                </div>
+                                <span className="text-xs text-right text-muted-foreground">{item?.productId?.formattedWeight}</span>
+                            </div>
+                          ))}
+                          {/* <Button variant="link" className="h-auto p-0 text-primary" asChild>
+                            <Link to={ROUTES.cartReview}>Manage add-ons</Link>
+                          </Button> */}
+                        </div>
+                      )}
+                      
+                      {/* {cartItems?.attributes?.items.filter((s) => s.item_type === 'addon').length > 0 && (
+                        <div className="rounded-lg border border-border bg-background p-3 space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add-ons</p>
+                          {cartItems?.attributes?.items.filter((s) => s.item_type === 'addon').map((item) => (
+                            <div key={item?.productId?.id} className="flex items-start justify-between gap-2">
+                              <div className="leading-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-foreground">{item?.productId?.name}</span>
+                                  <Badge variant="outline" className="text-xs">{item?.quantity}x</Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground">{item?.productId?.formattedWeight}</span>
+                              </div>
+                              <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setAddonQty(item, item?.quantity - 1)}>
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button variant="link" className="h-auto p-0 text-primary" asChild>
+                            <Link to={ROUTES.cartReview}>Manage add-ons</Link>
+                          </Button>
+                        </div>
+                      )} */}
+
+                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan</span><span>{subInfo?.subscription?.attributes?.name}</span></p>
+                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Weight</span><span>{subInfo?.subscription?.attributes?.weight}</span></p>
+                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Frequency</span><span>{subInfo?.selectedFrequency}</span></p>
+                      <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 space-y-2">
+                        <p className="text-xs text-muted-foreground">Need to adjust your selection?</p>
+                        <div className="flex flex-wrap gap-2">
+                          <Button type="button" size="sm" variant="outline" asChild>
+                            <Link to={ROUTES.plans}>Change Plan / Frequency</Link>
+                          </Button>
+                        </div>
+                      </div>
+                      <Separator />
+                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan price</span><span>{displayCurrency(cartItems?.attributes?.planUnitPrice, "NGN")}</span></p>
+                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>
+                    </>
+                  )}
+
+                  {/* {isOneTimeCheckout && (
+                    <>
+                      <Badge variant="secondary" className="w-full justify-center">One-time order</Badge>
+                      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                        {cart.items.map((item) => (
+                          <div key={item.id} className="space-y-1 border-b border-border/50 pb-2 last:border-b-0 last:pb-0">
+                            <div className="flex items-center justify-between gap-2 text-sm">
+                              <span className="truncate">{item.name} x{item.quantity}</span>
+                              <span>{formatPlanPrice(item.price * item.quantity)}</span>
+                            </div>
+                            {item.type === "gift-box" && item.giftDetails?.recipientName && (
+                              <p className="text-xs text-muted-foreground">
+                                For {item.giftDetails.recipientName}
+                                {item.giftDetails.occasion ? ` • ${item.giftDetails.occasion}` : ""}
+                              </p>
+                            )}
+                            {item.type === "gift-box" && item.giftDetails?.message && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                Card: \"{item.giftDetails.message}\"
+                              </p>
+                            )}
                           </div>
                         ))}
-                        {/* <Button variant="link" className="h-auto p-0 text-primary" asChild>
-                          <Link to={ROUTES.cartReview}>Manage add-ons</Link>
-                        </Button> */}
                       </div>
-                    )}
+                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Order type</span><span>One-time</span></p>
+                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Items</span><span>{cart.itemCount}</span></p>
+                    </>
+                  )} */}
 
-                    <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan</span><span>{subInfo?.subscription?.attributes?.name}</span></p>
-                    <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Weight</span><span>{subInfo?.subscription?.attributes?.weight}</span></p>
-                    <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Frequency</span><span>{subInfo?.selectedFrequency}</span></p>
-                    <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 space-y-2">
-                      <p className="text-xs text-muted-foreground">Need to adjust your selection?</p>
-                      <div className="flex flex-wrap gap-2">
-                        <Button type="button" size="sm" variant="outline" asChild>
-                          <Link to={ROUTES.plans}>Change Plan / Frequency</Link>
-                        </Button>
-                      </div>
-                    </div>
-                    <Separator />
-                    <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan price</span><span>{displayCurrency(cartItems?.attributes?.planUnitPrice, "NGN")}</span></p>
-                    <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>
-                  </>
-                )}
-
-                {/* {isOneTimeCheckout && (
-                  <>
-                    <Badge variant="secondary" className="w-full justify-center">One-time order</Badge>
-                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                      {cart.items.map((item) => (
-                        <div key={item.id} className="space-y-1 border-b border-border/50 pb-2 last:border-b-0 last:pb-0">
-                          <div className="flex items-center justify-between gap-2 text-sm">
-                            <span className="truncate">{item.name} x{item.quantity}</span>
-                            <span>{formatPlanPrice(item.price * item.quantity)}</span>
-                          </div>
-                          {item.type === "gift-box" && item.giftDetails?.recipientName && (
-                            <p className="text-xs text-muted-foreground">
-                              For {item.giftDetails.recipientName}
-                              {item.giftDetails.occasion ? ` • ${item.giftDetails.occasion}` : ""}
-                            </p>
-                          )}
-                          {item.type === "gift-box" && item.giftDetails?.message && (
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              Card: \"{item.giftDetails.message}\"
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Order type</span><span>One-time</span></p>
-                    <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Items</span><span>{cart.itemCount}</span></p>
-                  </>
-                )} */}
-
-                {/* <p className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <Truck className="h-3.5 w-3.5" /> Delivery
-                  </span>
-                  <span>{deliveryResolved ? formatPlanPrice(deliveryFee) : "Select location"}</span>
-                </p> */}
-                <Separator />
-                <p className="flex items-center justify-between text-lg font-bold">
-                  <span>Total due now</span>
-                  <span className="text-primary">{displayCurrency(cartItems?.attributes?.totalPrice, "NGN")}</span>
-                </p>
-                {/* <Badge variant="outline" className="w-full justify-center">Ref: {paymentReference}</Badge> */}
-              </CardContent>
+                  {/* <p className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Truck className="h-3.5 w-3.5" /> Delivery
+                    </span>
+                    <span>{deliveryResolved ? formatPlanPrice(deliveryFee) : "Select location"}</span>
+                  </p> */}
+                  <Separator />
+                  <p className="flex items-center justify-between text-lg font-bold">
+                    <span>Total due now</span>
+                    <span className="text-primary">{displayCurrency(cartItems?.attributes?.totalPrice, "NGN")}</span>
+                  </p>
+                  {/* <Badge variant="outline" className="w-full justify-center">Ref: {paymentReference}</Badge> */}
+                </CardContent>
+              )}
             </Card>
           </div>
         </div>

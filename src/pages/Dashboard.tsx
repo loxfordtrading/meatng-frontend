@@ -56,6 +56,7 @@ import {
 } from "@/lib/api/customer";
 import type { CustomerOrder } from "@/lib/api/customer/orders";
 import { tokenStorage } from "@/lib/auth/tokenStorage";
+import Subscription from "@/components/dashboard/Subscription";
 
 type DashboardSection = "overview" | "subscription" | "orders" | "addresses" | "settings";
 
@@ -136,19 +137,12 @@ const Dashboard = () => {
     const { state } = subscription;
     const user = state.user;
 
-    // Redirect if not logged in
-    useEffect(() => {
-        if (!user) {
-            navigate(ROUTES.auth, { replace: true });
-        }
-    }, [user, navigate]);
-
-    useEffect(() => {
-        if (!user) return;
-        setSettingsFullName(user.name || "");
-        setSettingsEmail(user.email || "");
-        setSettingsPhone(user.phone || "");
-    }, [user]);
+    // useEffect(() => {
+    //     if (!user) return;
+    //     setSettingsFullName(user.name || "");
+    //     setSettingsEmail(user.email || "");
+    //     setSettingsPhone(user.phone || "");
+    // }, [user]);
 
     useEffect(() => {
         let cancelled = false;
@@ -162,11 +156,11 @@ const Dashboard = () => {
                 const profile = await getUserById(user.id, token).catch(() => getCurrentUser(token));
                 if (cancelled) return;
 
-                const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() || user.name;
+                // const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() || user.name;
                 subscription.login({
                     id: profile.id || user.id,
-                    name: fullName,
-                    email: profile.email || user.email,
+                    name: "",
+                    email: profile.email,
                     phone: profile.phone,
                 });
             } catch {
@@ -233,17 +227,17 @@ const Dashboard = () => {
         };
     }, [user?.id]);
 
-    if (!user) return null;
+    // if (!user) return null;
 
     const plan = state.plan ? getPlanById(state.plan) : null;
-    const initials = user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
+    // const initials = user.name
+    //     .split(" ")
+    //     .map((n) => n[0])
+    //     .join("")
+    //     .toUpperCase()
+    //     .slice(0, 2);
 
-    const referralCode = `MEAT-${user.name.split(" ")[0].toUpperCase().slice(0, 4)}${Math.floor(1000 + Math.random() * 9000)}`;
+    // const referralCode = `MEAT-${user.name.split(" ")[0].toUpperCase().slice(0, 4)}${Math.floor(1000 + Math.random() * 9000)}`;
 
     const handleLogout = () => {
         subscription.logout();
@@ -447,7 +441,7 @@ const Dashboard = () => {
 
             const updatedFullName =
                 [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() || fullName;
-            const updatedEmail = profile.email || settingsEmail || user.email;
+            const updatedEmail = profile.email || settingsEmail;
             subscription.login({
                 id: profile.id || user.id,
                 name: updatedFullName,
@@ -471,7 +465,7 @@ const Dashboard = () => {
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
             <div>
                 <h2 className="text-2xl font-display font-bold text-foreground">
-                    Welcome back, {user.name.split(" ")[0]}! 👋
+                    {/* Welcome back, {user.name.split(" ")[0]}! 👋 */}
                 </h2>
                 <p className="text-muted-foreground mt-1">Here's a snapshot of your account.</p>
             </div>
@@ -585,117 +579,7 @@ const Dashboard = () => {
     );
 
     // ─── SUBSCRIPTION SECTION ────────────────────────────────────
-    const renderSubscription = () => (
-        <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
-            <div>
-                <h2 className="text-2xl font-display font-bold text-foreground">My Subscription</h2>
-                <p className="text-muted-foreground mt-1">Manage your plan, size, and delivery preferences.</p>
-            </div>
-
-            {plan ? (
-                <>
-                    <Card className="admin-card">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>Current Plan</CardTitle>
-                                <Badge variant={isPaused ? "destructive" : "default"}>
-                                    {isPaused ? "Paused" : "Active"}
-                                </Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="rounded-xl border border-border p-4">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Plan</p>
-                                    <p className="text-lg font-bold mt-1">{plan.name}</p>
-                                    <p className="text-xs text-muted-foreground">{plan.tagline}</p>
-                                </div>
-                                <div className="rounded-xl border border-border p-4">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Weight</p>
-                                    <p className="text-lg font-bold mt-1">{subscription.currentPlan?.weightKg}kg</p>
-                                    <p className="text-xs text-muted-foreground">Fixed plan weight</p>
-                                </div>
-                                <div className="rounded-xl border border-border p-4">
-                                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Frequency</p>
-                                    <p className="text-lg font-bold mt-1 capitalize">{state.frequency}</p>
-                                    <p className="text-xs text-muted-foreground">{formatPrice(state.planPrice)}/cycle</p>
-                                </div>
-                            </div>
-
-                            <Separator />
-
-                            <div className="flex flex-wrap gap-2">
-                                <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.plans)}>
-                                    <Edit3 className="mr-2 h-3.5 w-3.5" /> Change Plan
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setIsPaused(!isPaused)}
-                                >
-                                    {isPaused ? <Play className="mr-2 h-3.5 w-3.5" /> : <Pause className="mr-2 h-3.5 w-3.5" />}
-                                    {isPaused ? "Resume" : "Pause"}
-                                </Button>
-                                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                                    Cancel Subscription
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Box Contents */}
-                    <Card className="admin-card">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>Box Contents</CardTitle>
-                                <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.buildBox)}>
-                                    <Edit3 className="mr-2 h-3.5 w-3.5" /> Edit Box
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            {state.boxItems.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No items in your box yet.</p>
-                            ) : (
-                                <div className="space-y-2">
-                                    {state.boxItems.map((item) => {
-                                        const product = getProductById(item.productId);
-                                        return (
-                                            <div key={item.productId} className="flex items-center justify-between rounded-lg border border-border p-3">
-                                                <div>
-                                                    <p className="font-medium text-sm">{product?.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{product?.packSize}</p>
-                                                </div>
-                                                <Badge variant="secondary">{item.quantity}x</Badge>
-                                            </div>
-                                        );
-                                    })}
-                                    <div className="mt-3">
-                                        <div className="flex items-center justify-between text-sm mb-1">
-                                            <span className="text-muted-foreground">Box fill</span>
-                                            <span className="font-medium">{formatWeight(subscription.totalWeightG)}/{formatWeight(subscription.state.planWeightG)}</span>
-                                        </div>
-                                        <Progress value={subscription.state.planWeightG > 0 ? (subscription.totalWeightG / subscription.state.planWeightG) * 100 : 0} className="h-2" />
-                                    </div>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </>
-            ) : (
-                <Card className="admin-card">
-                    <CardContent className="p-8 text-center">
-                        <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <h3 className="text-lg font-semibold">No Active Subscription</h3>
-                        <p className="text-sm text-muted-foreground mt-2">Start your first subscription to get premium meat delivered.</p>
-                        <Button className="mt-4" onClick={() => navigate(ROUTES.plans)}>
-                            Choose a Plan <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
-                    </CardContent>
-                </Card>
-            )}
-        </div>
-    );
+   
 
     // ─── ORDERS SECTION ──────────────────────────────────────────
     const formatOrderStatus = (status: string) => {
@@ -1084,12 +968,12 @@ const Dashboard = () => {
                     </p>
                     <div className="mt-4 flex items-center gap-3">
                         <div className="flex-1 rounded-xl bg-white/15 backdrop-blur-sm px-4 py-3 font-mono font-bold text-lg tracking-wider">
-                            {referralCode}
+                            {/* {referralCode} */}
                         </div>
                         <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() => navigator.clipboard?.writeText(referralCode)}
+                            // onClick={() => navigator.clipboard?.writeText(referralCode)}
                         >
                             <Copy className="mr-2 h-3.5 w-3.5" /> Copy
                         </Button>
@@ -1158,7 +1042,7 @@ const Dashboard = () => {
     const renderContent = () => {
         switch (activeSection) {
             case "overview": return renderOverview();
-            case "subscription": return renderSubscription();
+            case "subscription": return <Subscription/>
             case "orders": return renderOrders();
             case "addresses": return renderAddresses();
             case "settings": return renderSettings();
@@ -1192,11 +1076,11 @@ const Dashboard = () => {
             <div className="p-4 border-b border-border/60">
                 <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
                     <div className="h-10 w-10 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shadow-sm">
-                        {initials}
+                        {/* {initials} */}
                     </div>
                     <div className={`min-w-0 ${collapsed ? "hidden" : "block"}`}>
-                        <p className="text-sm font-semibold text-foreground truncate">{user.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        {/* <p className="text-sm font-semibold text-foreground truncate">{user.name}</p> */}
+                        {/* <p className="text-xs text-muted-foreground truncate">{user.email}</p> */}
                     </div>
                 </div>
             </div>

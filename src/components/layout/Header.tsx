@@ -9,23 +9,19 @@ import { ROUTES } from "@/lib/routes";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { useCartStore } from "@/store/cartStore";
 import { useAddonStore } from "@/store/addonStore";
+import { useAuthStore } from "@/store/AuthStore";
 
 const Header = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const { itemCount, clearCart } = useCart();
   const subscription = useSubscription();
   const navigate = useNavigate();
-
-  const subscriptionCount =
-  subscription.state.boxItems.reduce((sum, item) => sum + item.quantity, 0) +
-  subscription.state.addOns.reduce((sum, addon) => sum + addon.quantity, 0);
-  const totalCount = itemCount + subscriptionCount;
 
   const { subInfo } = useSubscriptionStore();
   const { totalItems } = useCartStore();
   const { totalAddonItems } = useAddonStore();
+  const { userInfo, clearUserInfo } = useAuthStore();
 
   const totalBaseitems = totalItems()
   const totalAddons = totalAddonItems()
@@ -99,13 +95,13 @@ const Header = () => {
               )}
             </Button>
 
-            {subscription.state.user ? (
+            {userInfo ? (
               <div className="hidden sm:block relative group">
                 <button className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20">
                   <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-xs font-bold text-white">
-                    {subscription.state.user.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                    {userInfo?.first_name?.[0]?.toUpperCase()}
                   </span>
-                  <span className="max-w-[100px] truncate">{subscription.state.user.name.split(" ")[0]}</span>
+                  <span className="max-w-[100px] truncate">{userInfo?.first_name}</span>
                   <ChevronDown className="h-3.5 w-3.5" />
                 </button>
                 <div className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-xl border border-border bg-background shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
@@ -116,18 +112,19 @@ const Header = () => {
                     >
                       <User className="h-4 w-4" /> My Dashboard
                     </Link>
-                    <Link
-                      to={ROUTES.buildBox}
-                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
-                    >
-                      <ShoppingCart className="h-4 w-4" /> My Box
-                    </Link>
+                    {subInfo?.subscription && (
+                      <Link
+                        to={ROUTES.buildBox}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+                      >
+                        <ShoppingCart className="h-4 w-4" /> My Box
+                      </Link>
+                    )}
                   </div>
                   <div className="border-t border-border p-2">
                     <button
                       onClick={() => {
-                        subscription.logout();
-                        clearCart();
+                        clearUserInfo()
                         navigate(ROUTES.home);
                       }}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
@@ -186,7 +183,7 @@ const Header = () => {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        subscription.logout();
+                        clearUserInfo()
                         navigate(ROUTES.home);
                         setIsMobileMenuOpen(false);
                       }}

@@ -14,12 +14,14 @@ import {
   Star,
   Truck,
   Users,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { plans } from "@/data/plans";
 import { ROUTES } from "@/lib/routes";
 import { axiosClient } from "@/GlobalApi";
+import { LoadingData } from "@/components/LoadingData";
 
 const heroHighlights = [
   "Chef-grade cuts curated for flavor",
@@ -480,41 +482,46 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {plans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={`relative overflow-hidden border-white/40 bg-white/60 backdrop-blur-xl shadow-md transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${plan.isPopular ? "ring-2 ring-primary" : ""
-                  }`}
-              >
-                {plan?.isPopular && (
-                  <div className="absolute top-4 right-4 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
-                    Most Popular
-                  </div>
-                )}
-                <CardContent className="p-6">
-                  <h3 className="text-2xl font-display font-bold mb-1">{plan?.attributes?.name}</h3>
-                  <p className="text-sm text-primary font-medium mb-3">{plan.attributes?.plan_type}</p>
-                  <p className="text-muted-foreground text-sm mb-4">{plan?.attributes?.description}</p>
-                  <ul className="space-y-2 mb-6">
-                    {plan?.attributes?.category_rules?.slice(0, 4).map((rule, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span>
-                          {rule?.label} ({rule?.min_items} - {rule?.max_items} items)
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button asChild className="w-full" variant={plan?.isPopular ? "default" : "outline"}>
-                    <Link to={ROUTES.plans}>Get Started</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {loading ? (
+              <LoadingData />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                {plans.map((plan) => (
+                  <Card
+                    key={plan.id}
+                    className={`relative overflow-hidden border-white/40 bg-white/60 backdrop-blur-xl shadow-md transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl ${plan.isPopular ? "ring-2 ring-primary" : ""
+                      }`}
+                  >
+                    {plan?.isPopular && (
+                      <div className="absolute top-4 right-4 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-white">
+                        Most Popular
+                      </div>
+                    )}
+                    <CardContent className="p-6">
+                      <h3 className="text-2xl font-display font-bold mb-1">{plan?.attributes?.name}</h3>
+                      <p className="text-sm text-primary font-medium mb-3">{plan.attributes?.plan_type}</p>
+                      <p className="text-muted-foreground text-sm mb-4">{plan?.attributes?.description}</p>
+                      <ul className="space-y-2 mb-6">
+                        {plan?.attributes?.category_rules?.slice(0, 4).map((rule, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>
+                              {rule?.label} ({rule?.min_items} - {rule?.max_items} items)
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                      <Button asChild className="w-full" variant={plan?.isPopular ? "default" : "outline"}>
+                        <Link to={ROUTES.plans}>Get Started</Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )
+          }
 
-          <div className="text-center">
+          <div className="text-center mt-4">
             <Button asChild size="lg">
               <Link to={ROUTES.plans}>
                 View All Plans and Pricing <ArrowRight className="ml-2 h-4 w-4" />

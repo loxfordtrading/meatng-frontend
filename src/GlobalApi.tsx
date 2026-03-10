@@ -1,21 +1,15 @@
-// axiosClient.ts
 import axios from "axios"
-import { tokenStorage } from "./lib/auth/tokenStorage";
-// import { useAuthStore } from "@/store/AuthStore"
+import { useAuthStore } from "@/store/AuthStore"
 
 const axiosClient = axios.create({
   baseURL: "/api",
-  withCredentials: true,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  withCredentials: true
 })
 
 if (typeof window !== "undefined") {
   axiosClient.interceptors.request.use(
     (config) => {
-      const token = tokenStorage.getCustomerToken();
-      // const token = useAuthStore.getState().userInfo?.access
+      const token = useAuthStore.getState().userInfo?.access
       if (token) {
         config.headers.Authorization = `Bearer ${token}`
       }

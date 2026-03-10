@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams} from "react-router-dom";
 import { ArrowLeft, Lock, Minus, PackagePlus, Plus, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,16 @@ import BuildCatalog from "@/components/products/BuildCatalog";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { useCartStore } from "@/store/cartStore";
 import { formatWeight, toGrams } from "@/utils/conversion";
+import { LoadingData } from "@/components/LoadingData";
+import Skeleton from "@/components/Skeleton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
 
 // const PRODUCT_IMAGES: Record<string, string> = {
 //   "Boneless Beef": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
@@ -75,8 +85,39 @@ const BuildBox = () => {
   const [error, setError] = useState(true);
   const [categories, setCategories] = useState([]);
   const [plan, setPlan] = useState(storePlan || null)
-  const [activeCategory, setActiveCategory] = useState("all")
+  // const [activeCategory, setActiveCategory] = useState("all")
+  const [loadingProducts, setLoadingProducts] = useState(true)
+  const [loadingCategories, setLoadingCategories] = useState(true)
+  const [loadingPlan, setLoadingPlan] = useState(true)
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const currentPage = Number(searchParams.get("page")) || 1;
+  const activeCategory = searchParams.get("category") || "all";
+  const [totalPages, setTotalPages] = useState(1);
+  
+
+  useEffect(() => {
+    if (!subInfo) {
+      navigate(ROUTES.plans, { replace: true });
+    }
+  }, [subInfo, navigate]);
+
+  const changePage = (page: number) => {
+    setSearchParams({
+      page: page.toString(),
+      category: activeCategory,
+    });
+  };
+
+  const changeCategory = (category: string) => {
+    if (category === "all") {
+      // reset to fetch all products
+      setSearchParams({ page: "1" });
+    } else {
+      setSearchParams({ page: "1", category });
+    }
+  };
 
    const totalGransInCart = totalGramWeight()
    const totalItemsinCart = totalItems();
@@ -110,9 +151,13 @@ const BuildBox = () => {
   const planId = params.get("planId") || subInfo?.subscription?.id;
 
   useEffect(() => {
+    getProducts();
+  }, [currentPage, activeCategory]);
+
+  useEffect(() => {
     const loadData = async () => {
+
       await Promise.all([
-        getProducts(),
         getCategories(),
         getPlan(),
       ]);
@@ -129,7 +174,15 @@ const BuildBox = () => {
 
   const getProducts = async () => {
     try {
-      const res = await axiosClient.get("/products?limit=30");
+      setLoadingProducts(true);
+
+      let url = `/products?page=${currentPage}&limit=30`;
+
+      if (activeCategory && activeCategory !== "all") {
+        url += `&categoryId=${activeCategory}`;
+      }
+
+      const res = await axiosClient.get(url);
 
       const formattedProducts = res.data.data.map((item: any) => ({
         id: item.id,
@@ -139,12 +192,15 @@ const BuildBox = () => {
         weight_unit: item.attributes.unit,
         formatted_weight: item.attributes.formattedWeight,
         category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
-        stock: item.stockQuantity
+        stock: item.stockQuantity,
       }));
 
       setProducts(formattedProducts);
+      setTotalPages(Math.ceil(Number(res.data.meta.totalPages)));
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoadingProducts(false);
     }
   };
 
@@ -170,11 +226,14 @@ const BuildBox = () => {
       setPlan(formattedPlan);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoadingPlan(false)
     }
   };
 
   const getCategories = async () => {
     try {
+      
       const res = await axiosClient.get("/product-categories/root");
 
       const formattedCategories = res.data.data.map((item: any) => ({
@@ -186,11 +245,10 @@ const BuildBox = () => {
       setCategories(formattedCategories);
     } catch (err) {
       console.error(err);
+    } finally{
+      setLoadingCategories(false)
     }
   };
-
-
-  const filteredProducts = activeCategory === "all" ? products : products.filter((p) => p.category === activeCategory);
   
   return (
     <div className="min-h-screen bg-background">
@@ -225,7 +283,7 @@ const BuildBox = () => {
 
         <div className="mb-4 flex flex-wrap gap-2 lg:hidden">
           <button
-            onClick={() => setActiveCategory("all")}
+            onClick={() => changeCategory("all")}
             className={`px-4 py-1 rounded-full ${
               activeCategory === "all" ? "bg-primary text-white" : "bg-muted"
             }`}
@@ -236,7 +294,7 @@ const BuildBox = () => {
           {categories.map((cat) => (
             <button
               key={cat?.id}
-              onClick={() => setActiveCategory(cat?.slug)}
+              onClick={() => changeCategory(cat.slug)}
               className={`px-4 py-1 rounded-full ${
                 activeCategory === cat.slug ? "bg-primary text-white" : "bg-muted"
               }`}
@@ -252,22 +310,35 @@ const BuildBox = () => {
               <CardContent className="space-y-5 p-4">
                 <div>
                   <p className="mb-2 text-sm font-semibold">Categories</p>
-                  <div className="space-y-2">
-                    {categories.map((cat) => (
+                  {loadingCategories && (
+                    <Skeleton/>
+                  )}
+                  {!loadingCategories && categories?.length > 0 && (
+                    <div className="space-y-2">
                       <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setActiveCategory(cat?.slug)}
+                        onClick={() => changeCategory("all")}
                         className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition ${
-                          activeCategory === cat?.slug
-                            ? "bg-green-700 font-semibold text-white"
-                            : "text-foreground hover:bg-muted/50"
+                          activeCategory === "all" ? "bg-green-700 font-semibold text-white" : "text-foreground hover:bg-muted/50"
                         }`}
                       >
-                        <span>{cat === "all" ? "All" : cat?.name}</span>
+                        All
                       </button>
-                    ))}
-                  </div>
+                      {categories.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => changeCategory(cat.slug)}
+                          className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-sm transition ${
+                            activeCategory === cat?.slug
+                              ? "bg-green-700 font-semibold text-white"
+                              : "text-foreground hover:bg-muted/50"
+                          }`}
+                        >
+                          <span>{cat === "all" ? "All" : cat?.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -304,46 +375,46 @@ const BuildBox = () => {
 
           <div className="space-y-6">
             {/* ── Section 1: Pre-built Items ─────────────────────── */}
-            {/* {filteredMandatoryItems.length > 0 && (
+            {subInfo?.subscription?.attributes?.prefilled_items?.length > 0 && (
               <div>
                 <div className="mb-3 flex items-center gap-2">
                   <Lock className="h-4 w-4 text-muted-foreground" />
                   <h2 className="font-display text-lg font-bold text-foreground">Pre-built in Your Box</h2>
                   <Badge variant="secondary" className="ml-auto text-xs">
-                    {filteredMandatoryItems.length} item{filteredMandatoryItems.length !== 1 ? "s" : ""}
+                    {subInfo?.subscription?.attributes?.prefilled_items?.length} item{subInfo?.subscription?.attributes?.prefilled_items?.length !== 1 ? "s" : ""}
                   </Badge>
                 </div>
                 <p className="mb-3 text-sm text-muted-foreground">
-                  These cuts come included with your {plan?.name}. They can't be removed.
+                  These cuts come included with your {subInfo?.subscription?.attributes?.name}. They can't be removed.
                 </p>
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {filteredMandatoryItems.map((item) => (
-                    <Card key={item.productId} className="overflow-hidden border-green-200 shadow-sm">
+                  {subInfo?.subscription?.attributes?.prefilled_items?.map((item) => (
+                    <Card key={item.product_id} className="overflow-hidden border-green-200 shadow-sm">
                       <img
-                        src={PRODUCT_IMAGES[item.name] ?? "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=400"}
+                        src={"https://images.unsplash.com/photo-1588347818036-558601350947?w=200"}
                         alt={item.name}
                         className="h-28 w-full object-cover"
                       />
                       <CardContent className="space-y-2 p-3">
                         <div className="flex items-center justify-between">
                           <p className="font-semibold">{item.name}</p>
-                          <Badge variant="secondary" className={`px-1.5 py-0 text-[10px] ${CATEGORY_LABELS[item.category]?.color ?? ""}`}>
-                            {CATEGORY_LABELS[item.category]?.label ?? item.category}
+                          <Badge variant="secondary" className={`px-1.5 py-0 text-[10px] bg-green-200`}>
+                            {item?.category}
                           </Badge>
                         </div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{formatWeight(item.weightG)}</span>
-                          <span className="font-semibold text-foreground">{formatPrice(item.price)}</span>
+                          <span>{item?.weight}{item?.weight_unit}</span>
+                          <span className="font-semibold text-foreground">{displayCurrency(item?.price, "NGN")}</span>
                         </div>
                         <Button size="sm" className="w-full bg-rose-500 text-white hover:bg-rose-600" disabled>
-                          <Lock className="mr-1 h-3 w-3" /> Included
+                          <Lock className="mr-1 h-3 w-3" /> {item?.quantity} Included
                         </Button>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
               </div>
-            )} */}
+            )}
 
             {/* ── Section 2: Choose Your Picks ───────────────────── */}
             {products.length > 0 && (
@@ -424,99 +495,148 @@ const BuildBox = () => {
               </div>
             )}
 
-            {products.length > 0 && (
+            {loadingProducts && (
+              <LoadingData />
+            )}
+
+            {products.length > 0 && !loadingProducts && (
               <BuildCatalog products={products}/>
+            )}
+
+            {totalPages > 1 && !loadingProducts && products?.length > 0 && (
+              <Pagination className="mt-8">
+                <PaginationContent className="flex-wrap justify-center gap-2">
+
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                    />
+                  </PaginationItem>
+
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const page = i + 1;
+
+                    return (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          isActive={currentPage === page}
+                          onClick={() => changePage(page)}
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  })}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() =>
+                        currentPage < totalPages && changePage(currentPage + 1)
+                      }
+                    />
+                  </PaginationItem>
+
+                </PaginationContent>
+              </Pagination>
             )}
           </div>
 
           <div className="hidden lg:block">
             <Card className="sticky top-24 border-border/70 shadow-sm">
-              <CardContent className="p-4">
-                <h3 className="mb-4 font-semibold">Your Box</h3>
-
-                <div className="mb-4 border-b pb-4 text-sm">
-                  <div className="mb-2 flex justify-between">
-                    <span className="text-muted-foreground">Total weight</span>
-                    <span className="font-medium">
-                      {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
-                    </span>
-                  </div>
-                  <Progress value={progress} className="h-2" />
-                  <div className="mt-3 space-y-1">
-                    <p>
-                      <span className="text-muted-foreground">Plan:</span> <span className="font-medium">{plan?.name}</span>
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Frequency:</span> <span className="font-medium">{subInfo?.selectedFrequency}</span>
-                    </p>
-                  </div>
+              {loadingPlan && (
+                <div className="p-4 w-full">
+                  <Skeleton />
                 </div>
+              )}
+              
+              {!loadingPlan && Object.keys(plan).length > 0 && (
+                <CardContent className="p-4">
+                  <h3 className="mb-4 font-semibold">Your Box</h3>
 
-                <div className="mb-4 space-y-2 pb-2">
-
-                  {plan?.prefilled_items.length > 0 && (
-                    <div className="border-b pb-4 space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">In your box</p>
-
-                      {plan?.prefilled_items.map((item) => (
-                        <div key={item.productId} className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">{item?.name}</span>
-                          <span>{item?.weight}{item?.weight_unit} · {displayCurrency(item.price, "NGN")}</span>
-                        </div>
-                      ))}
+                  <div className="mb-4 border-b pb-4 text-sm">
+                    <div className="mb-2 flex justify-between">
+                      <span className="text-muted-foreground">Total weight</span>
+                      <span className="font-medium">
+                        {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
+                      </span>
                     </div>
-                  )}
-
-                  {items.length > 0 && (
-                    <div className="border-b pb-4 space-y-2">
-                      <p className="pt-1 text-[10px] font-semibold uppercase tracking-wider text-primary">Your picks</p>
-                      {items.map((item) => (
-                        <div key={item.name} className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">
-                            {item.name} {item.qty > 1 ? `x ${item.qty}` : ""}
-                          </span>
-                          <span>
-                            {item?.weight * item.qty}{item?.weight_unit} · {displayCurrency(item.price * item.qty, "NGN")}
-                          </span>
-                        </div>
-                      ))}
+                    <Progress value={progress} className="h-2" />
+                    <div className="mt-3 space-y-1">
+                      <p>
+                        <span className="text-muted-foreground">Plan:</span> <span className="font-medium">{plan?.name}</span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Frequency:</span> <span className="font-medium">{subInfo?.selectedFrequency}</span>
+                      </p>
                     </div>
-                  )}
-                </div>
-
-                <div className="mb-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Plan price</span>
-                    <span className="font-medium">{displayCurrency(plan?.price, "NGN")}</span>
                   </div>
-                  {/* {addOnsTotal > 0 && (
+
+                  <div className="mb-4 space-y-2 pb-2">
+
+                    {plan?.prefilled_items.length > 0 && (
+                      <div className="border-b pb-4 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">In your box</p>
+
+                        {plan?.prefilled_items.map((item) => (
+                          <div key={item.productId} className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">{item?.name}</span>
+                            <span>{item?.weight}{item?.weight_unit} · {displayCurrency(item.price, "NGN")}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {items.length > 0 && (
+                      <div className="border-b pb-4 space-y-2">
+                        <p className="pt-1 text-[10px] font-semibold uppercase tracking-wider text-primary">Your picks</p>
+                        {items.map((item) => (
+                          <div key={item.name} className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">
+                              {item.name} {item.qty > 1 ? `x ${item.qty}` : ""}
+                            </span>
+                            <span className="text-right">
+                              {item?.weight * item.qty}{item?.weight_unit} · {displayCurrency(item.price * item.qty, "NGN")}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mb-4 space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span>Add-ons</span>
-                      <span className="font-medium">{formatPrice(addOnsTotal)}</span>
+                      <span>Plan price</span>
+                      <span className="font-medium">{displayCurrency(plan?.price, "NGN")}</span>
                     </div>
-                  )} */}
-                  <div className="flex justify-between border-t pt-2 text-lg font-bold">
-                    <span>Total</span>
-                    <span className="text-primary">{displayCurrency(plan?.price, "NGN")}</span>
+                    {/* {addOnsTotal > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Add-ons</span>
+                        <span className="font-medium">{formatPrice(addOnsTotal)}</span>
+                      </div>
+                    )} */}
+                    <div className="flex justify-between border-t pt-2 text-lg font-bold">
+                      <span>Total</span>
+                      <span className="text-primary">{displayCurrency(plan?.price, "NGN")}</span>
+                    </div>
                   </div>
-                </div>
 
-                <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalItemsinCart != subInfo?.subscription?.attributes?.max_items) || (totalGransInCart != subscriptionWeightG)}>
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Review Cart
-                </Button>
+                  <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalItemsinCart != subInfo?.subscription?.attributes?.max_items) || (totalGransInCart != subscriptionWeightG)}>
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Review Cart
+                  </Button>
 
-                {/* {!canProceed && hasOffalSelection && (
-                  <p className="mt-2 text-center text-xs text-amber-600">
-                    Fill remaining {formatWeight(offalBudgetG - currentOffalWeightG)} of offals to continue
-                  </p>
-                )}
-                {!canProceed && hasBuildYourBox && plan?.buildYourBox && (
-                  <p className="mt-2 text-center text-xs text-amber-600">
-                    Fill remaining {formatWeight(plan.buildYourBox.remainingWeightG - buildWeightG)} to continue
-                  </p>
-                )} */}
-              </CardContent>
+                  {/* {!canProceed && hasOffalSelection && (
+                    <p className="mt-2 text-center text-xs text-amber-600">
+                      Fill remaining {formatWeight(offalBudgetG - currentOffalWeightG)} of offals to continue
+                    </p>
+                  )}
+                  {!canProceed && hasBuildYourBox && plan?.buildYourBox && (
+                    <p className="mt-2 text-center text-xs text-amber-600">
+                      Fill remaining {formatWeight(plan.buildYourBox.remainingWeightG - buildWeightG)} to continue
+                    </p>
+                  )} */}
+                </CardContent>
+              )}
             </Card>
           </div>
         </div>

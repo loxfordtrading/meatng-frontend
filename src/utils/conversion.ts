@@ -22,3 +22,16 @@ export const getFrequencyWeeks = (frequencyId: string): number => {
       return 0;
   }
 };
+
+export const getFrequencyWeeksString = (weeks: number): string => {
+  switch (weeks) {
+    case 1:
+      return "weekly";
+    case 2:
+      return "bi-weekly";
+    case 4:
+      return "monthly";
+    default:
+      return "unknown";
+  }
+};
