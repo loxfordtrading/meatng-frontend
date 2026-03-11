@@ -3,8 +3,6 @@ import { useAuthStore } from "@/store/AuthStore"
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BACKEND_URL,
-  // baseURL: "/api",
-  // withCredentials: true
 })
 
 if (typeof window !== "undefined") {

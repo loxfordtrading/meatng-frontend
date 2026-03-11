@@ -11,7 +11,15 @@ export type FormattedSubscriptionType = {
   lockedForBilling: boolean;
   nextCutoffAt: string;
   items: {
-    product_id: string;
+    product_id: {
+      _id: string;
+      name: string;
+      slug: string;
+      mainValue: number;
+      unit: string;
+      formattedWeight: string;
+      id: string;
+    };
     quantity: number;
     item_type: string;
   }[];
@@ -20,6 +28,9 @@ export type FormattedSubscriptionType = {
     name: string;
     description: string;
     price: number;
+    weight: number;
+    weight_unit: string;
+    is_active: boolean;
   };
 };
 
@@ -45,5 +56,31 @@ export type FormattedOrderType = {
     id: string;
     name: string;
     maxItems: number;
+  };
+};
+
+export type AddressType = {
+  type: "addresss";
+  id: string;
+  attributes: {
+    user_id: string;
+    address_type: "shipping" | "billing";
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    label: string;
+    street_address: string;
+    apartment_suite: string;
+    city: string;
+    state: string;
+    zip_code: string;
+    country: string;
+    is_default: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
+  links: {
+    self: string;
   };
 };

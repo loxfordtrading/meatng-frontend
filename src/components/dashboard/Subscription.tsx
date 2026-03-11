@@ -21,6 +21,7 @@ import { toast } from "react-toastify";
 import { FormattedSubscriptionType } from "@/types/types";
 import { getFrequencyWeeksString } from "@/utils/conversion";
 import { useNavigate } from "react-router-dom";
+import displayCurrency from "@/utils/displayCurrency";
 
 const Subscription = () => {
 
@@ -59,6 +60,9 @@ const Subscription = () => {
                     name: sub.relationships?.planDetails?.data?.attributes?.name,
                     description: sub.relationships?.planDetails?.data?.attributes?.description,
                     price: sub.relationships?.planDetails?.data?.attributes?.price,
+                    weight: sub.relationships?.planDetails?.data?.attributes?.weight,
+                    weight_unit: sub.relationships?.planDetails?.data?.attributes?.weight_unit,
+                    is_active: sub.relationships?.planDetails?.data?.attributes?.is_active,
                 },
             }));
 
@@ -106,13 +110,13 @@ const Subscription = () => {
                                 </div>
                                 <div className="rounded-xl border border-border p-4">
                                     <p className="text-xs text-muted-foreground uppercase tracking-wider">Weight</p>
-                                    {/* <p className="text-lg font-bold mt-1">{currentSubscription?.weightKg}kg</p> */}
-                                    <p className="text-xs text-muted-foreground">Fixed plan weight</p>
+                                    <p className="text-lg font-bold mt-1">{currentSubscription?.plan?.weight}{currentSubscription?.plan?.weight_unit}</p>
+                                    {/* <p className="text-xs text-muted-foreground">Fixed plan weight</p> */}
                                 </div>
                                 <div className="rounded-xl border border-border p-4">
                                     <p className="text-xs text-muted-foreground uppercase tracking-wider">Frequency</p>
                                     <p className="text-lg font-bold mt-1 capitalize">{getFrequencyWeeksString(currentSubscription?.frequency)}</p>
-                                    {/* // <p className="text-xs text-muted-foreground">{formatPrice(state.planPrice)}/cycle</p> */}
+                                    <p className="text-xs text-muted-foreground">{displayCurrency(currentSubscription?.plan?.price, "NGN")}/cycle</p>
                                 </div>
                             </div>
 
@@ -155,10 +159,10 @@ const Subscription = () => {
                                     {currentSubscription?.items?.map((item) => {
                                         // const product = getProductById(item.productId);
                                         return (
-                                            <div key={item.product_id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                                            <div key={item?.product_id?.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                                                 <div>
-                                                    {/* <p className="font-medium text-sm">{product?.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{product?.packSize}</p> */}
+                                                    <p className="font-medium text-sm">{item?.product_id?.name}</p>
+                                                    <p className="text-xs text-muted-foreground">{item?.product_id?.formattedWeight}</p>
                                                 </div>
                                                 <Badge variant="secondary">{item.quantity}x</Badge>
                                             </div>

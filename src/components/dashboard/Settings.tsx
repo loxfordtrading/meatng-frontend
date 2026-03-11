@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { axiosClient } from "@/GlobalApi";
 import z from "zod";
 import { toast } from "react-toastify";
+import { LoadingData } from "../LoadingData";
 
 const profileSchema = z.object({
   first_name: z.string().min(1, "first name is required"),
@@ -111,12 +112,12 @@ const Settings = () => {
   const fetchProfile = async () => {
       try {
         const response = await axiosClient.get("/users/me");
-        
+
         const formatted = {
-          first_name: response.data.first_name,
-          last_name: response.data.last_name,
-          email: response.data.email,
-          phone: response.data.phone || "",
+          first_name: response.data?.data?.attributes?.first_name || "",
+          last_name: response.data?.data?.attributes?.last_name || "",   
+          email: response.data?.data?.attributes?.email || "",
+          phone: response.data?.data?.attributes?.phone || ""
         };
 
         setProfile(formatted);
@@ -209,6 +210,7 @@ const Settings = () => {
             confirmPassword: ""
         })
 
+        toast.error("Password updated successfully");
         setPasswordSuccess("Password updated successfully");
 
     } catch (err) {
@@ -231,152 +233,158 @@ const Settings = () => {
         </p>
       </div>
 
-      {/* PERSONAL INFO */}
-      <Card className="admin-card">
-        <CardHeader>
-          <CardTitle>Personal Information</CardTitle>
-        </CardHeader>
+        {loading ? (
+            <LoadingData/>
+        ) : (
+            <div className="space-y-6">
+                {/* PERSONAL INFO */}
+                <Card className="admin-card">
+                    <CardHeader>
+                    <CardTitle>Personal Information</CardTitle>
+                    </CardHeader>
 
-        <CardContent className="space-y-4">
+                    <CardContent className="space-y-4">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-            <div className="space-y-2">
-              <Label>First Name</Label>
-              <Input
-                name="first_name"
-                value={profile.first_name}
-                onChange={handleProfileChange}
-                className="h-11 rounded-xl"
-              />
+                        <div className="space-y-2">
+                        <Label>First Name</Label>
+                        <Input
+                            name="first_name"
+                            value={profile.first_name}
+                            onChange={handleProfileChange}
+                            className="h-11 rounded-xl"
+                        />
+                        </div>
+
+                        <div className="space-y-2">
+                        <Label>Last Name</Label>
+                        <Input
+                            name="last_name"
+                            value={profile.last_name}
+                            onChange={handleProfileChange}
+                            className="h-11 rounded-xl"
+                        />
+                        </div>
+
+                        <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input
+                            name="email"
+                            value={profile.email}
+                            readOnly
+                            className="h-11 rounded-xl"
+                        />
+                        </div>
+
+                        <div className="space-y-2">
+                        <Label>Phone Number</Label>
+                        <Input
+                            name="phone"
+                            value={profile.phone}
+                            onChange={handleProfileChange}
+                            placeholder="+234..."
+                            className="h-11 rounded-xl"
+                        />
+                        </div>
+
+                    </div>
+
+                        <Button disabled={isSubmitting} size="sm" onClick={handleSaveSettings}>
+                            {isSubmitting ? "Updating..." : "Save Changes"}
+                        </Button>
+
+                    </CardContent>
+                </Card>
+
+                {/* PASSWORD */}
+                <Card className="admin-card">
+                    <CardHeader>
+                    <CardTitle>Change Password</CardTitle>
+                    </CardHeader>
+
+                    <CardContent className="space-y-4">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                        {/* CURRENT PASSWORD */}
+                        <div className="space-y-2 relative">
+                        <Label>Current Password</Label>
+                        <Input
+                            type={showPassword.currentPassword ? "text" : "password"}
+                            name="currentPassword"
+                            value={password.currentPassword}
+                            onChange={handlePasswordChange}
+                            className="h-11 rounded-xl pr-10"
+                        />
+
+                        <button
+                            type="button"
+                            onClick={() => togglePassword("current")}
+                            className="absolute right-3 top-[38px] text-muted-foreground"
+                        >
+                            {showPassword.currentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                        </div>
+
+                        {/* NEW PASSWORD */}
+                        <div className="space-y-2 relative">
+                        <Label>New Password</Label>
+                        <Input
+                            type={showPassword.newPassword ? "text" : "password"}
+                            name="newPassword"
+                            value={password.newPassword}
+                            onChange={handlePasswordChange}
+                            className="h-11 rounded-xl pr-10"
+                        />
+
+                        <button
+                            type="button"
+                            onClick={() => togglePassword("new")}
+                            className="absolute right-3 top-[38px] text-muted-foreground"
+                        >
+                            {showPassword.newPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                        </div>
+
+                        {/* CONFIRM PASSWORD */}
+                        <div className="space-y-2 relative">
+                        <Label>Confirm Password</Label>
+                        <Input
+                            type={showPassword.confirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            value={password.confirmPassword}
+                            onChange={handlePasswordChange}
+                            className="h-11 rounded-xl pr-10"
+                        />
+
+                        <button
+                            type="button"
+                            onClick={() => togglePassword("confirm")}
+                            className="absolute right-3 top-[38px] text-muted-foreground"
+                        >
+                            {showPassword.confirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                        </div>
+
+                    </div>
+
+                    {passwordError && (
+                        <p className="text-sm text-destructive">{passwordError}</p>
+                    )}
+
+                    {passwordSuccess && (
+                        <p className="text-sm text-emerald-600">{passwordSuccess}</p>
+                    )}
+
+                        <Button disabled={isSubmittingPassword} size="sm" variant="outline" onClick={handleChangePassword}>
+                            {isSubmittingPassword ? "Updating..." : "Change password"}
+                        </Button>
+
+                    </CardContent>
+                </Card>
             </div>
-
-            <div className="space-y-2">
-              <Label>Last Name</Label>
-              <Input
-                name="last_name"
-                value={profile.last_name}
-                onChange={handleProfileChange}
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input
-                name="email"
-                value={profile.email}
-                readOnly
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Phone Number</Label>
-              <Input
-                name="phone"
-                value={profile.phone}
-                onChange={handleProfileChange}
-                placeholder="+234..."
-                className="h-11 rounded-xl"
-              />
-            </div>
-
-          </div>
-
-            <Button disabled={isSubmitting} size="sm" onClick={handleSaveSettings}>
-                {isSubmitting ? "Updating..." : "Save Changes"}
-            </Button>
-
-        </CardContent>
-      </Card>
-
-      {/* PASSWORD */}
-      <Card className="admin-card">
-        <CardHeader>
-          <CardTitle>Change Password</CardTitle>
-        </CardHeader>
-
-        <CardContent className="space-y-4">
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            {/* CURRENT PASSWORD */}
-            <div className="space-y-2 relative">
-              <Label>Current Password</Label>
-              <Input
-                type={showPassword.currentPassword ? "text" : "password"}
-                name="currentPassword"
-                value={password.currentPassword}
-                onChange={handlePasswordChange}
-                className="h-11 rounded-xl pr-10"
-              />
-
-              <button
-                type="button"
-                onClick={() => togglePassword("current")}
-                className="absolute right-3 top-[38px] text-muted-foreground"
-              >
-                {showPassword.currentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-
-            {/* NEW PASSWORD */}
-            <div className="space-y-2 relative">
-              <Label>New Password</Label>
-              <Input
-                type={showPassword.newPassword ? "text" : "password"}
-                name="newPassword"
-                value={password.newPassword}
-                onChange={handlePasswordChange}
-                className="h-11 rounded-xl pr-10"
-              />
-
-              <button
-                type="button"
-                onClick={() => togglePassword("new")}
-                className="absolute right-3 top-[38px] text-muted-foreground"
-              >
-                {showPassword.newPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-
-            {/* CONFIRM PASSWORD */}
-            <div className="space-y-2 relative">
-              <Label>Confirm Password</Label>
-              <Input
-                type={showPassword.confirmPassword ? "text" : "password"}
-                name="confirmPassword"
-                value={password.confirmPassword}
-                onChange={handlePasswordChange}
-                className="h-11 rounded-xl pr-10"
-              />
-
-              <button
-                type="button"
-                onClick={() => togglePassword("confirm")}
-                className="absolute right-3 top-[38px] text-muted-foreground"
-              >
-                {showPassword.confirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-
-          </div>
-
-          {passwordError && (
-            <p className="text-sm text-destructive">{passwordError}</p>
-          )}
-
-          {passwordSuccess && (
-            <p className="text-sm text-emerald-600">{passwordSuccess}</p>
-          )}
-
-            <Button disabled={isSubmittingPassword} size="sm" variant="outline" onClick={handleChangePassword}>
-                {isSubmittingPassword ? "Updating..." : "Change password"}
-            </Button>
-
-        </CardContent>
-      </Card>
+        )}
     </div>
   );
 };

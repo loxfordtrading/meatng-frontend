@@ -6,17 +6,11 @@ import {
     History,
     MapPin,
     Settings as SettingIcon,
-    Gift,
     LogOut,
     ChevronRight,
     Calendar,
     Truck,
-    CreditCard,
     Edit3,
-    Pause,
-    Play,
-    Plus,
-    Trash2,
     Copy,
     Share2,
     Menu,
@@ -30,35 +24,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Progress } from "@/components/ui/progress";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useCart } from "@/contexts/CartContext";
-import { getPlanById, formatPrice, formatWeight } from "@/data/plans";
-import { getProductById } from "@/data/products";
+import { getPlanById, formatPrice } from "@/data/plans";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/api/errors";
 import {
     Address,
-    changePassword,
-    createAddress,
-    deleteAddress,
     getUserById,
     getCurrentUser,
     listAddresses,
     listMyOrders,
-    setDefaultAddress,
-    updateAddress,
-    updateUserById,
-    updateCurrentUser,
 } from "@/lib/api/customer";
 import type { CustomerOrder } from "@/lib/api/customer/orders";
 import { tokenStorage } from "@/lib/auth/tokenStorage";
 import Subscription from "@/components/dashboard/Subscription";
 import OrderHistory from "@/components/dashboard/OrderHistory";
 import Settings from "@/components/dashboard/Settings";
+import Addresses from "@/components/dashboard/Addresses";
+import Overview from "@/components/dashboard/Overview";
 
 type DashboardSection = "overview" | "subscription" | "orders" | "addresses" | "settings";
 
@@ -99,19 +83,11 @@ const Dashboard = () => {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
-    const [settingsFullName, setSettingsFullName] = useState("");
-    const [settingsEmail, setSettingsEmail] = useState("");
-    const [settingsPhone, setSettingsPhone] = useState("");
     const [settingsError, setSettingsError] = useState("");
-    const [settingsSuccess, setSettingsSuccess] = useState("");
-    const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [isLoadingProfile, setIsLoadingProfile] = useState(false);
     const [addresses, setAddresses] = useState<Address[]>([]);
     const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
     const [addressError, setAddressError] = useState("");
-    const [isAddressFormOpen, setIsAddressFormOpen] = useState(false);
-    const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
-    const [isSavingAddress, setIsSavingAddress] = useState(false);
     const [addressForm, setAddressForm] = useState({
         label: "",
         addressType: "shipping",
@@ -123,12 +99,6 @@ const Dashboard = () => {
         country: "",
         isDefault: false,
     });
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [passwordError, setPasswordError] = useState("");
-    const [passwordSuccess, setPasswordSuccess] = useState("");
-    const [isSavingPassword, setIsSavingPassword] = useState(false);
     const [orders, setOrders] = useState<CustomerOrder[]>([]);
     const [isLoadingOrders, setIsLoadingOrders] = useState(false);
     const [isUsingMockOrders, setIsUsingMockOrders] = useState(false);
@@ -229,15 +199,7 @@ const Dashboard = () => {
         };
     }, [user?.id]);
 
-    // if (!user) return null;
-
     const plan = state.plan ? getPlanById(state.plan) : null;
-    // const initials = user.name
-    //     .split(" ")
-    //     .map((n) => n[0])
-    //     .join("")
-    //     .toUpperCase()
-    //     .slice(0, 2);
 
     // const referralCode = `MEAT-${user.name.split(" ")[0].toUpperCase().slice(0, 4)}${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -247,338 +209,13 @@ const Dashboard = () => {
         navigate(ROUTES.home);
     };
 
-    const resetAddressForm = () => {
-        setAddressForm({
-            label: "",
-            addressType: "shipping",
-            streetAddress: "",
-            apartmentSuite: "",
-            city: "",
-            state: "",
-            zipCode: "",
-            country: "",
-            isDefault: false,
-        });
-        setEditingAddressId(null);
-    };
-
-    const handleEditAddress = (address: Address) => {
-        setEditingAddressId(address.id);
-        setAddressForm({
-            label: address.label || "",
-            addressType: address.addressType || "shipping",
-            streetAddress: address.streetAddress || "",
-            apartmentSuite: address.apartmentSuite || "",
-            city: address.city || "",
-            state: address.state || "",
-            zipCode: address.zipCode || "",
-            country: address.country || "",
-            isDefault: !!address.isDefault,
-        });
-        setIsAddressFormOpen(true);
-    };
-
-    const handleSaveAddress = async () => {
-        if (!user?.id) {
-            setAddressError("Please sign in again to manage addresses.");
-            return;
-        }
-
-        if (!addressForm.label.trim() || !addressForm.streetAddress.trim() || !addressForm.city.trim()) {
-            setAddressError("Label, street address, and city are required.");
-            return;
-        }
-
-        setIsSavingAddress(true);
-        setAddressError("");
-
-        try {
-            const payload = {
-                label: addressForm.label.trim(),
-                addressType: addressForm.addressType,
-                streetAddress: addressForm.streetAddress.trim(),
-                apartmentSuite: addressForm.apartmentSuite.trim() || undefined,
-                city: addressForm.city.trim(),
-                state: addressForm.state.trim() || undefined,
-                zipCode: addressForm.zipCode.trim() || undefined,
-                country: addressForm.country.trim() || undefined,
-                isDefault: addressForm.isDefault,
-            };
-
-            let saved: Address;
-            if (editingAddressId) {
-                saved = await updateAddress(editingAddressId, payload, tokenStorage.getCustomerToken());
-            } else {
-                saved = await createAddress(payload, tokenStorage.getCustomerToken());
-            }
-
-            if (addressForm.isDefault && saved.id) {
-                try {
-                    saved = await setDefaultAddress(saved.id, tokenStorage.getCustomerToken());
-                } catch (error) {
-                    setAddressError(getErrorMessage(error, "Address saved, but default setting failed."));
-                }
-            }
-
-            setAddresses((prev) => {
-                const next = editingAddressId
-                    ? prev.map((item) => (item.id === saved.id ? saved : item))
-                    : [saved, ...prev];
-                if (saved.isDefault) {
-                    return next.map((item) =>
-                        item.id === saved.id ? { ...item, isDefault: true } : { ...item, isDefault: false }
-                    );
-                }
-                return next;
-            });
-
-            resetAddressForm();
-            setIsAddressFormOpen(false);
-        } catch (error) {
-            setAddressError(getErrorMessage(error, "Unable to save address right now."));
-        } finally {
-            setIsSavingAddress(false);
-        }
-    };
-
-    const handleDeleteAddress = async (id: string) => {
-        setAddressError("");
-        try {
-            await deleteAddress(id, tokenStorage.getCustomerToken());
-            setAddresses((prev) => prev.filter((item) => item.id !== id));
-        } catch (error) {
-            setAddressError(getErrorMessage(error, "Unable to delete address right now."));
-        }
-    };
-
-    const handleSetDefault = async (id: string) => {
-        setAddressError("");
-        try {
-            const updated = await setDefaultAddress(id, tokenStorage.getCustomerToken());
-            setAddresses((prev) =>
-                prev.map((item) =>
-                    item.id === updated.id ? { ...item, isDefault: true } : { ...item, isDefault: false }
-                )
-            );
-        } catch (error) {
-            setAddressError(getErrorMessage(error, "Unable to set default address right now."));
-        }
-    };
-
-    const handleChangePassword = async () => {
-        setPasswordError("");
-        setPasswordSuccess("");
-
-        if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
-            setPasswordError("All password fields are required.");
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            setPasswordError("New password and confirmation do not match.");
-            return;
-        }
-        if (newPassword.length < 6) {
-            setPasswordError("New password must be at least 6 characters.");
-            return;
-        }
-
-        setIsSavingPassword(true);
-        try {
-            await changePassword(
-                {
-                    currentPassword: currentPassword.trim(),
-                    newPassword: newPassword.trim(),
-                    confirmPassword: confirmPassword.trim(),
-                },
-                tokenStorage.getCustomerToken(),
-            );
-            setPasswordSuccess("Password updated successfully.");
-            setCurrentPassword("");
-            setNewPassword("");
-            setConfirmPassword("");
-        } catch (error) {
-            setPasswordError(getErrorMessage(error, "Unable to update password right now."));
-        } finally {
-            setIsSavingPassword(false);
-        }
-    };
 
     const handleNavClick = (section: DashboardSection) => {
         setActiveSection(section);
         setIsMobileSidebarOpen(false);
     };
 
-    const handleSaveSettings = async () => {
-        if (!user.id) {
-            setSettingsError("Unable to update profile right now. Please sign in again.");
-            setSettingsSuccess("");
-            return;
-        }
-
-        const fullName = settingsFullName.trim();
-        if (!fullName) {
-            setSettingsError("Full name is required.");
-            setSettingsSuccess("");
-            return;
-        }
-
-        const tokens = fullName.split(/\s+/);
-        const firstName = tokens[0] || "";
-        const lastName = tokens.slice(1).join(" ");
-
-        setIsSavingSettings(true);
-        setSettingsError("");
-        setSettingsSuccess("");
-
-        try {
-            const token = tokenStorage.getCustomerToken();
-            const updates = {
-                firstName,
-                lastName,
-                phone: settingsPhone.trim() || undefined,
-            };
-            const profile = await updateUserById(user.id, updates, token).catch(() =>
-                updateCurrentUser(updates, token),
-            );
-
-            const updatedFullName =
-                [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim() || fullName;
-            const updatedEmail = profile.email || settingsEmail;
-            subscription.login({
-                id: profile.id || user.id,
-                name: updatedFullName,
-                email: updatedEmail,
-                phone: profile.phone || settingsPhone.trim() || undefined,
-            });
-
-            setSettingsFullName(updatedFullName);
-            setSettingsEmail(updatedEmail);
-            setSettingsPhone(profile.phone || settingsPhone.trim());
-            setSettingsSuccess("Profile updated successfully.");
-        } catch (error) {
-            setSettingsError(getErrorMessage(error, "Unable to update profile right now."));
-        } finally {
-            setIsSavingSettings(false);
-        }
-    };
-
     // ─── OVERVIEW SECTION ────────────────────────────────────────
-    const renderOverview = () => (
-        <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
-            <div>
-                <h2 className="text-2xl font-display font-bold text-foreground">
-                    {/* Welcome back, {user.name.split(" ")[0]}! 👋 */}
-                </h2>
-                <p className="text-muted-foreground mt-1">Here's a snapshot of your account.</p>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: "Active Plan", value: plan?.name || "None", icon: Package, tone: "emerald" },
-                    { label: "Total Orders", value: mockOrders.length.toString(), icon: History, tone: "blue" },
-                    { label: "Next Delivery", value: "Feb 17", icon: Truck, tone: "amber" },
-                    { label: "Member Since", value: "Dec 2025", icon: Calendar, tone: "slate" },
-                ].map((stat, index) => (
-                    <Card key={stat.label} className="admin-card admin-animate-up" style={{ animationDelay: `${index * 70}ms` }}>
-                        <CardContent className="p-4">
-                            <div className="admin-stat-icon" data-tone={stat.tone}>
-                                <stat.icon />
-                            </div>
-                            <p className="mt-4 text-xs text-muted-foreground font-medium uppercase tracking-wider">{stat.label}</p>
-                            <p className="text-xl font-bold text-foreground mt-1">{stat.value}</p>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Active Subscription Card */}
-            {plan && (
-                <Card className="admin-card overflow-hidden border border-primary/20">
-                    <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6">
-                        <div className="flex items-center justify-between flex-wrap gap-4">
-                            <div>
-                                <Badge className="bg-primary/15 text-primary border-primary/20 mb-2">Active Subscription</Badge>
-                                <h3 className="text-xl font-bold text-foreground">{plan.name} Plan</h3>
-                                <p className="text-muted-foreground text-sm mt-1">
-                                    {subscription.currentPlan?.weightKg}kg • {state.frequency} delivery
-                                </p>
-                            </div>
-                            <div className="text-right">
-                                <p className="text-3xl font-bold text-primary">
-                                    {formatPrice(state.planPrice)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">per cycle</p>
-                            </div>
-                        </div>
-                    </div>
-                    <CardContent className="p-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                                    <Calendar className="h-5 w-5 text-emerald-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Next Billing</p>
-                                    <p className="text-sm font-semibold">Feb 17, 2026</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                                    <Truck className="h-5 w-5 text-blue-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Next Delivery</p>
-                                    <p className="text-sm font-semibold">Feb 18–19</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                                    <Clock className="h-5 w-5 text-amber-600" />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground">Edit Cutoff</p>
-                                    <p className="text-sm font-semibold">Feb 15, 6pm</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            <Button size="sm" onClick={() => handleNavClick("subscription")}>
-                                <Edit3 className="mr-2 h-3.5 w-3.5" />
-                                Manage Subscription
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.buildBox)}>
-                                Edit Box
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                    { label: "Edit Next Box", description: "Customize your upcoming delivery", action: () => navigate(ROUTES.buildBox), icon: Package },
-                    // Temporarily disabled: referrals feature
-                    // { label: "Refer a Friend", description: "Earn ₦2,000 credit per referral", action: () => handleNavClick("referrals"), icon: Users },
-                    { label: "View Orders", description: "Track past and upcoming orders", action: () => handleNavClick("orders"), icon: History },
-                ].map((action) => (
-                    <Card
-                        key={action.label}
-                        className="admin-card cursor-pointer group"
-                        onClick={action.action}
-                    >
-                        <CardContent className="p-5">
-                            <action.icon className="h-8 w-8 text-primary mb-3 transition-transform group-hover:scale-110" />
-                            <h4 className="font-semibold text-foreground">{action.label}</h4>
-                            <p className="text-xs text-muted-foreground mt-1">{action.description}</p>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground mt-3 transition-transform group-hover:translate-x-1" />
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </div>
-    );
 
     // ─── SUBSCRIPTION SECTION ────────────────────────────────────
    
@@ -588,214 +225,6 @@ const Dashboard = () => {
         const s = status.toLowerCase().replace(/_/g, " ");
         return s.charAt(0).toUpperCase() + s.slice(1);
     };
-
-    const displayOrders = isUsingMockOrders
-        ? mockOrders.map((o) => ({ id: o.id, date: o.date, items: o.items, total: o.total, status: o.status }))
-        : orders.map((o) => ({
-            id: o.reference || o.id.slice(-8).toUpperCase(),
-            date: o.createdAt ? new Date(o.createdAt).toLocaleDateString("en-NG", { month: "short", day: "numeric", year: "numeric" }) : "—",
-            items: o.itemsCount,
-            total: o.totalAmount,
-            status: formatOrderStatus(o.status),
-        }));
-
-    // ─── ADDRESSES SECTION ───────────────────────────────────────
-    const renderAddresses = () => (
-        <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-display font-bold text-foreground">Delivery Addresses</h2>
-                    <p className="text-muted-foreground mt-1">Manage your saved delivery locations.</p>
-                </div>
-                <Button size="sm" onClick={() => setIsAddressFormOpen((prev) => !prev)}>
-                    <Plus className="mr-2 h-3.5 w-3.5" /> {isAddressFormOpen ? "Close" : "Add Address"}
-                </Button>
-            </div>
-
-            {isAddressFormOpen && (
-                <Card className="admin-card">
-                    <CardHeader>
-                        <CardTitle>{editingAddressId ? "Edit Address" : "Add Address"}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Label</Label>
-                                <Input
-                                    value={addressForm.label}
-                                    onChange={(event) => setAddressForm((prev) => ({ ...prev, label: event.target.value }))}
-                                    placeholder="Home"
-                                    className="h-11 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Address Type</Label>
-                                <div className="flex gap-2">
-                                    {addressTypeOptions.map((type) => (
-                                        <Button
-                                            key={type}
-                                            type="button"
-                                            variant={addressForm.addressType === type ? "default" : "outline"}
-                                            size="sm"
-                                            onClick={() => setAddressForm((prev) => ({ ...prev, addressType: type }))}
-                                        >
-                                            {type}
-                                        </Button>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="space-y-2 md:col-span-2">
-                                <Label>Street Address</Label>
-                                <Input
-                                    value={addressForm.streetAddress}
-                                    onChange={(event) => setAddressForm((prev) => ({ ...prev, streetAddress: event.target.value }))}
-                                    placeholder="123 Main St"
-                                    className="h-11 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Apartment / Suite</Label>
-                                <Input
-                                    value={addressForm.apartmentSuite}
-                                    onChange={(event) => setAddressForm((prev) => ({ ...prev, apartmentSuite: event.target.value }))}
-                                    placeholder="Apt 4B"
-                                    className="h-11 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>City</Label>
-                                <Input
-                                    value={addressForm.city}
-                                    onChange={(event) => setAddressForm((prev) => ({ ...prev, city: event.target.value }))}
-                                    placeholder="Lagos"
-                                    className="h-11 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>State</Label>
-                                <Input
-                                    value={addressForm.state}
-                                    onChange={(event) => setAddressForm((prev) => ({ ...prev, state: event.target.value }))}
-                                    placeholder="Lagos"
-                                    className="h-11 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Zip Code</Label>
-                                <Input
-                                    value={addressForm.zipCode}
-                                    onChange={(event) => setAddressForm((prev) => ({ ...prev, zipCode: event.target.value }))}
-                                    placeholder="100001"
-                                    className="h-11 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Country</Label>
-                                <Input
-                                    value={addressForm.country}
-                                    onChange={(event) => setAddressForm((prev) => ({ ...prev, country: event.target.value }))}
-                                    placeholder="Ghana"
-                                    className="h-11 rounded-xl"
-                                />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    id="address-default"
-                                    type="checkbox"
-                                    checked={addressForm.isDefault}
-                                    onChange={(event) =>
-                                        setAddressForm((prev) => ({ ...prev, isDefault: event.target.checked }))
-                                    }
-                                />
-                                <Label htmlFor="address-default">Set as default</Label>
-                            </div>
-                        </div>
-                        {addressError && <p className="text-sm text-destructive">{addressError}</p>}
-                        <div className="flex flex-wrap gap-2">
-                            <Button size="sm" onClick={handleSaveAddress} disabled={isSavingAddress}>
-                                {isSavingAddress ? "Saving..." : editingAddressId ? "Update Address" : "Save Address"}
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                    resetAddressForm();
-                                    setIsAddressFormOpen(false);
-                                }}
-                            >
-                                Cancel
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {isLoadingAddresses && <p className="text-sm text-muted-foreground">Loading addresses...</p>}
-
-            {addressError && !isAddressFormOpen && (
-                <p className="text-sm text-destructive">{addressError}</p>
-            )}
-
-            {!isLoadingAddresses && addresses.length === 0 && (
-                <Card className="admin-card">
-                    <CardContent className="p-5 text-sm text-muted-foreground">
-                        No addresses yet. Add one to get started.
-                    </CardContent>
-                </Card>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {addresses.map((address) => (
-                    <Card
-                        key={address.id}
-                        className={`admin-card relative ${address.isDefault ? "border-primary/30 bg-primary/[0.02]" : ""}`}
-                    >
-                        <CardContent className="p-5">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                    <MapPin className="h-4 w-4 text-primary" />
-                                    <span className="font-semibold">{address.label || "Address"}</span>
-                                </div>
-                                {address.isDefault && (
-                                    <Badge variant="secondary" className="text-xs">Default</Badge>
-                                )}
-                            </div>
-                            <p className="text-sm text-muted-foreground">{address.streetAddress}</p>
-                            {address.apartmentSuite && (
-                                <p className="text-sm text-muted-foreground">{address.apartmentSuite}</p>
-                            )}
-                            <p className="text-sm text-muted-foreground">
-                                {[address.city, address.state, address.zipCode].filter(Boolean).join(", ")}
-                            </p>
-                            {address.country && (
-                                <p className="text-sm text-muted-foreground">{address.country}</p>
-                            )}
-                            <div className="mt-4 flex flex-wrap gap-2">
-                                <Button variant="outline" size="sm" onClick={() => handleEditAddress(address)}>
-                                    <Edit3 className="mr-1.5 h-3 w-3" /> Edit
-                                </Button>
-                                {!address.isDefault && (
-                                    <Button variant="outline" size="sm" onClick={() => handleSetDefault(address.id)}>
-                                        Set Default
-                                    </Button>
-                                )}
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-destructive hover:text-destructive"
-                                    onClick={() => handleDeleteAddress(address.id)}
-                                >
-                                    <Trash2 className="mr-1.5 h-3 w-3" /> Remove
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </div>
-    );
-
-    // ─── SETTINGS SECTION ────────────────────────────────────────
     
 
     // ─── REFERRALS SECTION ───────────────────────────────────────
@@ -887,10 +316,10 @@ const Dashboard = () => {
 
     const renderContent = () => {
         switch (activeSection) {
-            case "overview": return renderOverview();
+            case "overview": return <Overview/>;
             case "subscription": return <Subscription/>
             case "orders": return <OrderHistory/>
-            case "addresses": return renderAddresses();
+            case "addresses": return <Addresses/>
             case "settings": return <Settings/>
             // Temporarily disabled: referrals feature
             // case "referrals": return renderReferrals();
