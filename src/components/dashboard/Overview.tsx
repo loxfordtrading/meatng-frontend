@@ -18,13 +18,22 @@ import { toast } from "react-toastify";
 import { format } from "date-fns";
 import { useAuthStore } from "@/store/AuthStore";
 import { LoadingData } from "../LoadingData";
+import { getFrequencyWeeksString } from "@/utils/conversion";
+import displayCurrency from "@/utils/displayCurrency";
+import { useNavigate } from "react-router-dom";
 
 type statType = {
-    active_plan_name: string,
-    active_plan_status: string,
-    total_orders: string,
+    active_plan_name: string
+    active_plan_status: string
+    frequency: number
+    total_orders: string
     next_delivery_date: Date
     member_since: Date
+    price: number
+    weight: string
+    weight_unit: string
+    next_billing_date: Date
+    next_cutoff_at: Date
 }
 
 const Overview = () => {
@@ -32,6 +41,7 @@ const Overview = () => {
     const userInfo = useAuthStore(state => state.userInfo)
     const [stat, setStat] = useState<statType | null>(null)
     const [loading, setLoading] = useState(true)
+    const navigate= useNavigate()
 
     useEffect(() => {
         getStats()
@@ -44,9 +54,15 @@ const Overview = () => {
             const formattedStat = {
                 active_plan_name: res.data?.data?.attributes?.summary?.active_plan?.plan_name,
                 active_plan_status: res.data?.data?.attributes?.summary?.active_plan?.status,
+                frequency: res.data?.data?.attributes?.summary?.active_plan?.frequency,
+                price: res.data?.data?.attributes?.summary?.active_plan?.price,
+                weight: res.data?.data?.attributes?.summary?.active_plan?.weight,
+                weight_unit: res.data?.data?.attributes?.summary?.active_plan?.weight_unit,
                 total_orders: res.data?.data?.attributes?.summary?.total_orders,
                 next_delivery_date: res.data?.data?.attributes?.summary?.next_delivery_date,
                 member_since: res.data?.data?.attributes?.summary?.member_since,
+                next_billing_date: res.data?.data?.attributes?.summary?.next_billing_date,
+                next_cutoff_at: res.data?.data?.attributes?.summary?.next_cutoff_at,
             }
 
             setStat(formattedStat);
@@ -91,67 +107,67 @@ const Overview = () => {
                     </div>
 
                     {/* Active Subscription Card */}
-                    {/* {plan && (
-                        <Card className="admin-card overflow-hidden border border-primary/20">
-                            <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6">
-                                <div className="flex items-center justify-between flex-wrap gap-4">
-                                    <div>
-                                        <Badge className="bg-primary/15 text-primary border-primary/20 mb-2">Active Subscription</Badge>
-                                        <h3 className="text-xl font-bold text-foreground">{plan.name} Plan</h3>
-                                        <p className="text-muted-foreground text-sm mt-1">
-                                            {subscription.currentPlan?.weightKg}kg • {state.frequency} delivery
-                                        </p>
+                    <Card className="admin-card overflow-hidden border border-primary/20">
+                        <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6">
+                            <div className="flex items-center justify-between flex-wrap gap-4">
+                                <div>
+                                    <Badge className="bg-primary/15 text-primary border-primary/20 mb-2">{stat?.active_plan_status == "active" ? "Active" : "Inactive"} Subscription</Badge>
+                                    <h3 className="text-xl font-bold text-foreground">{stat?.active_plan_name} Plan</h3>
+                                    <p className="text-muted-foreground text-sm mt-1">
+                                        {stat?.weight}{stat?.weight_unit} • {getFrequencyWeeksString(stat?.frequency)} delivery
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-3xl font-bold text-primary">
+                                        {displayCurrency(stat?.price, "NGN")}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">per cycle</p>
+                                </div>
+                            </div>
+                        </div>
+                        <CardContent className="p-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                                        <Calendar className="h-5 w-5 text-emerald-600" />
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-3xl font-bold text-primary">
-                                            {formatPrice(state.planPrice)}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">per cycle</p>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Next Billing</p>
+                                        <p className="text-sm font-semibold">{stat?.next_billing_date ? format(stat?.next_billing_date, "MMM dd, yyyy") : "Nil"}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                                        <Truck className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Next Delivery</p>
+                                        <p className="text-sm font-semibold">{stat?.next_delivery_date ? format(stat?.next_delivery_date, "MMM dd, yyyy") : "Nil"}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                                        <Clock className="h-5 w-5 text-amber-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Edit Cutoff</p>
+                                        <p className="text-sm font-semibold">{stat?.next_cutoff_at? format(stat?.next_cutoff_at, "MMM dd, yyyy HH:mm a") : "Nil"}</p>
                                     </div>
                                 </div>
                             </div>
-                            <CardContent className="p-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                                            <Calendar className="h-5 w-5 text-emerald-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Next Billing</p>
-                                            <p className="text-sm font-semibold">Feb 17, 2026</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                                            <Truck className="h-5 w-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Next Delivery</p>
-                                            <p className="text-sm font-semibold">Feb 18–19</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                                            <Clock className="h-5 w-5 text-amber-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-muted-foreground">Edit Cutoff</p>
-                                            <p className="text-sm font-semibold">Feb 15, 6pm</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                    <Button size="sm" onClick={() => handleNavClick("subscription")}>
-                                        <Edit3 className="mr-2 h-3.5 w-3.5" />
-                                        Manage Subscription
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.buildBox)}>
-                                        Edit Box
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )} */}
+                            <div className="mt-4 flex flex-wrap gap-2">
+                                <Button size="sm" 
+                                    // onClick={() => handleNavClick("subscription")}
+                                >
+                                    <Edit3 className="mr-2 h-3.5 w-3.5" />
+                                    Manage Subscription
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.buildBox)}>
+                                    Edit Box
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
 
                     {/* Quick Actions */}
                     {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
