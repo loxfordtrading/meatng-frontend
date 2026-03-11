@@ -144,12 +144,12 @@ const Auth = () => {
       toast.success(response.data.message);
 
       setUserInfo({
-        access: response.data?.data?.attributes?.data?.token?.accessToken,
-        refresh: response.data?.data?.attributes?.data?.token?.refreshToken,
-        first_name: response.data?.data?.attributes?.data?.user?.first_name,
-        last_name: response.data?.data?.attributes?.data?.user?.display_name,
-        userId: response.data?.data?.attributes?.data?.user?.id,
-        email: response.data?.data?.attributes?.data?.user?.email
+        access: response.data?.data?.attributes?.token?.accessToken,
+        refresh: response.data?.data?.attributes?.token?.refreshToken,
+        first_name: response.data?.data?.attributes?.user?.first_name,
+        last_name: response.data?.data?.attributes?.user?.last_name,
+        userId: response.data?.data?.attributes?.user?.id,
+        email: response.data?.data?.attributes?.user?.email
       });
 
       toast.success("Login Succcessful")

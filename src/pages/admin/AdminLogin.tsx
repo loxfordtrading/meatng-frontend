@@ -1,14 +1,30 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Lock, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAdmin } from "@/contexts/AdminContext";
+import z from "zod";
+import { toast } from "react-toastify";
+import { axiosClient } from "@/GlobalApi";
+import { useAuthStore } from "@/store/AuthStore";
+import { ROUTES } from "@/lib/routes";
+
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(2, "Invalid Password"),
+})
+
+type LoginFormValues = z.infer<typeof loginSchema>
 
 const AdminLogin = () => {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+
+    const setUserInfo = useAuthStore(state => state.setUserInfo)
+    const [form, setForm] = useState<LoginFormValues>({
+        email: '',
+        password: ''
+    })
     const [error, setError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const { isAuthenticated, login } = useAdmin();
@@ -18,18 +34,55 @@ const AdminLogin = () => {
     //     if (isAuthenticated) navigate("/admin", { replace: true });
     // }, [isAuthenticated, navigate]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError("");
-        setIsLoading(true);
-        const success = await login(email, password);
-        setIsLoading(false);
-        if (success) {
-            navigate("/admin");
-        } else {
-            setError("Invalid email or password.");
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault()
+        setError("")
+
+        const result = loginSchema.safeParse(form)
+
+        if (!result.success) {
+            const fieldErrors: any = {}
+            result.error.errors.forEach((err) => {
+                const field = err.path[0] as keyof LoginFormValues
+                fieldErrors[field] = err.message
+            })
+            setError(fieldErrors)
+            return
         }
-    };
+
+        setError("")
+
+        try {
+
+            setIsLoading(true);
+        
+            const response = await axiosClient.post("/auth/login", form)
+            toast.success(response.data.message);
+
+            setUserInfo({
+                access: response.data?.data?.attributes?.token?.accessToken,
+                refresh: response.data?.data?.attributes?.token?.refreshToken,
+                first_name: response.data?.data?.attributes?.user?.first_name,
+                last_name: response.data?.data?.attributes?.user?.last_name,
+                userId: response.data?.data?.attributes?.user?.id,
+                email: response.data?.data?.attributes?.user?.email
+            });
+
+            toast.success("Login Succcessful")
+
+            setForm({
+                email: '',
+                password: ''
+            })
+
+            navigate(ROUTES.admin);
+
+        } catch (error: any) {
+            setError(error.response?.data?.message)
+        } finally {
+            setIsLoading(false);
+        } 
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-secondary relative overflow-hidden">
@@ -61,8 +114,8 @@ const AdminLogin = () => {
                             <Input
                                 id="admin-email"
                                 type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                value={form.email} 
+                                onChange={(e: any) => setForm({ ...form, email: e.target.value})} 
                                 placeholder="admin@meatng.com"
                                 className="h-11 rounded-xl bg-secondary border-secondary-foreground/20 text-secondary-foreground placeholder:text-secondary-foreground/40 focus:border-primary"
                             />
@@ -72,8 +125,8 @@ const AdminLogin = () => {
                             <Input
                                 id="admin-password"
                                 type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                value={form.password} 
+                                onChange={(e: any) => setForm({ ...form, password: e.target.value})} 
                                 placeholder="••••••••"
                                 className="h-11 rounded-xl bg-secondary border-secondary-foreground/20 text-secondary-foreground placeholder:text-secondary-foreground/40 focus:border-primary"
                             />
@@ -85,7 +138,7 @@ const AdminLogin = () => {
                             </div>
                         )}
 
-                        <Button type="submit" className="w-full h-11 rounded-xl font-semibold" disabled={!email || !password || isLoading}>
+                        <Button type="submit" className="w-full h-11 rounded-xl font-semibold" disabled={!form.email || !form.password || isLoading}>
                             {isLoading ? (
                                 <span className="flex items-center gap-2">
                                     <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
@@ -100,13 +153,13 @@ const AdminLogin = () => {
                     </form>
 
                     {/* Demo hint */}
-                    <div className="mt-6 rounded-xl bg-secondary border border-secondary-foreground/10 p-4">
+                    {/* <div className="mt-6 rounded-xl bg-secondary border border-secondary-foreground/10 p-4">
                         <p className="text-xs text-secondary-foreground/60 font-medium mb-2">Demo Credentials:</p>
                         <div className="space-y-1 text-xs text-secondary-foreground/50">
                             <p><span className="text-secondary-foreground/80">Admin:</span> admin@meatng.com / admin123</p>
                             <p><span className="text-secondary-foreground/80">Manager:</span> manager@meatng.com / manager123</p>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
             </div>
         </div>
