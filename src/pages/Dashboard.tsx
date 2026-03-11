@@ -43,6 +43,7 @@ import OrderHistory from "@/components/dashboard/OrderHistory";
 import Settings from "@/components/dashboard/Settings";
 import Addresses from "@/components/dashboard/Addresses";
 import Overview from "@/components/dashboard/Overview";
+import { useAuthStore } from "@/store/AuthStore";
 
 type DashboardSection = "overview" | "subscription" | "orders" | "addresses" | "settings";
 
@@ -79,6 +80,8 @@ const statusColors: Record<string, string> = {
 };
 
 const Dashboard = () => {
+
+    const userInfo = useAuthStore(state => state.userInfo)
     const [activeSection, setActiveSection] = useState<DashboardSection>("overview");
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
@@ -351,11 +354,11 @@ const Dashboard = () => {
             <div className="p-4 border-b border-border/60">
                 <div className={`flex items-center ${collapsed ? "justify-center" : "gap-3"}`}>
                     <div className="h-10 w-10 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shadow-sm">
-                        {/* {initials} */}
+                        {userInfo?.first_name[0]}{userInfo?.last_name[0]}
                     </div>
                     <div className={`min-w-0 ${collapsed ? "hidden" : "block"}`}>
-                        {/* <p className="text-sm font-semibold text-foreground truncate">{user.name}</p> */}
-                        {/* <p className="text-xs text-muted-foreground truncate">{user.email}</p> */}
+                        <p className="text-sm font-semibold text-foreground truncate">{userInfo?.first_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{userInfo?.email}</p>
                     </div>
                 </div>
             </div>
