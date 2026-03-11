@@ -98,7 +98,7 @@ const Settings = () => {
     });
   };
 
-  const togglePassword = (field: "current" | "new" | "confirm") => {
+  const togglePassword = (field: keyof typeof showPassword) => {
     setShowPassword({
       ...showPassword,
       [field]: !showPassword[field],
@@ -320,7 +320,7 @@ const Settings = () => {
 
                         <button
                             type="button"
-                            onClick={() => togglePassword("current")}
+                            onClick={() => togglePassword("currentPassword")}
                             className="absolute right-3 top-[38px] text-muted-foreground"
                         >
                             {showPassword.currentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -340,7 +340,7 @@ const Settings = () => {
 
                         <button
                             type="button"
-                            onClick={() => togglePassword("new")}
+                            onClick={() => togglePassword("newPassword")}
                             className="absolute right-3 top-[38px] text-muted-foreground"
                         >
                             {showPassword.newPassword ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -360,7 +360,7 @@ const Settings = () => {
 
                         <button
                             type="button"
-                            onClick={() => togglePassword("confirm")}
+                            onClick={() => togglePassword("confirmPassword")}
                             className="absolute right-3 top-[38px] text-muted-foreground"
                         >
                             {showPassword.confirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
