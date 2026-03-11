@@ -22,6 +22,10 @@ import { getFrequencyWeeksString } from "@/utils/conversion";
 import displayCurrency from "@/utils/displayCurrency";
 import { useNavigate } from "react-router-dom";
 
+type OverviewProps = {
+  handleNavClick: (tab: string) => void;
+};
+
 type statType = {
     active_plan_name: string
     active_plan_status: string
@@ -36,7 +40,7 @@ type statType = {
     next_cutoff_at: Date
 }
 
-const Overview = () => {
+const Overview = ({ handleNavClick }: OverviewProps) => {
 
     const userInfo = useAuthStore(state => state.userInfo)
     const [stat, setStat] = useState<statType | null>(null)
@@ -91,8 +95,8 @@ const Overview = () => {
                         {[
                             { label: "Active Plan", value: stat?.active_plan_name || "None", icon: Package, tone: "emerald" },
                             { label: "Total Orders", value: stat?.total_orders, icon: History, tone: "blue" },
-                            { label: "Next Delivery", value: stat?.next_delivery_date ? format(stat?.next_delivery_date, "MMM dd") : "Nil", icon: Truck, tone: "amber" },
-                            { label: "Member Since", value: stat?.member_since ? format(stat?.member_since, "MMM yyyy") : "Nil", icon: Calendar, tone: "slate" },
+                            { label: "Next Delivery", value: stat?.next_delivery_date ? format(stat?.next_delivery_date, "MMM dd") : "None", icon: Truck, tone: "amber" },
+                            { label: "Member Since", value: stat?.member_since ? format(stat?.member_since, "MMM yyyy") : "None", icon: Calendar, tone: "slate" },
                         ].map((stat, index) => (
                             <Card key={stat.label} className="admin-card admin-animate-up" style={{ animationDelay: `${index * 70}ms` }}>
                                 <CardContent className="p-4">
@@ -112,7 +116,7 @@ const Overview = () => {
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div>
                                     <Badge className="bg-primary/15 text-primary border-primary/20 mb-2">{stat?.active_plan_status == "active" ? "Active" : "Inactive"} Subscription</Badge>
-                                    <h3 className="text-xl font-bold text-foreground">{stat?.active_plan_name} Plan</h3>
+                                    {stat?.active_plan_name ? <h3 className="text-xl font-bold text-foreground">{stat?.active_plan_name} Plan</h3> : <h3 className="text-xl font-bold text-foreground">No Plan</h3>}
                                     <p className="text-muted-foreground text-sm mt-1">
                                         {stat?.weight}{stat?.weight_unit} • {getFrequencyWeeksString(stat?.frequency)} delivery
                                     </p>
@@ -133,7 +137,7 @@ const Overview = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground">Next Billing</p>
-                                        <p className="text-sm font-semibold">{stat?.next_billing_date ? format(stat?.next_billing_date, "MMM dd, yyyy") : "Nil"}</p>
+                                        <p className="text-sm font-semibold">{stat?.next_billing_date ? format(stat?.next_billing_date, "MMM dd, yyyy") : "None"}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -142,7 +146,7 @@ const Overview = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground">Next Delivery</p>
-                                        <p className="text-sm font-semibold">{stat?.next_delivery_date ? format(stat?.next_delivery_date, "MMM dd, yyyy") : "Nil"}</p>
+                                        <p className="text-sm font-semibold">{stat?.next_delivery_date ? format(stat?.next_delivery_date, "MMM dd, yyyy") : "None"}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -151,13 +155,13 @@ const Overview = () => {
                                     </div>
                                     <div>
                                         <p className="text-xs text-muted-foreground">Edit Cutoff</p>
-                                        <p className="text-sm font-semibold">{stat?.next_cutoff_at? format(stat?.next_cutoff_at, "MMM dd, yyyy HH:mm a") : "Nil"}</p>
+                                        <p className="text-sm font-semibold">{stat?.next_cutoff_at? format(stat?.next_cutoff_at, "MMM dd, yyyy HH:mm a") : "None"}</p>
                                     </div>
                                 </div>
                             </div>
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <Button size="sm" 
-                                    // onClick={() => handleNavClick("subscription")}
+                                    onClick={() => handleNavClick("subscription")}
                                 >
                                     <Edit3 className="mr-2 h-3.5 w-3.5" />
                                     Manage Subscription
@@ -170,9 +174,9 @@ const Overview = () => {
                     </Card>
 
                     {/* Quick Actions */}
-                    {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {[
-                            { label: "Edit Next Box", description: "Customize your upcoming delivery", action: () => navigate(ROUTES.buildBox), icon: Package },
+                            // { label: "Edit Next Box", description: "Customize your upcoming delivery", action: () => navigate(ROUTES.buildBox), icon: Package },
                             // Temporarily disabled: referrals feature
                             // { label: "Refer a Friend", description: "Earn ₦2,000 credit per referral", action: () => handleNavClick("referrals"), icon: Users },
                             { label: "View Orders", description: "Track past and upcoming orders", action: () => handleNavClick("orders"), icon: History },
@@ -190,7 +194,7 @@ const Overview = () => {
                                 </CardContent>
                             </Card>
                         ))}
-                    </div> */}
+                    </div>
                 </div>
             )}
         </div>

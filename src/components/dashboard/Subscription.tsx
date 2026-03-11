@@ -29,6 +29,9 @@ const Subscription = () => {
     const userInfo = useAuthStore(state => state.userInfo)
     const [subscriptions, setSubscriptions] = useState<FormattedSubscriptionType[]>([]);
     const [loading, setLoading] = useState(true)
+    const [isCancelling, setIsCancelling] = useState(false)
+    const [isPausing, setIsPausing] = useState(false)
+    const [isResuming, setIsResuming] = useState(false)
 
     const currentSubscription = subscriptions[0] || null;
 
@@ -74,6 +77,45 @@ const Subscription = () => {
             setLoading(false);
         }
     };
+
+    const cancelSubscription = async (subscriptionId: string) => {
+        try {
+            setIsCancelling(true)
+            const res = await axiosClient.patch(`/subscriptions/${subscriptionId}/cancel`);
+            getSubscriptions()
+            toast.success("Subscription cancelled");
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setIsCancelling(false)
+        }
+    }
+
+    const pauseSubscription = async (subscriptionId: string) => {
+        try {
+            setIsPausing(true)
+            const res = await axiosClient.patch(`/subscriptions/${subscriptionId}/pause`);
+            getSubscriptions()
+            toast.success("Subscription paused");
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setIsPausing(false)
+        }
+    }
+
+     const resumeSubscription = async (subscriptionId: string) => {
+        try {
+            setIsResuming(true)
+            const res = await axiosClient.patch(`/subscriptions/${subscriptionId}/resume`);
+            getSubscriptions()
+            toast.success("Subscription resumed");
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setIsResuming(false)
+        }
+    }
 
     if (loading) {
         return (
@@ -122,21 +164,42 @@ const Subscription = () => {
 
                             <Separator />
 
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <Button variant="outline" size="sm" onClick={() => navigate(ROUTES.plans)}>
                                     <Edit3 className="mr-2 h-3.5 w-3.5" /> Change Plan
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    // onClick={() => setIsPaused(!isPaused)}
-                                >
-                                    {currentSubscription?.status === "paused" ? <Play className="mr-2 h-3.5 w-3.5" /> : <Pause className="mr-2 h-3.5 w-3.5" />}
-                                    {currentSubscription?.status === "paused"? "Resume" : "Pause"}
-                                </Button>
-                                <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-                                    Cancel Subscription
-                                </Button>
+
+                                 {currentSubscription?.status == "paused" || currentSubscription?.status == "active" ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={loading || isCancelling || isPausing || isCancelling} 
+                                        onClick={() => pauseSubscription(currentSubscription?.id)}
+                                    >
+                                        <Play className="mr-2 h-3.5 w-3.5" />
+                                        {isPausing? "Pausing..." : "Resume"}
+                                    </Button>
+                                ) : currentSubscription?.status == "resume" || currentSubscription?.status == "active" ? (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={loading || isCancelling || isPausing || isCancelling} 
+                                        onClick={() => resumeSubscription(currentSubscription?.id)}
+                                    >
+                                        <Pause className="mr-2 h-3.5 w-3.5" />
+                                        {isResuming ? "Resuming..." : "Pause"}
+                                    </Button>
+                                ) : ""}
+
+                                {currentSubscription?.status != "cancelled" ? (
+                                    <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" disabled={loading || isCancelling || isPausing || isCancelling} onClick={() => cancelSubscription(currentSubscription?.id)}>
+                                        {isCancelling ? "Cancelling..." : "Cancel Subscription"}
+                                    </Button>
+                                ) : currentSubscription?.status == "cancelled" ? (
+                                    <span className="text-destructive hover:text-destructive">
+                                        Subscription Cancelled
+                                    </span>
+                                ) : ""}
                             </div>
                         </CardContent>
                     </Card>

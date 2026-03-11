@@ -319,7 +319,7 @@ const Dashboard = () => {
 
     const renderContent = () => {
         switch (activeSection) {
-            case "overview": return <Overview/>;
+            case "overview": return <Overview handleNavClick={handleNavClick}/>;
             case "subscription": return <Subscription/>
             case "orders": return <OrderHistory/>
             case "addresses": return <Addresses/>
