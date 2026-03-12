@@ -215,7 +215,7 @@ const AdminProducts = () => {
         if (!confirm("Delete this product? This cannot be undone.")) return;
         try {
             setDeletingProductId(id);
-            const res = axiosClient.delete(`/products/${id}`)
+            const res = await axiosClient.delete(`/products/${id}`)
             toast.success("Product deleted successfully")
             getProducts()
         } catch (error) {
@@ -310,10 +310,10 @@ const AdminProducts = () => {
         try {
             setIsSavingCategory(true)
             if (editingCategory) {
-                const res = axiosClient.put(`/product-categories/${editingCategory.id}`, catForm)
+                const res = await axiosClient.put(`/product-categories/${editingCategory.id}`, catForm)
                 toast.success("Category edited successfully")
             } else {
-                const res = axiosClient.post(`/product-categories`, catForm)
+                const res = await axiosClient.post(`/product-categories`, catForm)
                 toast.success("Category created successfully")
             }
             getProducts()
@@ -333,7 +333,7 @@ const AdminProducts = () => {
         try {
             setGetCategory(true)
             setDeletingCategoryId(id);
-            const res = axiosClient.delete(`/product-categories/${id}`)
+            const res = await axiosClient.delete(`/product-categories/${id}`)
             toast.success("Category deleted successfully")
             getProducts()
         } catch (error) {

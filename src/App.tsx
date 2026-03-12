@@ -60,19 +60,6 @@ import AdminGuard from "./protect/AdminGuard";
 
 const queryClient = new QueryClient();
 
-// Route guard for admin pages
-// function AdminGuard({ children }: { children: React.ReactNode }) {
-  
-//   const userInfo = useAuthStore((state) => state.userInfo);
-//   const location = useLocation();
-  
-//   if (!userInfo?.access) {
-//     return <Navigate to={ROUTES.adminLogin} state={{ from: location }} replace />;
-//   }
-
-//   return <AdminLayout>{children}</AdminLayout>;
-// }
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
