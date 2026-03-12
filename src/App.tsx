@@ -77,15 +77,20 @@ const App = () => (
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <Routes>
                 {/* ─── Admin Routes (no Header/Footer) ─── */}
+                  
                 <Route path={ROUTES.adminLogin} element={<AdminLogin />} />
-                <Route path={ROUTES.admin} element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-                <Route path={ROUTES.adminOrders} element={<AdminGuard><AdminOrders /></AdminGuard>} />
-                <Route path={ROUTES.adminCustomers} element={<AdminGuard><AdminCustomers /></AdminGuard>} />
-                <Route path={ROUTES.adminProducts} element={<AdminGuard><AdminProducts /></AdminGuard>} />
-                <Route path={ROUTES.adminSubscriptions} element={<AdminGuard><AdminSubscriptions /></AdminGuard>} />
-                <Route path={ROUTES.adminDeliveries} element={<AdminGuard><AdminDeliveries /></AdminGuard>} />
-                <Route path={ROUTES.adminAnalytics} element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
-                <Route path={ROUTES.adminSettings} element={<AdminGuard><AdminSettings /></AdminGuard>} />
+                
+                <Route element={<UserGuard />}>
+                  <Route path={ROUTES.admin} element={<AdminDashboard />} />
+                  <Route path={ROUTES.adminOrders} element={<AdminOrders />} />
+                  <Route path={ROUTES.adminCustomers} element={<AdminCustomers />} />
+                  <Route path={ROUTES.adminProducts} element={<AdminProducts />} />
+                  <Route path={ROUTES.adminSubscriptions} element={<AdminSubscriptions />} />
+                  <Route path={ROUTES.adminDeliveries} element={<AdminDeliveries />} />
+                  <Route path={ROUTES.adminAnalytics} element={<AdminAnalytics />} />
+                  <Route path={ROUTES.adminSettings} element={<AdminSettings />} />
+                </Route>
+            
 
                 {/* ─── Customer Routes (with Header/Footer) ─── */}
                 <Route path="*" element={
