@@ -22,6 +22,7 @@ import {
   PaginationPrevious,
   PaginationLink,
 } from "@/components/ui/pagination";
+import { ProductType } from "@/types/admin";
 
 // const PRODUCT_IMAGES: Record<string, string> = {
 //   "Boneless Beef": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
@@ -81,7 +82,7 @@ const BuildBox = () => {
     prefilled_items: subInfo?.subscription?.attributes.prefilled_items
   };
   const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState<ProductType[]>([])
   const [error, setError] = useState(true);
   const [categories, setCategories] = useState([]);
   const [plan, setPlan] = useState(storePlan || null)
@@ -184,14 +185,26 @@ const BuildBox = () => {
 
       const res = await axiosClient.get(url);
 
-      const formattedProducts = res.data.data.map((item: any) => ({
+      const productInfo = res.data.data || []
+
+      const formattedProducts = productInfo.map((item: any) => ({
         id: item.id,
         name: item.attributes.name,
+        nameSlug: item.attributes.slug,
+        description: item.attributes.description,
+        status: item.attributes.status,
+        isActive: item.attributes.is_active,
+        image: item.attributes.image,
+        sku: item.attributes.sku,
+        isBestSelling: item.attributes.isBestSeller,
+        displayType: item.attributes.displayType,
         price: item.attributes.price,
         weight: item.attributes.mainValue,
         weight_unit: item.attributes.unit,
         formatted_weight: item.attributes.formattedWeight,
-        category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
+        categoryId: item.relationships?.categoryDetails?.data?.[0]?.id || "other",
+        category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.name || "other",
+        categorySlug: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
         stock: item.stockQuantity,
       }));
 
@@ -236,7 +249,9 @@ const BuildBox = () => {
       
       const res = await axiosClient.get("/product-categories/root");
 
-      const formattedCategories = res.data.data.map((item: any) => ({
+      const catInfo = res.data.data || []
+
+      const formattedCategories = catInfo.map((item: any) => ({
         id: item.id,
         name: item.attributes.name,
         slug: item.attributes.slug,

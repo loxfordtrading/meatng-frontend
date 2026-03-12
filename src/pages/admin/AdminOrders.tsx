@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Eye, ChevronDown, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,11 @@ import { mockAdminOrders, formatAdminPrice, type AdminOrder, type AdminOrderLine
 import { tokenStorage } from "@/lib/auth/tokenStorage";
 import { createOrder, getOrderById, listOrders, updateOrderStatus, type Order as ApiOrder } from "@/lib/api/admin";
 import { LoadingData } from "@/components/LoadingData";
+import { toast } from "react-toastify";
+import { axiosClient } from "@/GlobalApi";
+import { OrderStatus, OrderType, OrdersMetaType } from "@/types/admin";
+import displayCurrency from "@/utils/displayCurrency";
+import { format } from "date-fns";
 
 type StatusFilter = "all" | "Processing" | "In Transit" | "Delivered" | "Cancelled";
 
@@ -59,28 +64,43 @@ const mapApiOrder = (o: ApiOrder): AdminOrder => {
 
 const statusTabs: StatusFilter[] = ["all", "Processing", "In Transit", "Delivered", "Cancelled"];
 
+const mapStatus = (status: string): OrderStatus => {
+  switch (status) {
+    case "pending":
+      return "Processing";
+    case "paid":
+      return "Delivered";
+    case "failed":
+      return "Cancelled";
+    default:
+      return "Processing";
+  }
+};
+
 const AdminOrders = () => {
 
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
-
+    const [orders, setOrders] = useState<OrderType[]>([]);
+    const [meta, setMeta] = useState<OrdersMetaType | null>(null);
+    const [loading, setLoading] = useState(true)
     const token = tokenStorage.getAdminToken();
     const queryClient = useQueryClient();
 
-    const { data: apiOrders, isLoading, isError } = useQuery({
-        queryKey: ["admin-orders"],
-        queryFn: async () => {
-            try { return await listOrders(token); } catch { return null; }
-        },
-        staleTime: 30_000,
-    });
+    // const { data: apiOrders, isLoading, isError } = useQuery({
+    //     queryKey: ["admin-orders"],
+    //     queryFn: async () => {
+    //         try { return await listOrders(token); } catch { return null; }
+    //     },
+    //     staleTime: 30_000,
+    // });
 
-    const orders: AdminOrder[] = useMemo(() => {
-        if (apiOrders) return apiOrders.map(mapApiOrder);
-        return [];
-        // return mockAdminOrders;
-    }, [apiOrders]);
+    // const orders: AdminOrder[] = useMemo(() => {
+    //     if (apiOrders) return apiOrders.map(mapApiOrder);
+    //     return [];
+    //     // return mockAdminOrders;
+    // }, [apiOrders]);
 
     // const usingMock = !apiOrders;
 
@@ -90,19 +110,19 @@ const AdminOrders = () => {
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
     });
 
-    const createOrderMutation = useMutation({
-        mutationFn: () =>
-            createOrder(
-                {
-                    status: "Processing",
-                    total: 0,
-                    currency: "NGN",
-                    customerId: apiOrders?.[0]?.customerId,
-                },
-                token,
-            ),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
-    });
+    // const createOrderMutation = useMutation({
+    //     mutationFn: () =>
+    //         createOrder(
+    //             {
+    //                 status: "Processing",
+    //                 total: 0,
+    //                 currency: "NGN",
+    //                 customerId: apiOrders?.[0]?.customerId,
+    //             },
+    //             token,
+    //         ),
+    //     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
+    // });
 
     const updateStatus = (orderId: string, newStatus: AdminOrder["status"]) => {
         // if (!usingMock) statusMutation.mutate({ id: orderId, status: newStatus });
@@ -120,26 +140,62 @@ const AdminOrders = () => {
     };
 
     const filteredOrders = orders.filter((o) => {
-        const matchesSearch =
-            o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-            o.id.toLowerCase().includes(search.toLowerCase());
-        const matchesStatus = statusFilter === "all" || o.status === statusFilter;
-        return matchesSearch && matchesStatus;
+        // const matchesSearch =
+        //     o.customerName.toLowerCase().includes(search.toLowerCase()) ||
+        //     o.id.toLowerCase().includes(search.toLowerCase());
+        // const matchesStatus = statusFilter === "all" || o.status === statusFilter;
+        // return matchesSearch && matchesStatus;
     });
 
-    if (isLoading) {
+    useEffect(() => {
+        getOrders()
+    }, [])
+
+    const getOrders = async () => {
+        try {
+            const res = await axiosClient.get(`/orders`);
+
+            const orders = res.data.data || [];
+
+            // flatten orders
+            // const flattenedOrders = orders.map((order: any) => ({
+            //     id: order.id,
+            //     ...order.attributes,
+            //     user: order.relationships?.userDetails?.data?.attributes || null,
+            //     plan: order.relationships?.planDetails?.data?.attributes || null,
+            // }));
+
+            const flattenedOrders = orders.map((order: any) => ({
+                id: order.id,
+                ...order.attributes,
+                status: mapStatus(order.attributes.status),
+                user: order.relationships?.userDetails?.data?.attributes || null,
+                plan: order.relationships?.planDetails?.data?.attributes || null,
+            }));
+
+            setOrders(flattenedOrders);
+            setMeta(res.data.meta);  
+
+        } catch (err: any) {
+            toast.error(err.response?.data?.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
         return (
             <LoadingData/>
         );
     }
 
-    if (isError) {
-        return (
-            <div className="flex justify-center py-24 text-muted-foreground">
-            Failed to load orders
-            </div>
-        );
-    }
+    // if (isError) {
+    //     return (
+    //         <div className="flex justify-center py-24 text-muted-foreground">
+    //         Failed to load orders
+    //         </div>
+    //     );
+    // }
 
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
@@ -158,8 +214,11 @@ const AdminOrders = () => {
                 )} */}
                 {orders?.length > 0 && (
                     <div className="mt-3">
-                        <Button size="sm" variant="outline" onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending}>
-                            {createOrderMutation.isPending ? "Creating..." : "Create Test Order"}
+                        <Button size="sm" variant="outline" 
+                            // onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending}
+                        >
+                            Create Test Order
+                            {/* {createOrderMutation.isPending ? "Creating..." : "Create Test Order"} */}
                         </Button>
                     </div>
                 )}
@@ -206,33 +265,33 @@ const AdminOrders = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredOrders.map((order) => (
-                                    <tr key={order.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                                        <td className="px-4 py-3 font-mono font-medium">{order.id}</td>
+                                {orders.map((order) => (
+                                    <tr key={order?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                        <td className="px-4 py-3 font-mono font-medium">{order?.id}</td>
                                         <td className="px-4 py-3">
-                                            <p className="font-medium">{order.customerName}</p>
-                                            <p className="text-xs text-muted-foreground">{order.customerEmail}</p>
+                                            <p className="font-medium">{order?.user?.first_name} {order?.user?.last_name}</p>
+                                            <p className="text-xs text-muted-foreground">{order?.user?.email}</p>
                                         </td>
-                                        <td className="px-4 py-3 text-muted-foreground">{order.date}</td>
-                                        <td className="px-4 py-3"><Badge variant="secondary">{order.plan}</Badge></td>
-                                        <td className="px-4 py-3 font-semibold">{formatAdminPrice(order.total)}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{order?.createdAt ? format(order?.createdAt, "MMM dd, yyyy") : "None"}</td>
+                                        <td className="px-4 py-3"><Badge variant="secondary">{order?.plan?.name}</Badge></td>
+                                        <td className="px-4 py-3 font-semibold">{displayCurrency(order?.total_amount, "NGN")}</td>
                                         <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusColors[order.status]}`}>
-                                                {order.status}
+                                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusColors[order?.status]}`}>
+                                                {order?.status}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex gap-1">
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg border border-border/70 p-0" onClick={() => void handleViewOrder(order)}>
+                                                {/* <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg border border-border/70 p-0" onClick={() => void handleViewOrder(order)}>
                                                     <Eye className="h-3.5 w-3.5" />
-                                                </Button>
-                                                {order.status !== "Delivered" && order.status !== "Cancelled" && (
+                                                </Button> */}
+                                                {order?.status !== "Delivered" && order?.status !== "Cancelled" && (
                                                     <div className="relative group">
                                                         <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg border border-border/70 p-0">
                                                             <ChevronDown className="h-3.5 w-3.5" />
                                                         </Button>
                                                         <div className="absolute right-0 top-full z-10 mt-1 w-36 rounded-lg border border-border bg-background shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                                                            {order.status === "Processing" && (
+                                                            {order?.status === "Processing" && (
                                                                 <button onClick={() => updateStatus(order.id, "In Transit")} className="block w-full px-3 py-2 text-left text-xs hover:bg-muted">
                                                                     → In Transit
                                                                 </button>
@@ -254,7 +313,7 @@ const AdminOrders = () => {
                                 ))}
                             </tbody>
                         </table>
-                        {filteredOrders.length === 0 && (
+                        {orders.length <= 0 && (
                             <div className="flex items-center justify-center py-12 text-muted-foreground">No orders found.</div>
                         )}
                     </div>
@@ -268,7 +327,7 @@ const AdminOrders = () => {
                     <Card className="admin-card relative z-10 max-w-lg w-full max-h-[80vh] overflow-y-auto animate-fade-in">
                         <CardHeader>
                             <div className="flex items-center justify-between">
-                                <CardTitle>Order {selectedOrder.id}</CardTitle>
+                                <CardTitle>Order {selectedOrder?.id}</CardTitle>
                                 <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(null)}>✕</Button>
                             </div>
                         </CardHeader>

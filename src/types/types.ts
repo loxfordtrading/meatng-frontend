@@ -84,3 +84,58 @@ export type AddressType = {
     self: string;
   };
 };
+
+export interface OrderItem {
+  product_id: string;
+  name: string;
+  unit_price: number;
+  quantity: number;
+  item_type: "base" | "addon";
+  is_prefilled: boolean;
+}
+
+export interface UserDetails {
+  email: string;
+  display_name: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface PlanDetails {
+  name: string;
+  max_items: number;
+  total_weight: number | null;
+  prefilled_items_total_weight: number;
+  remaining_weight: number | null;
+}
+
+export interface OrderAttributes {
+  user_id: string;
+  plan_id: string;
+  items: OrderItem[];
+  total_amount: number;
+  status: "pending" | "paid" | "failed";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderRelationships {
+  userDetails: {
+    data: {
+      id: string;
+      attributes: UserDetails;
+    };
+  };
+  planDetails: {
+    data: {
+      id: string;
+      attributes: PlanDetails;
+    };
+  };
+}
+
+export interface OrderType {
+  id: string;
+  attributes: OrderAttributes;
+  relationships: OrderRelationships;
+}

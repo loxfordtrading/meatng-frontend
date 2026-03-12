@@ -56,16 +56,15 @@ const AdminLogin = () => {
 
             setIsLoading(true);
         
-            const response = await axiosClient.post("/auth/login", form)
-            toast.success(response.data.message);
+            const response = await axiosClient.post("/admin/login", form)
 
             setUserInfo({
                 access: response.data?.data?.attributes?.token?.accessToken,
                 refresh: response.data?.data?.attributes?.token?.refreshToken,
-                first_name: response.data?.data?.attributes?.user?.first_name,
-                last_name: response.data?.data?.attributes?.user?.last_name,
-                userId: response.data?.data?.attributes?.user?.id,
-                email: response.data?.data?.attributes?.user?.email
+                first_name: response.data?.data?.relationships?.user?.data?.attributes?.first_name,
+                last_name: response.data?.data?.relationships?.user?.data?.attributes?.last_name,
+                userId: response.data?.data?.relationships?.user?.data?.id,
+                email: response.data?.data?.relationships?.user?.data?.attributes?.email
             });
 
             toast.success("Login Succcessful")

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Plus, Edit3, Trash2, Grid3X3, List, Package, Loader2, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,11 +27,29 @@ import {
     type Product as ApiProduct,
     type ProductCategory as ApiCategory,
 } from "@/lib/api/admin";
+import { axiosClient } from "@/GlobalApi";
+import { toast } from "react-toastify";
+import { useSearchParams } from "react-router-dom";
+import { paginationType, ProductType } from "@/types/admin";
+import displayCurrency from "@/utils/displayCurrency";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import AddProduct from "@/components/admin/AddProduct";
+import EditProduct from "@/components/admin/EditProduct";
 
 interface UiProduct {
     id: string;
     name: string;
     image: string;
+    slug: string;
+    mainValue: number;
+    unit: string;
     packSize: string;
     category: string;
     categoryId?: string;
@@ -65,14 +83,16 @@ const mapApiToUi = (p: ApiProduct, cats: UiCategory[]): UiProduct => {
         isActive: p.isActive ?? true,
         sku: p.sku,
         stock: p.stock,
+        slug: "dd",
+        mainValue: 60,
+        unit: "kg"
     };
 };
 
 const AdminProducts = () => {
     const [search, setSearch] = useState("");
-    const [categoryFilter, setCategoryFilter] = useState("all");
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-    const [editingProduct, setEditingProduct] = useState<UiProduct | null>(null);
+    const [editingProduct, setEditingProduct] = useState<ProductType| null>(null);
     const [editForm, setEditForm] = useState<Partial<UiProduct>>({});
     const [creatingProduct, setCreatingProduct] = useState(false);
     const [createForm, setCreateForm] = useState<Partial<UiProduct>>({});
@@ -81,66 +101,25 @@ const AdminProducts = () => {
     const [creatingCategory, setCreatingCategory] = useState(false);
     const [catForm, setCatForm] = useState<{ name: string; slug: string; description: string }>({ name: "", slug: "", description: "" });
 
+    const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
+    const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+    const [disablingId, setDisablingId] = useState<string | null>(null);
+    const [categories, setCategories] = useState([]);
+    const [getCategory, setGetCategory] = useState(true)
+    const [isSavingCategory, setIsSavingCategory] = useState(false)
+    const [loadingProducts, setLoadingProducts] = useState(true)
+    const [products, setProducts] = useState<ProductType[]>([])
+    const [meta, setMeta] = useState<paginationType | null>(null);
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+    const [addingProduct, setAddingProduct] = useState(false);
+
+    const [searchParams, setSearchParams] = useSearchParams();
+    const currentPage = Number(searchParams.get("page")) || 1;
+    const activeCategory = searchParams.get("slug") || "all";
+
     const token = tokenStorage.getAdminToken();
     const queryClient = useQueryClient();
 
-    const { data: apiCategories } = useQuery({
-        queryKey: ["admin-product-categories"],
-        queryFn: async () => {
-            try { return await listProductCategories(token); } catch { return null; }
-        },
-        staleTime: 300_000,
-    });
-    const { data: rootCategories } = useQuery({
-        queryKey: ["admin-root-product-categories"],
-        queryFn: async () => {
-            try { return await getRootProductCategories(token); } catch { return null; }
-        },
-        staleTime: 300_000,
-    });
-
-    const categories: UiCategory[] = useMemo(() => {
-        if (apiCategories) return apiCategories.map((c) => ({ id: c.id, name: c.name ?? c.id }));
-        return []
-        // return mockLocalCategories.map((c) => ({ id: c.id, name: c.name }));
-    }, [apiCategories]);
-
-    const { data: apiProducts, isLoading } = useQuery({
-        queryKey: ["admin-products"],
-        queryFn: async () => {
-            try { return await listProducts(token); } catch { return null; }
-        },
-        staleTime: 60_000,
-    });
-
-    const products: UiProduct[] = useMemo(() => {
-        if (apiProducts) return apiProducts.map((p) => mapApiToUi(p, categories));
-        return [];
-        // return mockProducts.map((p) => ({
-        //     id: p.id, name: p.name, image: p.image, packSize: p.packSize,
-        //     category: p.category, addOnPrice: p.addOnPrice, isPremiumDrop: p.isPremiumDrop,
-        //     description: p.description, isActive: true,
-        // }));
-    }, [apiProducts, categories]);
-
-    // const usingMock = !apiProducts;
-
-    const toggleMutation = useMutation({
-        mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-            updateProduct(id, { isActive }, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-        },
-    });
-
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => deleteProduct(id, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-        },
-    });
 
     const saveMutation = useMutation({
         mutationFn: async ({ id, form, original }: { id: string; form: Partial<UiProduct>; original: UiProduct }) => {
@@ -177,58 +156,27 @@ const AdminProducts = () => {
         },
     });
 
-    const createMutation = useMutation({
-        mutationFn: (form: Partial<UiProduct>) =>
-            createProduct({
-                name: form.name,
-                description: form.description,
-                price: form.addOnPrice,
-                stock: form.stock,
-                sku: form.sku,
-                isActive: true,
-                images: form.image ? [form.image] : undefined,
-                categoryIds: form.categoryId ? [form.categoryId] : undefined,
-            }, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-            setCreatingProduct(false);
-            setCreateForm({});
-        },
-    });
+    // const createMutation = useMutation({
+    //     mutationFn: (form: Partial<UiProduct>) =>
+    //         createProduct({
+    //             name: form.name,
+    //             description: form.description,
+    //             price: form.addOnPrice,
+    //             stock: form.stock,
+    //             sku: form.sku,
+    //             isActive: true,
+    //             images: form.image ? [form.image] : undefined,
+    //             categoryIds: form.categoryId ? [form.categoryId] : undefined,
+    //         }, token),
+    //     onSuccess: () => {
+    //         queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+    //         queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
+    //         setCreatingProduct(false);
+    //         setCreateForm({});
+    //     },
+    // });
 
-    const createCatMutation = useMutation({
-        mutationFn: (form: { name: string; slug: string; description: string }) =>
-            createProductCategory({ name: form.name, slug: form.slug, description: form.description, isActive: true }, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-product-categories"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-categories"] });
-            setCreatingCategory(false);
-            setCatForm({ name: "", slug: "", description: "" });
-        },
-    });
-
-    const updateCatMutation = useMutation({
-        mutationFn: ({ id, form }: { id: string; form: { name: string; slug: string; description: string } }) =>
-            updateProductCategory(id, { name: form.name, slug: form.slug, description: form.description }, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-product-categories"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-categories"] });
-            setEditingCategory(null);
-        },
-    });
-
-    const deleteCatMutation = useMutation({
-        mutationFn: (id: string) => deleteProductCategory(id, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-product-categories"] });
-            queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-categories"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-        },
-    });
-
-    const openEdit = async (product: UiProduct) => {
+    const openEdit = async (product: ProductType) => {
         setEditingProduct(product);
         setEditForm({ ...product });
         // if (usingMock) return;
@@ -240,34 +188,93 @@ const AdminProducts = () => {
         }
     };
 
-    const toggleStock = (product: UiProduct) => {
-        // if (!usingMock) 
-        toggleMutation.mutate({ id: product.id, isActive: !product.isActive });
+    const handleActive = async (id: string) => {
+        try {
+            setDisablingId(id);
+
+            const product = products.find((p) => p.id === id);
+            if (!product) return;
+
+            if (product.isActive) {
+                await axiosClient.post(`/products/${id}/deactivate`);
+                toast.success("Product deactivated")
+            } else {
+                await axiosClient.post(`/products/${id}/activate`);
+                toast.success("Product activated")
+            }
+
+            getProducts()
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setDisablingId(null);
+        }
     };
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (!confirm("Delete this product? This cannot be undone.")) return;
-        // if (!usingMock) 
-        deleteMutation.mutate(id);
+        try {
+            setDeletingProductId(id);
+            const res = axiosClient.delete(`/products/${id}`)
+            toast.success("Product deleted successfully")
+            getProducts()
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setDeletingProductId(null);
+        }
     };
 
-    const handleSave = () => {
-        if (!editingProduct) return;
-        // if (!usingMock) {
-            saveMutation.mutate({ id: editingProduct.id, form: editForm, original: editingProduct });
-        // } else {
-        //     setEditingProduct(null);
-        // }
-    };
-
-    const handleCreate = () => {
-        if (!createForm.name) return;
-        createMutation.mutate(createForm);
-    };
+    // const handleSave = () => {
+    //     if (!editingProduct) return;
+    //     // if (!usingMock) {
+    //         saveMutation.mutate({ id: editingProduct.id, form: editForm, original: editingProduct });
+    //     // } else {
+    //     //     setEditingProduct(null);
+    //     // }
+    // };
+    
 
     const openCreate = () => {
         setCreatingProduct(true);
         setCreateForm({ isActive: true });
+    };
+
+    const handleCreate = async () => {
+        if (!createForm.name || !createForm.categoryId) {
+            toast.error("Name and Category are required");
+            return;
+        }
+
+        try {
+            setAddingProduct(false)
+
+            const payload = {
+                name: createForm.name,
+                slug: createForm.slug,
+                // sku: "MS-RB-001",
+                price: createForm.addOnPrice,
+                isBestSeller: false,
+                displayType: "total_weight",
+                mainValue: createForm.packSize,
+                secondaryValue: 5.3,
+                tertiaryValue: 40,
+                unit: createForm.unit,
+                isApproximate: false,
+                stockQuantity: createForm.stock,
+                description: createForm.description,
+                categories: [createForm.categoryId],
+                temp_id: "507f1f77bcf86cd799439011"
+            };
+
+            const response = await axiosClient.post("/products",payload);
+
+            toast.error("Product created successfully");
+        } catch (error: any) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setAddingProduct(false)
+        }
     };
 
     const openCatCreate = () => {
@@ -275,51 +282,177 @@ const AdminProducts = () => {
         setCatForm({ name: "", slug: "", description: "" });
     };
 
+    useEffect(() => {
+        if (createForm.name) {
+            setCreateForm(f => ({ ...f, slug: autoSlug(f.name) }));
+        }
+    }, [createForm.name]);
+
     const openCatEdit = async (cat: ApiCategory) => {
         setEditingCategory(cat);
-        setCatForm({ name: cat.name ?? "", slug: cat.slug ?? "", description: cat.description ?? "" });
-        try {
-            const detailed = await getProductCategoryById(cat.id, token);
-            setEditingCategory(detailed);
-            setCatForm({
-                name: detailed.name ?? "",
-                slug: detailed.slug ?? "",
-                description: detailed.description ?? "",
-            });
-        } catch {
-            // Keep list payload if detail fetch fails.
-        }
+        setCatForm({ name: cat.name || "", slug: cat.slug || "", description: cat.description || "" });
+        // try {
+        //     const detailed = await getProductCategoryById(cat.id, token);
+        //     setEditingCategory(detailed);
+        //     setCatForm({
+        //         name: detailed.name ?? "",
+        //         slug: detailed.slug ?? "",
+        //         description: detailed.description ?? "",
+        //     });
+        // } catch {
+        //     // Keep list payload if detail fetch fails.
+        // }
     };
 
-    const handleCatSave = () => {
+    const handleCatSave = async () => {
         if (!catForm.name) return;
-        if (editingCategory) {
-            updateCatMutation.mutate({ id: editingCategory.id, form: catForm });
-        } else {
-            createCatMutation.mutate(catForm);
+        setGetCategory(true)
+        try {
+            setIsSavingCategory(true)
+            if (editingCategory) {
+                const res = axiosClient.put(`/product-categories/${editingCategory.id}`, catForm)
+                toast.success("Category edited successfully")
+            } else {
+                const res = axiosClient.post(`/product-categories`, catForm)
+                toast.success("Category created successfully")
+            }
+            getProducts()
+            setEditingCategory(null);
+            setCreatingCategory(false)
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setIsSavingCategory(false)
+            setGetCategory(false)
+
         }
     };
 
-    const handleCatDelete = (id: string) => {
+    const handleCatDelete = async (id: string) => {
         if (!confirm("Delete this category? Products in it will lose their category.")) return;
-        deleteCatMutation.mutate(id);
+        try {
+            setGetCategory(true)
+            setDeletingCategoryId(id);
+            const res = axiosClient.delete(`/product-categories/${id}`)
+            toast.success("Category deleted successfully")
+            getProducts()
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setDeletingCategoryId(null);
+            setGetCategory(false)
+        }
     };
 
-    const autoSlug = (name: string) => name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    const autoSlug = (name: string) =>
+    name
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "") 
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-");
 
-    const filtered = products.filter((p) => {
-        const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-        const matchCategory = categoryFilter === "all" || p.category === categoryFilter || p.categoryId === categoryFilter;
-        return matchSearch && matchCategory;
-    });
+    const changePage = (page: number) => {
+        setSearchParams({
+            page: page.toString(),
+            slug: activeCategory,
+        });
+    };
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center py-24 admin-page-bg rounded-3xl">
-                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-            </div>
-        );
-    }
+    useEffect(() => {
+        setSearchParams({
+            page: "1",
+            slug: activeCategory,
+        });
+    }, [debouncedSearch]);
+
+    const changeCategory = (category: string) => {
+        if (category === "all") {
+            // reset to fetch all products
+            setSearchParams({ page: "1" });
+        } else {
+            setSearchParams({ page: "1", slug: category });
+        }
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    useEffect(() => {
+        getProducts();
+    }, [currentPage, activeCategory, debouncedSearch]);
+
+      const getProducts = async () => {
+        try {
+            setLoadingProducts(true);
+        
+            let url = `/products?page=${currentPage}&limit=28`;
+        
+            if (activeCategory && activeCategory !== "all") {
+                url += `&slug=${activeCategory}`;
+            }
+            
+            if (debouncedSearch) {
+                url += `&search=${debouncedSearch}`;
+            }
+
+            const res = await axiosClient.get(url);
+
+            const productInfo = res.data.data || []
+    
+            const formattedProducts = productInfo.map((item: any) => ({
+                id: item.id,
+                name: item.attributes.name,
+                nameSlug: item.attributes.slug,
+                description: item.attributes.description,
+                status: item.attributes.status,
+                isActive: item.attributes.is_active,
+                image: item.attributes.image,
+                sku: item.attributes.sku,
+                isBestSelling: item.attributes.isBestSeller,
+                displayType: item.attributes.displayType,
+                price: item.attributes.price,
+                weight: item.attributes.mainValue,
+                weight_unit: item.attributes.unit,
+                formatted_weight: item.attributes.formattedWeight,
+                categoryId: item.relationships?.categoryDetails?.data?.[0]?.id || "other",
+                category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.name || "other",
+                categorySlug: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
+                stock: item.attributes.stockQuantity,
+            }));
+    
+            setProducts(formattedProducts);
+            setMeta(res.data.meta);  
+
+            if(getCategory){
+                const res = await axiosClient.get("/product-categories/root");
+
+                const catInfo = res.data.data || []
+
+                const formattedCategories = catInfo.map((item: any) => ({
+                    id: item.id,
+                    name: item.attributes.name,
+                    slug: item.attributes.slug,
+                    description: item.attributes.description,
+                    status: item.attributes.status,
+                    isActive: item.attributes.is_active,
+                }));
+
+                setCategories(formattedCategories);
+                setGetCategory(false)
+            }
+
+        } catch (err) {
+          toast.error(err.response?.data?.message);
+        } finally {
+          setLoadingProducts(false);
+        }
+    };
 
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
@@ -327,17 +460,11 @@ const AdminProducts = () => {
                 <div>
                     <h1 className="text-2xl font-display font-bold text-foreground">Product Catalog</h1>
                     <p className="text-muted-foreground text-sm mt-1">
-                        {products.length} products across {categories.length} categories
-                        {
-                            // !usingMock && 
-                        rootCategories ? ` (${rootCategories.length} root)` : ""}.
-                        {/* {usingMock && <span className="ml-1 text-xs text-amber-600">(demo data)</span>} */}
+                        {products?.length} products across {categories?.length} categories
                     </p>
                 </div>
                 {activeTab === "products" ? (
-                    <Button size="sm" onClick={openCreate}>
-                        <Plus className="mr-2 h-3.5 w-3.5" /> Add Product
-                    </Button>
+                    <AddProduct categories={categories} getProducts={getProducts}/>
                 ) : (
                     <Button size="sm" onClick={openCatCreate}>
                         <Plus className="mr-2 h-3.5 w-3.5" /> Add Category
@@ -361,481 +488,334 @@ const AdminProducts = () => {
                 </button>
             </div>
 
-            {activeTab === "products" && <>
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-9 h-10 rounded-xl" />
+            {activeTab === "products" && (
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-9 h-10 rounded-xl" />
+                    </div>
+                    <select
+                        value={activeCategory}
+                        onChange={(e) => changeCategory(e.target.value)}
+                        className="h-10 rounded-xl border border-input bg-background px-3 text-sm font-medium"
+                    >
+                        <option value="all">All Categories</option>
+                        {categories.map((c) => (
+                            <option key={c?.id} value={c?.slug}>{c?.name}</option>
+                        ))}
+                    </select>
+                    <div className="flex rounded-lg border border-input overflow-hidden">
+                        <button onClick={() => setViewMode("grid")} className={`px-3 py-2 ${viewMode === "grid" ? "bg-primary text-white" : "hover:bg-muted"}`}>
+                            <Grid3X3 className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => setViewMode("list")} className={`px-3 py-2 ${viewMode === "list" ? "bg-primary text-white" : "hover:bg-muted"}`}>
+                            <List className="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
-                <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="h-10 rounded-xl border border-input bg-background px-3 text-sm font-medium"
-                >
-                    <option value="all">All Categories</option>
-                    {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
-                <div className="flex rounded-lg border border-input overflow-hidden">
-                    <button onClick={() => setViewMode("grid")} className={`px-3 py-2 ${viewMode === "grid" ? "bg-primary text-white" : "hover:bg-muted"}`}>
-                        <Grid3X3 className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => setViewMode("list")} className={`px-3 py-2 ${viewMode === "list" ? "bg-primary text-white" : "hover:bg-muted"}`}>
-                        <List className="h-4 w-4" />
-                    </button>
-                </div>
-            </div>
+            )}
 
-            {/* Grid View */}
-            {viewMode === "grid" ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filtered.map((product) => (
-                        <Card key={product.id} className="admin-card overflow-hidden group transition-all">
-                            <div className="aspect-[4/3] relative overflow-hidden bg-muted">
-                                <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                {product.isPremiumDrop && (
-                                    <Badge className="absolute top-2 left-2 bg-amber-500 text-white border-0">Premium</Badge>
-                                )}
-                                {!product.isActive && (
-                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                        <span className="text-white font-bold">Out of Stock</span>
-                                    </div>
-                                )}
+            {loadingProducts ? (
+                <div className="flex items-center justify-center py-24 admin-page-bg rounded-3xl">
+                    <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+                </div>
+            ) : (
+                <>
+                    {/* UI products and categories */}
+                    {activeTab === "products" && <>
+
+                        {/* Grid View */}
+                        {viewMode === "grid" ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                {products?.map((product) => (
+                                    <Card key={product?.id} className="admin-card overflow-hidden group transition-all">
+                                        <div className="aspect-[4/3] relative overflow-hidden bg-muted">
+                                            <img src={product?.image} alt={product?.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                            {product?.isBestSelling && (
+                                                <Badge className="absolute top-2 left-2 bg-amber-500 text-white border-0">Best selling</Badge>
+                                            )}
+                                            {product?.stock <= 0 && (
+                                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                                    <span className="text-white font-bold">Out of Stock</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <CardContent className="p-4">
+                                            <p className="font-semibold text-sm truncate">{product?.name}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5">{product?.formatted_weight} • {product?.category}</p>
+                                            <p className="text-sm font-bold text-primary mt-2">{displayCurrency(product?.price, "NGN")}</p>
+                                            <Badge variant={product.isActive ? "default" : "destructive"}>
+                                                {product?.isActive ? "Active" : "Inactive"}
+                                            </Badge>
+                                            <div className="flex gap-1.5 mt-3">
+                                                <EditProduct categories={categories} product={product} type="grid" getProducts={getProducts}/>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="text-xs"
+                                                    onClick={() => handleActive(product?.id)}
+                                                    disabled={disablingId === product?.id}
+                                                >
+                                                    {disablingId === product?.id
+                                                        ? product.isActive
+                                                        ? "Disabling..."
+                                                        : "Enabling..."
+                                                        : product.isActive
+                                                        ? "Disable"
+                                                        : "Enable"}
+                                                </Button>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
                             </div>
-                            <CardContent className="p-4">
-                                <p className="font-semibold text-sm truncate">{product.name}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{product.packSize} • {product.category}</p>
-                                <p className="text-sm font-bold text-primary mt-2">{formatPrice(product.addOnPrice)}</p>
-                                <div className="flex gap-1.5 mt-3">
-                                    <Button variant="outline" size="sm" className="flex-1 text-xs" onClick={() => openEdit(product)}>
-                                        <Edit3 className="mr-1 h-3 w-3" /> Edit
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="text-xs" onClick={() => toggleStock(product)} disabled={toggleMutation.isPending}>
-                                        {product.isActive ? "Disable" : "Enable"}
-                                    </Button>
+                        ) : (
+                            <Card className="admin-card admin-animate-up" style={{ animationDelay: "160ms" }}>
+                                <CardContent className="p-0">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="border-b border-border bg-muted/40">
+                                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Product</th>
+                                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Category</th>
+                                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Pack Size</th>
+                                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Price</th>
+                                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Stock</th>
+                                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
+                                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {products.map((product) => (
+                                                    <tr key={product.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <img src={product?.image} alt={product?.name} className="h-10 w-10 rounded-lg object-cover" />
+                                                                <div>
+                                                                    <p className="font-medium">{product?.name}</p>
+                                                                    {product?.isBestSelling && <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/20 text-[10px]">Best selling</Badge>}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 capitalize text-muted-foreground">{product?.category}</td>
+                                                        <td className="px-4 py-3 text-muted-foreground">{product?.formatted_weight}</td>
+                                                        <td className="px-4 py-3 font-semibold">{displayCurrency(product.price, "NGN")}</td>
+                                                        <td className="px-4 py-3 text-muted-foreground">{product?.stock <= 0 ? "Out of stock" : "In stock"}</td>
+                                                        <td className="px-4 py-3">
+                                                            <Badge variant={product.isActive ? "default" : "destructive"}>
+                                                                {product?.isActive ? "Active" : "Inactive"}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="flex gap-1">
+                                                                <EditProduct categories={categories} product={product} type="list" getProducts={getProducts}/>
+                                                                <Button variant="ghost" size="sm" onClick={() => handleActive(product?.id)} disabled={disablingId === product?.id}>
+                                                                    {disablingId === product?.id
+                                                                        ? product.isActive
+                                                                        ? "Disabling..."
+                                                                        : "Enabling..."
+                                                                        : product.isActive
+                                                                        ? "Disable"
+                                                                        : "Enable"
+                                                                    }
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="text-destructive hover:text-destructive"
+                                                                    onClick={() => handleDelete(product?.id)}
+                                                                    disabled={deletingProductId === product?.id}
+                                                                >
+                                                                    {deletingProductId === product?.id ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                                    ) : (
+                                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                                    )}
+                                                                </Button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {meta?.totalPages > 1 && !loadingProducts && products?.length > 0 && (
+                            <Pagination className="mt-8">
+                                <PaginationContent className="flex-wrap justify-center gap-2">
+
+                                <PaginationItem>
+                                    <PaginationPrevious
+                                        onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                                    />
+                                </PaginationItem>
+
+                                {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                                    const page = i + 1;
+
+                                    return (
+                                    <PaginationItem key={page}>
+                                        <PaginationLink
+                                            isActive={currentPage === page}
+                                            onClick={() => changePage(page)}
+                                        >
+                                            {page}
+                                        </PaginationLink>
+                                    </PaginationItem>
+                                    );
+                                })}
+
+                                <PaginationItem>
+                                    <PaginationNext
+                                        onClick={() =>
+                                            currentPage < meta?.totalPages && changePage(currentPage + 1)
+                                        }
+                                    />
+                                </PaginationItem>
+
+                                </PaginationContent>
+                            </Pagination>
+                            )}
+
+                        {products?.length <= 0 && (
+                            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                                <Package className="h-12 w-12 mb-4" />
+                                <p>No products found.</p>
+                            </div>
+                        )}
+                    </>}
+
+                    {/* ── Categories Tab ─────────────────────────────────── */}
+                    {activeTab === "categories" && (
+                        <Card className="admin-card admin-animate-up">
+                            <CardContent className="p-0">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b border-border bg-muted/40">
+                                                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Name</th>
+                                                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Slug</th>
+                                                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Description</th>
+                                                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
+                                                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {categories?.map((cat) => (
+                                                <tr key={cat?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                                    <td className="px-4 py-3 font-medium">{cat?.name}</td>
+                                                    <td className="px-4 py-3 text-muted-foreground">{cat?.slug ?? "—"}</td>
+                                                    <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{cat?.description ?? "—"}</td>
+                                                    <td className="px-4 py-3">
+                                                        <Badge variant={cat?.isActive ? "default" : "destructive"}>
+                                                            {cat?.isActive ? "Active" : "Inactive"}
+                                                        </Badge>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex gap-1">
+                                                            <Button variant="ghost" size="sm" onClick={() => openCatEdit(cat)}>
+                                                                <Edit3 className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-destructive hover:text-destructive"
+                                                                onClick={() => handleCatDelete(cat?.id)}
+                                                                disabled={deletingCategoryId === cat?.id}
+                                                            >
+                                                                {deletingCategoryId === cat?.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                                ) : (
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                )}
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {(categories.length <= 0) && !loadingProducts && (
+                                                <tr>
+                                                    <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                                                        <Tag className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                                                        <p>No categories found.</p>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
-                </div>
-            ) : (
-                <Card className="admin-card admin-animate-up" style={{ animationDelay: "160ms" }}>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border bg-muted/40">
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Product</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Category</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Pack Size</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Price</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Stock</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.map((product) => (
-                                        <tr key={product.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-3">
-                                                    <img src={product.image} alt={product.name} className="h-10 w-10 rounded-lg object-cover" />
-                                                    <div>
-                                                        <p className="font-medium">{product.name}</p>
-                                                        {product.isPremiumDrop && <Badge className="bg-amber-500/15 text-amber-700 border-amber-500/20 text-[10px]">Premium</Badge>}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 capitalize text-muted-foreground">{product.category}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">{product.packSize}</td>
-                                            <td className="px-4 py-3 font-semibold">{formatPrice(product.addOnPrice)}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">{product.stock ?? "—"}</td>
-                                            <td className="px-4 py-3">
-                                                <Badge variant={product.isActive ? "default" : "destructive"}>
-                                                    {product.isActive ? "In Stock" : "Out of Stock"}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-1">
-                                                    <Button variant="ghost" size="sm" onClick={() => openEdit(product)}>
-                                                        <Edit3 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => toggleStock(product)} disabled={toggleMutation.isPending}>
-                                                        {product.isActive ? "Disable" : "Enable"}
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-destructive hover:text-destructive"
-                                                        onClick={() => handleDelete(product.id)}
-                                                        disabled={deleteMutation.isPending}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    )}
+
+                    {/* ── Category Create / Edit Modal ──────────────────── */}
+                    {(creatingCategory || editingCategory) && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/50" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }} />
+                            <Card className="admin-card relative z-10 max-w-md w-full animate-fade-in">
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle>{editingCategory ? "Edit Category" : "Add Category"}</CardTitle>
+                                        <Button variant="ghost" size="sm" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }}>✕</Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label>Name *</Label>
+                                        <Input
+                                            value={catForm.name}
+                                            onChange={(e) => {
+                                                const name = e.target.value;
+                                                setCatForm((f) => ({
+                                                    ...f,
+                                                    name,
+                                                    // slug: editingCategory ? f.slug : autoSlug(name),
+                                                    slug: autoSlug(name),
+                                                }));
+                                            }}
+                                            placeholder="e.g. Chicken"
+                                            className="h-10 rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Slug</Label>
+                                        <Input
+                                            value={catForm.slug}
+                                            onChange={(e) => setCatForm((f) => ({ ...f, slug: autoSlug(e.target.value) }))}
+                                            placeholder="e.g. chicken"
+                                            className="h-10 rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Description</Label>
+                                        <textarea
+                                            value={catForm.description}
+                                            onChange={(e) => setCatForm((f) => ({ ...f, description: e.target.value }))}
+                                            rows={3}
+                                            placeholder="Category description..."
+                                            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <Button
+                                            size="sm"
+                                            className="flex-1"
+                                            onClick={handleCatSave}
+                                            disabled={isSavingCategory || !catForm.name}
+                                        >
+                                            {(isSavingCategory) ? "Saving..." : editingCategory ? "Save Changes" : "Create Category"}
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }}>Cancel</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Edit Modal */}
-            {editingProduct && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => setEditingProduct(null)} />
-                    <Card className="admin-card relative z-10 max-w-lg w-full max-h-[80vh] overflow-y-auto animate-fade-in">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>Edit Product</CardTitle>
-                                <Button variant="ghost" size="sm" onClick={() => setEditingProduct(null)}>✕</Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Name</Label>
-                                <Input
-                                    value={editForm.name ?? ""}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                                    className="h-10 rounded-xl"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Category</Label>
-                                    <select
-                                        value={editForm.categoryId ?? ""}
-                                        onChange={(e) => setEditForm((f) => ({
-                                            ...f,
-                                            categoryId: e.target.value,
-                                            category: categories.find((c) => c.id === e.target.value)?.name ?? e.target.value,
-                                        }))}
-                                        className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="">Select category</option>
-                                        {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Pack Size</Label>
-                                    <Input
-                                        value={editForm.packSize ?? ""}
-                                        onChange={(e) => setEditForm((f) => ({ ...f, packSize: e.target.value }))}
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Price (₦)</Label>
-                                    <Input
-                                        type="number"
-                                        value={editForm.addOnPrice ?? 0}
-                                        onChange={(e) => setEditForm((f) => ({ ...f, addOnPrice: parseFloat(e.target.value) || 0 }))}
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Stock</Label>
-                                    <Input
-                                        type="number"
-                                        value={editForm.stock ?? 0}
-                                        onChange={(e) => setEditForm((f) => ({ ...f, stock: parseInt(e.target.value) || 0 }))}
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>SKU</Label>
-                                    <Input
-                                        value={editForm.sku ?? ""}
-                                        onChange={(e) => setEditForm((f) => ({ ...f, sku: e.target.value }))}
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Description</Label>
-                                <textarea
-                                    value={editForm.description ?? ""}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                                    rows={3}
-                                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Image URL</Label>
-                                <Input
-                                    value={editForm.image ?? ""}
-                                    onChange={(e) => setEditForm((f) => ({ ...f, image: e.target.value }))}
-                                    className="h-10 rounded-xl"
-                                />
-                            </div>
-                            {saveMutation.isError && (
-                                <p className="text-sm text-destructive">Failed to save. Please try again.</p>
-                            )}
-                            <div className="flex gap-2 pt-2">
-                                <Button size="sm" className="flex-1" onClick={handleSave} disabled={saveMutation.isPending}>
-                                    {saveMutation.isPending ? "Saving..." : "Save Changes"}
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditingProduct(null)}>Cancel</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            {/* Create Modal */}
-            {creatingProduct && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => setCreatingProduct(false)} />
-                    <Card className="admin-card relative z-10 max-w-lg w-full max-h-[80vh] overflow-y-auto animate-fade-in">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>Add Product</CardTitle>
-                                <Button variant="ghost" size="sm" onClick={() => setCreatingProduct(false)}>✕</Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Name *</Label>
-                                <Input
-                                    value={createForm.name ?? ""}
-                                    onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
-                                    placeholder="e.g. Whole Chicken"
-                                    className="h-10 rounded-xl"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Category</Label>
-                                    <select
-                                        value={createForm.categoryId ?? ""}
-                                        onChange={(e) => setCreateForm((f) => ({
-                                            ...f,
-                                            categoryId: e.target.value,
-                                            category: categories.find((c) => c.id === e.target.value)?.name ?? e.target.value,
-                                        }))}
-                                        className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="">Select category</option>
-                                        {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Pack Size</Label>
-                                    <Input
-                                        value={createForm.packSize ?? ""}
-                                        onChange={(e) => setCreateForm((f) => ({ ...f, packSize: e.target.value }))}
-                                        placeholder="e.g. 1.5-2kg"
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Price (₦)</Label>
-                                    <Input
-                                        type="number"
-                                        value={createForm.addOnPrice ?? ""}
-                                        onChange={(e) => setCreateForm((f) => ({ ...f, addOnPrice: parseFloat(e.target.value) || 0 }))}
-                                        placeholder="0"
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Stock</Label>
-                                    <Input
-                                        type="number"
-                                        value={createForm.stock ?? ""}
-                                        onChange={(e) => setCreateForm((f) => ({ ...f, stock: parseInt(e.target.value) || 0 }))}
-                                        placeholder="0"
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>SKU</Label>
-                                    <Input
-                                        value={createForm.sku ?? ""}
-                                        onChange={(e) => setCreateForm((f) => ({ ...f, sku: e.target.value }))}
-                                        placeholder="e.g. CHK-001"
-                                        className="h-10 rounded-xl"
-                                    />
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Description</Label>
-                                <textarea
-                                    value={createForm.description ?? ""}
-                                    onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
-                                    rows={3}
-                                    placeholder="Product description..."
-                                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Image URL</Label>
-                                <Input
-                                    value={createForm.image ?? ""}
-                                    onChange={(e) => setCreateForm((f) => ({ ...f, image: e.target.value }))}
-                                    placeholder="https://..."
-                                    className="h-10 rounded-xl"
-                                />
-                            </div>
-                            {createMutation.isError && (
-                                <p className="text-sm text-destructive">Failed to create product. Please try again.</p>
-                            )}
-                            <div className="flex gap-2 pt-2">
-                                <Button
-                                    size="sm"
-                                    className="flex-1"
-                                    onClick={handleCreate}
-                                    disabled={createMutation.isPending || !createForm.name}
-                                >
-                                    {createMutation.isPending ? "Creating..." : "Create Product"}
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setCreatingProduct(false)}>Cancel</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            {filtered.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <Package className="h-12 w-12 mb-4" />
-                    <p>No products found.</p>
-                </div>
-            )}
-            </>}
-
-            {/* ── Categories Tab ─────────────────────────────────── */}
-            {activeTab === "categories" && (
-                <Card className="admin-card admin-animate-up">
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b border-border bg-muted/40">
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Name</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Slug</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Description</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(apiCategories ?? []).map((cat) => (
-                                        <tr key={cat.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                                            <td className="px-4 py-3 font-medium">{cat.name ?? cat.id}</td>
-                                            <td className="px-4 py-3 text-muted-foreground">{cat.slug ?? "—"}</td>
-                                            <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{cat.description ?? "—"}</td>
-                                            <td className="px-4 py-3">
-                                                <Badge variant={cat.isActive !== false ? "default" : "destructive"}>
-                                                    {cat.isActive !== false ? "Active" : "Inactive"}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-1">
-                                                    <Button variant="ghost" size="sm" onClick={() => openCatEdit(cat)}>
-                                                        <Edit3 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-destructive hover:text-destructive"
-                                                        onClick={() => handleCatDelete(cat.id)}
-                                                        disabled={deleteCatMutation.isPending}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </Button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {(!apiCategories || apiCategories.length === 0) && (
-                                        <tr>
-                                            <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
-                                                <Tag className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                                                <p>No categories found. {!apiCategories && "(demo data)"}</p>
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* ── Category Create / Edit Modal ──────────────────── */}
-            {(creatingCategory || editingCategory) && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }} />
-                    <Card className="admin-card relative z-10 max-w-md w-full animate-fade-in">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>{editingCategory ? "Edit Category" : "Add Category"}</CardTitle>
-                                <Button variant="ghost" size="sm" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }}>✕</Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="space-y-2">
-                                <Label>Name *</Label>
-                                <Input
-                                    value={catForm.name}
-                                    onChange={(e) => {
-                                        const name = e.target.value;
-                                        setCatForm((f) => ({
-                                            ...f,
-                                            name,
-                                            slug: editingCategory ? f.slug : autoSlug(name),
-                                        }));
-                                    }}
-                                    placeholder="e.g. Chicken"
-                                    className="h-10 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Slug</Label>
-                                <Input
-                                    value={catForm.slug}
-                                    onChange={(e) => setCatForm((f) => ({ ...f, slug: e.target.value }))}
-                                    placeholder="e.g. chicken"
-                                    className="h-10 rounded-xl"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Description</Label>
-                                <textarea
-                                    value={catForm.description}
-                                    onChange={(e) => setCatForm((f) => ({ ...f, description: e.target.value }))}
-                                    rows={3}
-                                    placeholder="Category description..."
-                                    className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none"
-                                />
-                            </div>
-                            {(createCatMutation.isError || updateCatMutation.isError) && (
-                                <p className="text-sm text-destructive">Failed to save category. Please try again.</p>
-                            )}
-                            <div className="flex gap-2 pt-2">
-                                <Button
-                                    size="sm"
-                                    className="flex-1"
-                                    onClick={handleCatSave}
-                                    disabled={createCatMutation.isPending || updateCatMutation.isPending || !catForm.name}
-                                >
-                                    {(createCatMutation.isPending || updateCatMutation.isPending) ? "Saving..." : editingCategory ? "Save Changes" : "Create Category"}
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }}>Cancel</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                    )}
+                </>
             )}
         </div>
     );

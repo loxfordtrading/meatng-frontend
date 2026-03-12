@@ -141,7 +141,6 @@ const Auth = () => {
       setIsSubmitting(true)
       
       const response = await axiosClient.post("/auth/login", form)
-      toast.success(response.data.message);
 
       setUserInfo({
         access: response.data?.data?.attributes?.token?.accessToken,

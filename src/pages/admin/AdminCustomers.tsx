@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Users, ShoppingBag, DollarSign, Loader2, Trash2 } from "lucide-react";
 import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { mockAdminCustomers, formatAdminPrice, type AdminCustomer } from "@/data/adminData";
 import { tokenStorage } from "@/lib/auth/tokenStorage";
 import { deleteAdminUser, listAdminUsers, type AdminUser as ApiUser } from "@/lib/api/admin";
+import { axiosClient } from "@/GlobalApi";
+import { toast } from "react-toastify";
 
 const statusBadge: Record<string, string> = {
     Active: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
@@ -52,6 +54,10 @@ const AdminCustomers = () => {
     const [search, setSearch] = useState("");
     const [selected, setSelected] = useState<AdminCustomer | null>(null);
 
+    const [customers, setCustomers] = useState([]);
+    const [meta, setMeta] = useState(null);
+    const [loading, setLoading] = useState(true)
+
     const token = tokenStorage.getAdminToken();
     const queryClient = useQueryClient();
 
@@ -63,11 +69,11 @@ const AdminCustomers = () => {
         staleTime: 60_000,
     });
 
-    const customers: AdminCustomer[] = useMemo(() => {
-        if (apiUsers) return apiUsers.map(mapApiUser);
-        return [];
-        // return mockAdminCustomers;          
-    }, [apiUsers]);
+    // const customers: AdminCustomer[] = useMemo(() => {
+    //     if (apiUsers) return apiUsers.map(mapApiUser);
+    //     return [];
+    //     // return mockAdminCustomers;          
+    // }, [apiUsers]);
 
     // const usingMock = !apiUsers;
     const deleteMutation = useMutation({
@@ -84,6 +90,42 @@ const AdminCustomers = () => {
 
     const activeCount = customers.filter((c) => c.status === "Active").length;
     const totalSpent = customers.reduce((s, c) => s + c.totalSpent, 0);
+
+    useEffect(() => {
+        getCustomers()
+    }, [])
+
+    const getCustomers = async () => {
+        try {
+            const res = await axiosClient.get(`/users/all`);
+
+            const customers = res.data.data || [];
+
+            // flatten orders
+            // const flattenedOrders = orders.map((order: any) => ({
+            //     id: order.id,
+            //     ...order.attributes,
+            //     user: order.relationships?.userDetails?.data?.attributes || null,
+            //     plan: order.relationships?.planDetails?.data?.attributes || null,
+            // }));
+
+            const flattenedCustomers = customers.map((order: any) => ({
+                id: order.id,
+                ...order.attributes,
+                // status: mapStatus(order.attributes.status),
+                user: order.relationships?.userDetails?.data?.attributes || null,
+                plan: order.relationships?.planDetails?.data?.attributes || null,
+            }));
+
+            // setCustomers(flattenedCustomers);
+            // setMeta(res.data.meta);  
+
+        } catch (err: any) {
+            toast.error(err.response?.data?.message);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     if (isLoading) {
         return (

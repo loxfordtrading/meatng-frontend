@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/contexts/AdminContext";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/AuthStore";
 
 interface SidebarLink {
     href: string;
@@ -43,13 +44,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const { admin, logout } = useAdmin();
     const navigate = useNavigate();
     const location = useLocation();
+    const userInfo = useAuthStore(state => state.userInfo)
 
-    const initials = admin?.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2) || "AD";
+    // const initials = admin?.name
+    //     .split(" ")
+    //     .map((n) => n[0])
+    //     .join("")
+    //     .toUpperCase()
+    //     .slice(0, 2) || "AD";
 
     const handleLogout = () => {
         logout();
@@ -99,11 +101,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="p-4 border-b border-border/60">
                 <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
                     <div className="h-10 w-10 rounded-2xl bg-primary/15 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary shadow-sm">
-                        {initials}
+                        {userInfo?.first_name[0]}{userInfo?.last_name[0]}
                     </div>
                     <div className={cn("min-w-0", collapsed && "hidden")}>
-                        <p className="text-sm font-semibold text-foreground truncate">{admin?.name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{admin?.role.replace("_", " ")}</p>
+                        <p className="text-sm font-semibold text-foreground truncate">{userInfo?.first_name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">Admin</p>
                     </div>
                 </div>
             </div>
