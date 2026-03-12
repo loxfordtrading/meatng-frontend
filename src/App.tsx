@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { AdminProvider, useAdmin } from "@/contexts/AdminContext";
@@ -55,13 +55,20 @@ import AdminSettings from "@/pages/admin/AdminSettings";
 import VerifyPayment from "./pages/VerifyPayment";
 import VerificationEmailSent from "./pages/VerificationEmailSent";
 import UserGuard from "./protect/UserGuard";
+import { useAuthStore } from "./store/AuthStore";
 
 const queryClient = new QueryClient();
 
 // Route guard for admin pages
 function AdminGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAdmin();
-  // if (!isAuthenticated) return <Navigate to={ROUTES.adminLogin} replace />;
+  
+  const userInfo = useAuthStore((state) => state.userInfo);
+  const location = useLocation();
+  
+  if (!userInfo?.access) {
+    return <Navigate to={ROUTES.adminLogin} state={{ from: location }} replace />;
+  }
+
   return <AdminLayout>{children}</AdminLayout>;
 }
 
@@ -77,20 +84,15 @@ const App = () => (
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <Routes>
                 {/* ─── Admin Routes (no Header/Footer) ─── */}
-                  
                 <Route path={ROUTES.adminLogin} element={<AdminLogin />} />
-                
-                <Route element={<UserGuard />}>
-                  <Route path={ROUTES.admin} element={<AdminDashboard />} />
-                  <Route path={ROUTES.adminOrders} element={<AdminOrders />} />
-                  <Route path={ROUTES.adminCustomers} element={<AdminCustomers />} />
-                  <Route path={ROUTES.adminProducts} element={<AdminProducts />} />
-                  <Route path={ROUTES.adminSubscriptions} element={<AdminSubscriptions />} />
-                  <Route path={ROUTES.adminDeliveries} element={<AdminDeliveries />} />
-                  <Route path={ROUTES.adminAnalytics} element={<AdminAnalytics />} />
-                  <Route path={ROUTES.adminSettings} element={<AdminSettings />} />
-                </Route>
-            
+                <Route path={ROUTES.admin} element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+                <Route path={ROUTES.adminOrders} element={<AdminGuard><AdminOrders /></AdminGuard>} />
+                <Route path={ROUTES.adminCustomers} element={<AdminGuard><AdminCustomers /></AdminGuard>} />
+                <Route path={ROUTES.adminProducts} element={<AdminGuard><AdminProducts /></AdminGuard>} />
+                <Route path={ROUTES.adminSubscriptions} element={<AdminGuard><AdminSubscriptions /></AdminGuard>} />
+                <Route path={ROUTES.adminDeliveries} element={<AdminGuard><AdminDeliveries /></AdminGuard>} />
+                <Route path={ROUTES.adminAnalytics} element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
+                <Route path={ROUTES.adminSettings} element={<AdminGuard><AdminSettings /></AdminGuard>} />
 
                 {/* ─── Customer Routes (with Header/Footer) ─── */}
                 <Route path="*" element={
