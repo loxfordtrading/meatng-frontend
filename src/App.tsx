@@ -56,21 +56,22 @@ import VerifyPayment from "./pages/VerifyPayment";
 import VerificationEmailSent from "./pages/VerificationEmailSent";
 import UserGuard from "./protect/UserGuard";
 import { useAuthStore } from "./store/AuthStore";
+import AdminGuard from "./protect/AdminGuard";
 
 const queryClient = new QueryClient();
 
 // Route guard for admin pages
-function AdminGuard({ children }: { children: React.ReactNode }) {
+// function AdminGuard({ children }: { children: React.ReactNode }) {
   
-  const userInfo = useAuthStore((state) => state.userInfo);
-  const location = useLocation();
+//   const userInfo = useAuthStore((state) => state.userInfo);
+//   const location = useLocation();
   
-  if (!userInfo?.access) {
-    return <Navigate to={ROUTES.adminLogin} state={{ from: location }} replace />;
-  }
+//   if (!userInfo?.access) {
+//     return <Navigate to={ROUTES.adminLogin} state={{ from: location }} replace />;
+//   }
 
-  return <AdminLayout>{children}</AdminLayout>;
-}
+//   return <AdminLayout>{children}</AdminLayout>;
+// }
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
