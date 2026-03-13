@@ -96,6 +96,8 @@ const BuildBox = () => {
   const currentPage = Number(searchParams.get("page")) || 1;
   const activeCategory = searchParams.get("slug") || "all";
   const [totalPages, setTotalPages] = useState(1);
+
+  const categoryId = searchParams.get("categoryId");
   
 
   useEffect(() => {
@@ -122,14 +124,19 @@ const BuildBox = () => {
 
    const totalGransInCart = totalGramWeight()
    const totalItemsinCart = totalItems();
-  
-    const subscriptionWeightG = toGrams(
+
+    const mainWeightG = toGrams(
       subInfo?.subscription?.attributes?.weight ?? 0,
       subInfo?.subscription?.attributes?.weight_unit as "kg" | "g"
     );
-  
-    const progress = subscriptionWeightG
-    ? (totalGransInCart / subscriptionWeightG) * 100
+    
+    const prefilledWeightG = toGrams(subInfo?.subscription?.attributes?.prefilled_items_total_weight, subInfo?.subscription?.attributes?.weight_unit as "kg" | "g")
+    const totalFilled = prefilledWeightG + totalGransInCart
+    
+    const remainingWeightG = toGrams(subInfo?.subscription?.attributes?.remaining_weight, subInfo?.subscription?.attributes?.weight_unit as "kg" | "g")
+
+    const progress = mainWeightG
+    ? (totalFilled / mainWeightG) * 100
     : 0;
  
   if (!subInfo?.subscription || !subInfo?.selectedFrequency) {
@@ -181,6 +188,10 @@ const BuildBox = () => {
 
       if (activeCategory && activeCategory !== "all") {
         url += `&slug=${activeCategory}`;
+      }
+
+      if (categoryId) {
+        url += `&categoryId=${categoryId}`;
       }
 
       const res = await axiosClient.get(url);
@@ -362,25 +373,48 @@ const BuildBox = () => {
                   </p>
                     
                   <div className="space-y-3">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {subInfo?.subscription?.attributes?.prefilled_items.length > 0 && (
                         <div>
                         <div className="mb-1 flex items-center justify-between text-xs">
                           <span>Prefilled</span>
-                          {/* <span>{formatWeight(mandatoryWeightG)} / {formatWeight((plan.weightKg * 1000) - plan.buildYourBox.remainingWeightG)}</span> */}
+                          <span>{subInfo?.subscription?.attributes?.prefilled_items_total_weight}{subInfo?.subscription?.attributes?.weight_unit} / {subInfo?.subscription?.attributes?.prefilled_items_total_weight}{subInfo?.subscription?.attributes?.weight_unit}</span>
                         </div>
                           <Progress value={100} className="h-1.5" />
                         </div>
                       )}
-                      {subInfo?.subscription?.attributes?.weight && (
-                        <div>
-                          <div className="mb-1 flex items-center justify-between text-xs">
-                            <span>Build selections</span>
-                            <span>{formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}</span>
-                          </div>
-                          <Progress value={progress} className="h-1.5" />
-                        </div>
-                      )}
+                      {subInfo?.subscription?.attributes?.product_rules?.length > 0 &&
+                        subInfo?.subscription?.attributes?.product_rules?.map((item) => {
+
+                          const maxWeightG = toGrams(
+                            item?.max_weight,
+                            item?.weight_unit as "kg" | "g"
+                          );
+
+                          // weight of this specific product in cart
+                          const specificItemInCartG = items
+                            .filter((cartItem) => cartItem.id === item.product_id)
+                            .reduce(
+                              (acc, cartItem) => acc + cartItem.gram_weight * cartItem.qty,
+                              0
+                          );
+
+                          const progress = (specificItemInCartG / maxWeightG) * 100;
+
+                          return (
+                            <div key={item?.product_id}>
+                              <div className="mb-1 flex items-center justify-between text-xs">
+                                <span>{item?.label || "Build selections"}</span>
+
+                                <span>
+                                  {formatWeight(specificItemInCartG)} / {formatWeight(maxWeightG)}
+                                </span>
+                              </div>
+
+                              <Progress value={progress} className="h-1.5" />
+                            </div>
+                          );
+                        })}
                     </div>
                   </div>
                </div>
@@ -419,7 +453,7 @@ const BuildBox = () => {
                         </div>
                         <div className="flex items-center justify-between text-xs text-muted-foreground">
                           <span>{item?.weight}{item?.weight_unit}</span>
-                          <span className="font-semibold text-foreground">{displayCurrency(item?.price, "NGN")}</span>
+                          {/* <span className="font-semibold text-foreground">{displayCurrency(item?.price, "NGN")}</span> */}
                         </div>
                         <Button size="sm" className="w-full bg-rose-500 text-white hover:bg-rose-600" disabled>
                           <Lock className="mr-1 h-3 w-3" /> {item?.quantity} Included
@@ -576,7 +610,7 @@ const BuildBox = () => {
                     <div className="mb-2 flex justify-between">
                       <span className="text-muted-foreground">Total weight</span>
                       <span className="font-medium">
-                        {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
+                        {formatWeight(totalFilled)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
                       </span>
                     </div>
                     <Progress value={progress} className="h-2" />
@@ -639,7 +673,7 @@ const BuildBox = () => {
                     </div>
                   </div>
 
-                  <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalItemsinCart != subInfo?.subscription?.attributes?.max_items) || (totalGransInCart != subscriptionWeightG)}>
+                  <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalItemsinCart != subInfo?.subscription?.attributes?.max_items) || (totalGransInCart != remainingWeightG)}>
                     <ShoppingCart className="mr-2 h-4 w-4" />
                     Review Cart
                   </Button>

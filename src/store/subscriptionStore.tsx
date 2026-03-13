@@ -3,9 +3,18 @@ import { persist } from "zustand/middleware";
 
 export type CategoryRule = {
   category_id: string;
+  category_name: string;
   label: string;
-  min_items: number;
-  max_items: number;
+  weight_required: number;
+  weight_unit: "kg" | "g";
+}
+
+export type ProductRule = {
+  product_id: string;
+  product_name: string;
+  label: string;
+  max_weight: number;
+  weight_unit: "kg" | "g";
 }
 
 export type PlanAttributes = {
@@ -19,7 +28,10 @@ export type PlanAttributes = {
   plan_type: string;
   pricing_model: string;
   category_rules: CategoryRule[];
+  product_rules: ProductRule[];
   prefilled_items: any[];
+  prefilled_items_total_weight: number;
+  remaining_weight: number;
   image: string;
   image_public_id: string;
   createdAt: string;

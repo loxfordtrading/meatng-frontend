@@ -30,6 +30,7 @@ const planIcons: Record<string, any> = {
 };
 
 const Plans = () => {
+
   const navigate = useNavigate();
   const { setSubInfo } = useSubscriptionStore();
    const { clearCart } = useCartStore();
@@ -77,7 +78,7 @@ const Plans = () => {
       selectedFrequency,
     });
 
-    navigate(`${ROUTES.buildBox}?planId=${selectedPlan?.id}`);
+    navigate(`${ROUTES.buildBox}?planId=${selectedPlan?.id}&categoryId=${selectedPlan?.attributes?.category_rules[0]?.category_id}`);
   };
 
   return (
@@ -220,15 +221,18 @@ const Plans = () => {
                     </div>
                   </div>
 
-                  {selectedPlan?.attributes?.category_rules.length > 0 && (
+                  {selectedPlan?.attributes?.prefilled_items?.length > 0 && (
                     <div className="rounded-xl border border-border p-4 space-y-2 mt-4">
                       <p className="text-sm font-semibold">What's included</p>
                       
                       {/* {selectedPlan.mandatoryItems.map((item) => ( 
                         <p key={item.name} className="text-xs text-muted-foreground">Boneless Beef — 1.5kg</p> 
                       ))}  */}
-                      {selectedPlan?.attributes?.category_rules.map((item) => ( 
-                        <p className="text-xs text-primary font-medium pt-1"> + Pick {item?.min_items} to {item?.max_items} of {item?.label}  </p>
+                      {selectedPlan?.attributes?.prefilled_items?.map((item) => ( 
+                        <p key={item?.product_id} className="text-xs text-muted-foreground">{item?.name} — {item?.weight}{item?.weight_unit}</p>
+                      ))} 
+                      {selectedPlan?.attributes?.category_rules?.map((item) => ( 
+                        <p key={item?.category_id} className="text-xs text-primary font-medium pt-1"> + Pick {item?.weight_required}{item?.weight_unit} of {item?.label}  </p>
                       ))} 
                     </div>
                   )}
@@ -242,6 +246,27 @@ const Plans = () => {
                       </p> 
                     ))} 
                   </div> */}
+
+                  {/* Benefits */} 
+                  <div className="space-y-1 mt-4">
+                    {selectedPlan?.attributes?.product_rules.length > 0 && (
+                      selectedPlan?.attributes?.product_rules?.map((item) => (
+                        <p key={item?.product_id}  className="text-xs flex items-start gap-2"> 
+                          <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" /> 
+                          <span>+ Pick {item?.max_weight}{item?.weight_unit} of {item?.label}</span> 
+                        </p>
+                      ))
+                    )
+                    }
+                      <p className="text-xs flex items-start gap-2"> 
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" /> 
+                        <span>Dashboard control (edit/skip/pause)</span> 
+                      </p>
+                      <p className="text-xs flex items-start gap-2"> 
+                        <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" /> 
+                        <span>Flexible delivery scheduling</span> 
+                      </p>
+                  </div>
 
                   <Button
                     className="w-full mt-6"
@@ -304,7 +329,7 @@ function PlanCard({ plan, selected, icon: Icon, onClick }: any) {
 
       <div className="text-xs text-primary mt-1">{plan?.attributes?.weight}{plan?.attributes?.weight_unit} box</div>
 
-      {/* <div className="mt-2 text-[11px] text-muted-foreground"><span>5kg fixed + build 5kg</span></div> */}
+      <div className="mt-2 text-[11px] text-muted-foreground"><span>{plan?.attributes?.prefilled_items_total_weight}{plan?.attributes?.weight_unit} fixed + build {plan?.attributes?.remaining_weight}{plan?.attributes?.weight_unit}</span></div>
 
     </button>
   );

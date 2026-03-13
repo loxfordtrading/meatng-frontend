@@ -20,8 +20,10 @@ export default function BuildCatalog({ products}: {products: any}) {
     subInfo?.subscription?.attributes?.weight_unit as "kg" | "g"
   );
 
+  const remainingWeightG = toGrams(subInfo?.subscription?.attributes?.remaining_weight, subInfo?.subscription?.attributes?.weight_unit as "kg" | "g")
+
   const progress = subscriptionWeightG
-  ? (totalGransInCart / subscriptionWeightG) * 100
+  ? (totalGransInCart / remainingWeightG) * 100
   : 0;
 
   // const cantAdd = total >= products?.max_items;
@@ -34,18 +36,39 @@ export default function BuildCatalog({ products}: {products: any}) {
           <PackagePlus className="h-5 w-5 text-primary" />
           <h2 className="font-display text-lg font-bold sm:text-xl">Build Your Box</h2>
         </div> */}
-        <div className="mb-1 flex flex-col md:flex-row items-start justify-between gap-2">
-          <div className="flex items-center gap-1">
-            <PackagePlus className="h-5 w-5 text-primary" />
-            <h2 className="font-display text-lg font-bold sm:text-xl">Build Your Box</h2>
+        {subInfo?.subscription?.attributes?.category_rules?.[0].category_name ? (
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <PackagePlus className="h-4 w-4 text-primary" />
+              <h2 className="font-display text-lg font-bold text-foreground">Choose Your Offals</h2>
+              <Badge variant={totalGransInCart < remainingWeightG  ? "outline" : "default"} className={`ml-auto text-xs ${totalGransInCart === remainingWeightG? "bg-green-600" : "border-amber-400 text-amber-600"}`}>
+                {totalGransInCart == remainingWeightG
+                  ? "Complete!"
+                  : `${formatWeight(totalGransInCart)} / ${formatWeight(remainingWeightG)}`}
+              </Badge>
+            </div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Choose your offals and mix until {formatWeight(remainingWeightG)} is filled.
+            </p>
           </div>
-          <Badge variant="secondary" className="text-xs mb-2">
-            Add only {subInfo?.subscription?.attributes?.max_items} items worth {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
-          </Badge>
-        </div>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Fill the remaining <span className="font-semibold text-foreground">{products?.max_items}{products?.weight_unit}</span> from this catalog.
-        </p>
+        ) : (
+          <div>
+            <div className="mb-1 flex flex-col md:flex-row items-start justify-between gap-2">
+              <div className="flex items-center gap-1">
+                <PackagePlus className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg font-bold sm:text-xl">Build Your Box</h2>
+              </div>
+              <Badge variant={totalGransInCart < remainingWeightG  ? "outline" : "default"} className={`ml-auto text-xs ${totalGransInCart === remainingWeightG? "bg-green-600" : "border-amber-400 text-amber-600"}`}>
+                {totalGransInCart == remainingWeightG
+                  ? "Complete!"
+                  : `${formatWeight(totalGransInCart)} / ${formatWeight(remainingWeightG)}`}
+              </Badge>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Fill the remaining <span className="font-semibold text-foreground">{formatWeight(remainingWeightG)}</span> from this catalog.
+            </p>
+          </div>
+        )}
 
         <div className="mb-5 rounded-xl border bg-muted/30 p-4">
           <div className="mb-2 flex justify-between text-sm">
@@ -92,7 +115,7 @@ export default function BuildCatalog({ products}: {products: any}) {
                 </div>
 
                 {qty === 0 ? (
-                  <Button size="sm" variant="outline" className="mt-1 w-full" disabled={item?.stock <= 0} onClick={() => add(item, 1, "base")}>
+                  <Button size="sm" variant="outline" className="mt-1 w-full" disabled={item?.stock <= 0 || !item?.isActive} onClick={() => add(item, 1, "base")}>
                     <Plus className="mr-1 h-3 w-3" /> Add
                   </Button>
                 ) : (
@@ -101,7 +124,7 @@ export default function BuildCatalog({ products}: {products: any}) {
                       <Minus className="h-3.5 w-3.5" />
                     </Button>
                     <span className="flex-1 text-center text-sm font-semibold">{qty}</span>
-                    <Button size="sm" className="h-8 w-8 p-0" disabled={item?.stock <= 0} onClick={() => setQty(item, qty + 1)}>
+                    <Button size="sm" className="h-8 w-8 p-0" onClick={() => setQty(item, qty + 1)} disabled={item?.stock <= 0 || !item?.isActive}>
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>
