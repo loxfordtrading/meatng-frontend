@@ -15,14 +15,9 @@ export default function BuildCatalog({ products}: {products: any}) {
   const total = totalItems();
   const totalGransInCart = totalGramWeight()
 
-  const subscriptionWeightG = toGrams(
-    subInfo?.subscription?.attributes?.weight ?? 0,
-    subInfo?.subscription?.attributes?.weight_unit as "kg" | "g"
-  );
-
   const remainingWeightG = toGrams(subInfo?.subscription?.attributes?.remaining_weight, subInfo?.subscription?.attributes?.weight_unit as "kg" | "g")
 
-  const progress = subscriptionWeightG
+  const progress = remainingWeightG
   ? (totalGransInCart / remainingWeightG) * 100
   : 0;
 
@@ -36,7 +31,7 @@ export default function BuildCatalog({ products}: {products: any}) {
           <PackagePlus className="h-5 w-5 text-primary" />
           <h2 className="font-display text-lg font-bold sm:text-xl">Build Your Box</h2>
         </div> */}
-        {subInfo?.subscription?.attributes?.category_rules?.[0].category_name ? (
+        {subInfo?.subscription?.attributes?.category_rules?.[0]?.category_name ? (
           <div>
             <div className="mb-3 flex items-center gap-2">
               <PackagePlus className="h-4 w-4 text-primary" />
@@ -48,7 +43,7 @@ export default function BuildCatalog({ products}: {products: any}) {
               </Badge>
             </div>
             <p className="mb-3 text-sm text-muted-foreground">
-              Choose your offals and mix until {formatWeight(remainingWeightG)} is filled.
+              Choose your offals and mix until <span className="font-semibold text-foreground">{formatWeight(remainingWeightG)}</span> is filled.
             </p>
           </div>
         ) : (
@@ -73,10 +68,10 @@ export default function BuildCatalog({ products}: {products: any}) {
         <div className="mb-5 rounded-xl border bg-muted/30 p-4">
           <div className="mb-2 flex justify-between text-sm">
             <span className="font-semibold">
-              {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit} filled
+              {formatWeight(totalGransInCart)} / {formatWeight(remainingWeightG)} filled
             </span>
             <span className={products?.max_items <= 0 ? "font-semibold text-green-600" : "text-muted-foreground"}>
-              {totalGransInCart < subscriptionWeightG ? `${formatWeight(subscriptionWeightG - totalGransInCart)} left` : "Complete!"}
+              {totalGransInCart < remainingWeightG ? `${formatWeight(remainingWeightG - totalGransInCart)} left` : "Complete!"}
             </span>
           </div>
           <Progress value={progress} className="h-2" />
@@ -124,7 +119,7 @@ export default function BuildCatalog({ products}: {products: any}) {
                       <Minus className="h-3.5 w-3.5" />
                     </Button>
                     <span className="flex-1 text-center text-sm font-semibold">{qty}</span>
-                    <Button size="sm" className="h-8 w-8 p-0" onClick={() => setQty(item, qty + 1)} disabled={item?.stock <= 0 || !item?.isActive}>
+                    <Button size="sm" className={`h-8 w-8 p-0 ${(totalGransInCart === remainingWeightG) && "opacity-50 cursor-not-allowed"}`} onClick={() => setQty(item, qty + 1)} disabled={item?.stock <= 0 || !item?.isActive}>
                       <Plus className="h-3.5 w-3.5" />
                     </Button>
                   </div>

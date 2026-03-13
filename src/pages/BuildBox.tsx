@@ -83,7 +83,6 @@ const BuildBox = () => {
   };
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<ProductType[]>([])
-  const [error, setError] = useState(true);
   const [categories, setCategories] = useState([]);
   const [plan, setPlan] = useState(storePlan || null)
   // const [activeCategory, setActiveCategory] = useState("all")
@@ -99,6 +98,18 @@ const BuildBox = () => {
 
   const categoryId = searchParams.get("categoryId");
   
+  if (!subInfo?.subscription || !subInfo?.selectedFrequency) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <h1 className="mb-4 text-2xl font-bold">Please complete previous steps</h1>
+          <Button asChild>
+            <Link to={ROUTES.plans}>Start Over</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!subInfo) {
@@ -138,19 +149,14 @@ const BuildBox = () => {
     const progress = mainWeightG
     ? (totalFilled / mainWeightG) * 100
     : 0;
- 
-  if (!subInfo?.subscription || !subInfo?.selectedFrequency) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <h1 className="mb-4 text-2xl font-bold">Please complete previous steps</h1>
-          <Button asChild>
-            <Link to={ROUTES.plans}>Start Over</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
+    
+    let error = "";
+    
+    if (totalGransInCart !== remainingWeightG) {
+      const remainingWeight = remainingWeightG - totalGransInCart;
+  
+      error = `Fill remaining ${formatWeight(remainingWeight)} of ${subInfo?.subscription?.attributes?.category_rules?.[0]?.category_name} to continue`;
+    }
 
   const location = useLocation();
 
@@ -216,7 +222,7 @@ const BuildBox = () => {
         categoryId: item.relationships?.categoryDetails?.data?.[0]?.id || "other",
         category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.name || "other",
         categorySlug: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
-        stock: item.stockQuantity,
+        stock: item.attributes.stockQuantity,
       }));
 
       setProducts(formattedProducts);
@@ -633,7 +639,9 @@ const BuildBox = () => {
                         {plan?.prefilled_items.map((item) => (
                           <div key={item.productId} className="flex justify-between text-xs">
                             <span className="text-muted-foreground">{item?.name}</span>
-                            <span>{item?.weight}{item?.weight_unit} · {displayCurrency(item.price, "NGN")}</span>
+                            <span>{item?.weight}{item?.weight_unit} 
+                              {/* · {displayCurrency(item.price, "NGN")} */}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -648,7 +656,8 @@ const BuildBox = () => {
                               {item.name} {item.qty > 1 ? `x ${item.qty}` : ""}
                             </span>
                             <span className="text-right">
-                              {item?.weight * item.qty}{item?.weight_unit} · {displayCurrency(item.price * item.qty, "NGN")}
+                              {item?.weight * item.qty}{item?.weight_unit} 
+                              {/* · {displayCurrency(item.price * item.qty, "NGN")} */}
                             </span>
                           </div>
                         ))}
@@ -673,10 +682,15 @@ const BuildBox = () => {
                     </div>
                   </div>
 
-                  <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalItemsinCart != subInfo?.subscription?.attributes?.max_items) || (totalGransInCart != remainingWeightG)}>
+                  <Button className="w-full" size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalGransInCart != remainingWeightG)}>
                     <ShoppingCart className="mr-2 h-4 w-4" />
                     Review Cart
                   </Button>
+                  {error && (
+                    <p className="text-xs text-center text-amber-600 mt-2">
+                      {error}
+                    </p>
+                  )}
 
                   {/* {!canProceed && hasOffalSelection && (
                     <p className="mt-2 text-center text-xs text-amber-600">

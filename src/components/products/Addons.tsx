@@ -67,7 +67,6 @@ export default function Addons({ products}: {products: any}) {
               </div>
             );
           })}
-          {products?.length === 0 && <p className="text-sm text-muted-foreground">No Addons found.</p>}
         </div>
   );
 }

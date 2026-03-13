@@ -27,22 +27,9 @@ import { useAddonStore } from "@/store/addonStore";
 import { toGrams } from "@/utils/conversion";
 import { useAuthStore } from "@/store/AuthStore";
 import { toast } from "react-toastify";
+import { LoadingData } from "@/components/LoadingData";
 
 const CartReview = () => {
-  const subscription = useSubscription();
-  const {
-    state,
-    currentPlan,
-    totalWeightG,
-    categoryWeightUsed,
-    getCategoryBudget,
-    // addAddon,
-    removeAddon,
-    setSelectedOffals,
-    setBuildSelections,
-    addOnsTotal,
-    grandTotal,
-  } = subscription;
 
   const navigate = useNavigate()
   const { subInfo } = useSubscriptionStore();
@@ -52,6 +39,7 @@ const CartReview = () => {
   const [products, setProducts] = useState([]);
   const [addingToCart, setAddingToCart] = useState(false)
   const { userInfo } = useAuthStore();
+  const [loadingProducts, setLoadingProducts] = useState(true)
 
   const totalGransInCart = totalGramWeight()
   
@@ -60,7 +48,7 @@ const CartReview = () => {
   }
 
   const subscriptionWeightG = toGrams(
-    subInfo?.subscription?.attributes?.weight ?? 0,
+    subInfo?.subscription?.attributes?.remaining_weight ?? 0,
     subInfo?.subscription?.attributes?.weight_unit as "kg" | "g"
   );
 
@@ -72,22 +60,11 @@ const CartReview = () => {
     error = `Your box needs ${formatWeight(remainingWeight)} to reach ${subInfo?.subscription?.attributes?.weight}${subInfo?.subscription?.attributes?.weight_unit}`;
   }
 
-  const progress = subscriptionWeightG
-  ? (totalGransInCart / subscriptionWeightG) * 100
+  const remainingWeightG = toGrams(subInfo?.subscription?.attributes?.remaining_weight, subInfo?.subscription?.attributes?.weight_unit as "kg" | "g")
+
+  const progress = remainingWeightG
+  ? (totalGransInCart / remainingWeightG) * 100
   : 0;
-
-
-  const billingDate = getNextBillingDate(state.frequency);
-
-  const totalBudgetG = currentPlan ? currentPlan.weightKg * 1000 : 0;
-  const offalWeightG = currentPlan?.offalSelection
-    ? state.selectedOffals.reduce((sum, name) => {
-        const opt = currentPlan.offalSelection!.options.find((o) => o.name === name);
-        return sum + (opt?.weightG ?? 0);
-      }, 0)
-    : 0;
-  const buildWeightG = state.buildSelections.reduce((sum, s) => sum + s.weightG * s.quantity, 0);
-  const fullBoxWeightG = totalWeightG + offalWeightG + buildWeightG;
   
 
   useEffect(() => {
@@ -102,15 +79,20 @@ const CartReview = () => {
         id: item.id,
         name: item.attributes.name,
         price: item.attributes.price,
+        status: item.attributes.status,
+        isActive: item.attributes.is_active,
         weight: item.attributes.mainValue,
         weight_unit: item.attributes.unit,
         formatted_weight: item.attributes.formattedWeight,
         category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
+        stock: item.attributes.stockQuantity,
       }));
 
       setProducts(formattedProducts);
     } catch (err) {
-      console.error(err);
+      toast.error(err.response.data?.message);
+    } finally {
+      setLoadingProducts(false)
     }
   };
 
@@ -140,7 +122,7 @@ const CartReview = () => {
       });
       navigate(ROUTES.checkout)
     } catch (err) {
-      console.error(err);
+      toast.error(err.response.data.message);
     } finally {
       setAddingToCart(false)
     }
@@ -187,7 +169,7 @@ const CartReview = () => {
                   <div className="flex items-center justify-between">
                     <CardTitle>Your Box Contents</CardTitle>
                     <span className="text-sm text-muted-foreground">
-                      {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
+                      {formatWeight(totalGransInCart)}/{formatWeight(remainingWeightG)}
                     </span>
                   </div>
                   <Progress value={progress} className="h-2 mt-2" />
@@ -306,7 +288,18 @@ const CartReview = () => {
                 </CardHeader>
                 <CardContent>
                   {/* <div> */}
-                    <Addons products={products}/>
+                    {loadingProducts && (
+                      <LoadingData />
+                    )}
+
+                    {!loadingProducts && products.length <= 0 && (
+                      <p className="text-base text-muted-foreground">No Addons found.</p>
+                    )}
+        
+                    {products.length > 0 && !loadingProducts && (
+                        <Addons products={products}/>
+                    )}
+
                     {/* {addOnCandidates.map((product) => {
                       const quantity = state.addOns.find((a) => a.productId === product.id)?.quantity || 0;
                       return (

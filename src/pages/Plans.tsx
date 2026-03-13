@@ -77,8 +77,14 @@ const Plans = () => {
       subscription: selectedPlan,
       selectedFrequency,
     });
+    
+    const categoryId = selectedPlan?.attributes?.category_rules?.[0]?.category_id;
 
-    navigate(`${ROUTES.buildBox}?planId=${selectedPlan?.id}&categoryId=${selectedPlan?.attributes?.category_rules[0]?.category_id}`);
+    const url = categoryId
+      ? `${ROUTES.buildBox}?planId=${selectedPlan?.id}&categoryId=${categoryId}`
+      : `${ROUTES.buildBox}?planId=${selectedPlan?.id}`;
+
+    navigate(url);
   };
 
   return (

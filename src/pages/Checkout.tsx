@@ -231,12 +231,12 @@ const Checkout = () => {
     }
   }
 
-  useEffect(() => {
-    const defaultAddress = addresses.find(a => a.attributes.is_default)
-    if(defaultAddress){
-      handleSelectSavedAddress(defaultAddress.id)
-    }
-  }, [addresses])
+  // useEffect(() => {
+  //   const defaultAddress = addresses.find(a => a.attributes.is_default)
+  //   if(defaultAddress){
+  //     handleSelectSavedAddress(defaultAddress.id)
+  //   }
+  // }, [addresses])
 
   const validateForm = () => {
     const result = checkoutSchema.safeParse({
@@ -304,87 +304,83 @@ const Checkout = () => {
   const canSubmit = validation.success;
 
   const handlePaystackCheckout = async () => {
-    if (!validateForm()) return;
-    setPaystackError("");
-    setPaystackInitLoading(true);
-    try {
+      if (!validateForm()) return;
 
-      const addressPayload = {
-        user_id: userInfo.userId,
-        address_type: "shipping",
-        label: "Home",
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        phone: phone,
-        street_address: streetAddress,
-        apartment_suite: apartment,
-        city: city || selectedArea,
-        state: selectedState,
-        zip_code: zipCode,
-        country: "Nigeria",
-        is_default: isDefaultAddresss
-      }
+      setPaystackError("");
+      setPaystackInitLoading(true);
 
-      let checkoutPayload = {}
-
-      if(!autoSubscribe){
-
-        checkoutPayload = {
-          auto_subscribe: autoSubscribe
-        }
-
-      }else{
-
-        checkoutPayload = {
+      try {
+        const basePayload: any = {
           auto_subscribe: autoSubscribe,
-          frequency_weeks: getFrequencyWeeks(subInfo?.selectedFrequency),
-          enable_auto_debit: autoDebit
+        };
+
+        // send address_id if it exists
+        if (selectedAddressId) {
+          basePayload.address_id = selectedAddressId;
+        } else {
+          // otherwise send full address
+          basePayload.shipping_address = {
+            address_type: "shipping",
+            label: "Home",
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            phone: phone,
+            street_address: streetAddress,
+            apartment_suite: apartment,
+            city: city || selectedArea,
+            state: selectedState,
+            zip_code: zipCode,
+            country: "Nigeria",
+            is_default: isDefaultAddresss,
+          };
         }
 
+        // add auto-subscription fields
+        if (autoSubscribe) {
+          basePayload.frequency_weeks = getFrequencyWeeks(
+            subInfo?.selectedFrequency
+          );
+          basePayload.enable_auto_debit = autoDebit;
+        }
+
+        const response = await axiosClient.post("/checkout", basePayload);
+
+        const reference = response.data?.data?.attributes?.payment?.reference;
+
+        const paymentLink = response.data?.data?.attributes?.payment?.authorization_url;
+
+        if (reference) {
+          setPaymentReference(reference);
+        }
+
+        if (paymentLink) {
+          window.location.assign(paymentLink);
+        }
+      } catch (error: any) {
+        let msg = ""
+
+        if (error instanceof Error && msg === "Request failed (500)") {
+          msg = "Payment gateway error. The server could not process your checkout. This may be a temporary issue — please try again in a moment.";
+        }
+
+        if (error?.response?.data?.message) {
+          msg = error.response.data.message;
+        }
+
+        setPaystackError(msg);
+        toast.error(error.response.data?.message)
+      } finally {
+        setPaystackInitLoading(false);
       }
-
-      const [addressRes, checkoutRes] = await Promise.all([
-        axiosClient.post("/addresses", addressPayload),
-        axiosClient.post("/checkout", checkoutPayload)
-      ]);
-
-      const reference = checkoutRes.data?.data?.attributes?.payment?.reference;
-      const paymentLink = checkoutRes.data?.data?.attributes?.payment?.authorization_url;
-
-      if (reference) {
-        setPaymentReference(reference);
-      }
-      
-      if (paymentLink) {
-        window.location.assign(paymentLink);
-      }
-
-    } catch (error) {
-
-      let msg = getErrorMessage(error, "Unable to initialize checkout payment. Please try again.");
-
-      if (error instanceof Error && msg === "Request failed (500)") {
-        msg = "Payment gateway error. The server could not process your checkout. This may be a temporary issue — please try again in a moment.";
-      }
-
-      if(error.response.data?.message){
-        msg = error.response.data?.message
-      }
-
-      setPaystackError(msg);
-
-    } finally {
-      setPaystackInitLoading(false);
-    }
-  };
+    };
 
   const getAddresses = async () => {
     try {
       const response = await axiosClient.get("/addresses")
       setAddresses(response.data?.data || [])
     } catch (error) {
-      console.log(error)
+      toast.error(error.response.data?.message)
     } finally {
       setLoadingAddress(false)
     }
@@ -492,8 +488,10 @@ const Checkout = () => {
                       value={selectedAddressId}
                       onChange={(e) => handleSelectSavedAddress(e.target.value)}
                     >
+                      <option value="" disabled>
+                        Select a saved address
+                      </option>
                       <option value="">Enter address manually</option>
-
                       {addresses.map((addr) => (
                         <option key={addr.id} value={addr.id}>
                           {addr?.attributes?.label || addr?.attributes?.street_address || ""}
@@ -507,28 +505,28 @@ const Checkout = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="first-name">First name <span className="text-destructive">*</span></Label>
-                  <Input id="first-name" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)}/>
+                  <Input id="first-name" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.firstName && (
                     <p className="text-sm text-destructive">{formErrors.firstName}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="last-name">Last name <span className="text-destructive">*</span></Label>
-                  <Input id="last-name" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                  <Input id="last-name" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.lastName && (
                     <p className="text-sm text-destructive">{formErrors.lastName}</p>
                   )}
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
-                  <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.email && (
                     <p className="text-sm text-destructive">{formErrors.email}</p>
                   )}
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="phone">Phone number <span className="text-destructive">*</span></Label>
-                  <Input id="phone" placeholder="08012345678" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  <Input id="phone" placeholder="08012345678" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.phone && (
                     <p className="text-sm text-destructive">{formErrors.phone}</p>
                   )}
@@ -546,6 +544,7 @@ const Checkout = () => {
                       setSelectedArea("");
                       setCity("");
                     }}
+                    disabled={!!selectedAddressId}
                   >
                     <option value="">Select your state</option>
                     {deliveryStates.map((s) => (
@@ -566,6 +565,7 @@ const Checkout = () => {
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                       value={selectedArea}
                       onChange={(e) => setSelectedArea(e.target.value)}
+                      disabled={!!selectedAddressId}
                     >
                       <option value="">Select your area</option>
                       {lagosAreas.map((item) => (
@@ -603,6 +603,7 @@ const Checkout = () => {
                         placeholder={`Enter your city in ${selectedState}`}
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
+                        disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
                       />
                       {formErrors.city && (
                         <p className="text-sm text-destructive">{formErrors.city}</p>
@@ -626,7 +627,7 @@ const Checkout = () => {
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="street-address">Street address <span className="text-destructive">*</span></Label>
-                  <Input id="street-address" placeholder="12 Adeniyi Jones Avenue" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} />
+                  <Input id="street-address" placeholder="12 Adeniyi Jones Avenue" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.streetAddress && (
                     <p className="text-sm text-destructive">{formErrors.streetAddress}</p>
                   )}
@@ -634,7 +635,7 @@ const Checkout = () => {
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="apartment">Apartment<span className="text-destructive">*</span></Label>
-                  <Input id="apartment" placeholder="e.g First Floor, Room 10" value={apartment} onChange={(e) => setApartment(e.target.value)} />
+                  <Input id="apartment" placeholder="e.g First Floor, Room 10" value={apartment} onChange={(e) => setApartment(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.apartment && (
                     <p className="text-sm text-destructive">{formErrors.apartment}</p>
                   )}
@@ -642,7 +643,7 @@ const Checkout = () => {
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="zip-code">Zip Code (optional)</Label>
-                  <Input id="zip-code" placeholder="102045" value={zipCode} onChange={(e) => setZipCode(e.target.value)} />
+                  <Input id="zip-code" placeholder="102045" value={zipCode} onChange={(e) => setZipCode(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.zipCode && (
                     <p className="text-sm text-destructive">{formErrors.zipCode}</p>
                   )}
@@ -760,15 +761,15 @@ const Checkout = () => {
                 <CardContent className="space-y-3">
                   {subInfo?.subscription && (
                     <>
-                      {cartItems?.attributes?.prefilledCount > 0 && (
+                      {subInfo?.subscription?.attributes?.prefilled_items?.length > 0 && (
                         <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
                           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Mandatory cuts
                           </p>
-                          {cartItems?.attributes?.items.map((item) => (
-                            <div key={item?.productId?.id} className="flex items-center justify-between gap-2">
-                              <span className="text-sm font-medium text-foreground">{item?.productId?.name}</span>
-                              <span className="text-xs text-muted-foreground">{item?.productId?.formattedWeight}</span>
+                          {subInfo?.subscription?.attributes?.prefilled_items?.map((item) => (
+                            <div key={item?.product_id} className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-medium text-foreground">{item?.name}</span>
+                              <span className="text-xs text-muted-foreground">{item?.weight}{item?.weight_unit}</span>
                             </div>
                           ))}
 
@@ -864,7 +865,7 @@ const Checkout = () => {
                       </div>
                       <Separator />
                       <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan price</span><span>{displayCurrency(cartItems?.attributes?.planUnitPrice, "NGN")}</span></p>
-                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>
+                      {cartItems?.attributes?.addonTotal && <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>}
                     </>
                   )}
 
