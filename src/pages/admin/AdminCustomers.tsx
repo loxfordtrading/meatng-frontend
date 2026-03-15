@@ -11,12 +11,13 @@ import { tokenStorage } from "@/lib/auth/tokenStorage";
 import { deleteAdminUser, listAdminUsers, type AdminUser as ApiUser } from "@/lib/api/admin";
 import { axiosClient } from "@/GlobalApi";
 import { toast } from "react-toastify";
+import { CustomerType } from "@/types/admin";
+import { format } from "date-fns";
+import { LoadingData } from "@/components/LoadingData";
 
 const statusBadge: Record<string, string> = {
-    Active: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
-    Paused: "bg-amber-500/15 text-amber-700 border-amber-500/20",
-    Cancelled: "bg-red-500/15 text-red-700 border-red-500/20",
-    "No Subscription": "bg-slate-500/15 text-slate-600 border-slate-500/20",
+    true: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
+    false: "bg-red-500/15 text-red-700 border-red-500/20",
 };
 
 const formatDate = (iso?: string): string => {
@@ -28,33 +29,11 @@ const formatDate = (iso?: string): string => {
     }
 };
 
-const mapApiUser = (u: ApiUser): AdminCustomer => {
-    const raw = u.raw ?? {};
-    const subStatus = String(raw.subscriptionStatus ?? raw.subscription_status ?? "");
-    let status: AdminCustomer["status"] = "No Subscription";
-    if (subStatus.toLowerCase().includes("active") || u.isActive) status = "Active";
-    else if (subStatus.toLowerCase().includes("pause")) status = "Paused";
-    else if (subStatus.toLowerCase().includes("cancel")) status = "Cancelled";
-
-    return {
-        id: u.id,
-        name: u.name ?? String(raw.name ?? u.email?.split("@")[0] ?? "—"),
-        email: u.email ?? "—",
-        phone: u.phone ?? String(raw.phone ?? "—"),
-        plan: String(raw.plan ?? raw.planName ?? raw.subscriptionPlan ?? "") || null,
-        status,
-        joinDate: formatDate(u.createdAt ?? String(raw.createdAt ?? "")),
-        totalOrders: Number(raw.totalOrders ?? raw.order_count ?? 0),
-        totalSpent: Number(raw.totalSpent ?? raw.total_spent ?? 0),
-        lastOrder: String(raw.lastOrderDate ?? raw.last_order_date ?? "") || null,
-    };
-};
-
 const AdminCustomers = () => {
     const [search, setSearch] = useState("");
-    const [selected, setSelected] = useState<AdminCustomer | null>(null);
+    const [selected, setSelected] = useState<CustomerType | null>(null);
 
-    const [customers, setCustomers] = useState([]);
+    const [customers, setCustomers] = useState<CustomerType[]>([]);
     const [meta, setMeta] = useState(null);
     const [loading, setLoading] = useState(true)
 
@@ -84,13 +63,6 @@ const AdminCustomers = () => {
         },
     });
 
-    const filtered = customers.filter(
-        (c) => c.name.toLowerCase().includes(search.toLowerCase()) || c.email.toLowerCase().includes(search.toLowerCase())
-    );
-
-    const activeCount = customers.filter((c) => c.status === "Active").length;
-    const totalSpent = customers.reduce((s, c) => s + c.totalSpent, 0);
-
     useEffect(() => {
         getCustomers()
     }, [])
@@ -101,24 +73,13 @@ const AdminCustomers = () => {
 
             const customers = res.data.data || [];
 
-            // flatten orders
-            // const flattenedOrders = orders.map((order: any) => ({
-            //     id: order.id,
-            //     ...order.attributes,
-            //     user: order.relationships?.userDetails?.data?.attributes || null,
-            //     plan: order.relationships?.planDetails?.data?.attributes || null,
-            // }));
-
-            const flattenedCustomers = customers.map((order: any) => ({
-                id: order.id,
-                ...order.attributes,
-                // status: mapStatus(order.attributes.status),
-                user: order.relationships?.userDetails?.data?.attributes || null,
-                plan: order.relationships?.planDetails?.data?.attributes || null,
+            const flattenedCustomers = customers.map((customer: any) => ({
+                id: customer.id,
+                ...customer.attributes,
             }));
 
-            // setCustomers(flattenedCustomers);
-            // setMeta(res.data.meta);  
+            setCustomers(flattenedCustomers);
+            setMeta(res.data.meta);  
 
         } catch (err: any) {
             toast.error(err.response?.data?.message);
@@ -127,11 +88,9 @@ const AdminCustomers = () => {
         }
     };
 
-    if (isLoading) {
+    if (loading) {
         return (
-            <div className="flex items-center justify-center py-24 admin-page-bg rounded-3xl">
-                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-            </div>
+            <LoadingData/>
         );
     }
 
@@ -156,14 +115,14 @@ const AdminCustomers = () => {
                 />
                 <AdminMetricCard
                     label="Active Subscribers"
-                    value={activeCount.toString()}
+                    value={"0"}
                     icon={ShoppingBag}
                     tone="emerald"
                     delayMs={70}
                 />
                 <AdminMetricCard
                     label="Total Revenue"
-                    value={formatAdminPrice(totalSpent)}
+                    value={formatAdminPrice(0)}
                     icon={DollarSign}
                     tone="amber"
                     delayMs={140}
@@ -193,50 +152,54 @@ const AdminCustomers = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((c) => (
-                                    <tr key={c.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                {customers.map((c) => (
+                                    <tr key={c?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xs font-bold text-primary">
-                                                    {c.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                                                    {c.first_name[0]} {c.last_name[0]}
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium">{c.name}</p>
-                                                    <p className="text-xs text-muted-foreground">{c.email}</p>
+                                                    <p className="font-medium">{c?.first_name} {c.last_name}</p>
+                                                    <p className="text-xs text-muted-foreground">{c?.email}</p>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-4 py-3">{c.plan ? <Badge variant="secondary">{c.plan}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
+                                        {/* <td className="px-4 py-3">{c.plan ? <Badge variant="secondary">{c.plan}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td> */}
                                         <td className="px-4 py-3">
-                                            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusBadge[c.status]}`}>{c.status}</span>
+                                            <span
+                                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                                                    statusBadge[String(c?.is_active)]
+                                                }`}
+                                            >
+                                                {c?.is_active ? "Active" : "Inactive"}
+                                            </span>
                                         </td>
-                                        <td className="px-4 py-3 text-muted-foreground">{c.totalOrders}</td>
-                                        <td className="px-4 py-3 font-semibold">{formatAdminPrice(c.totalSpent)}</td>
-                                        <td className="px-4 py-3 text-muted-foreground">{c.joinDate}</td>
+                                        {/* <td className="px-4 py-3 text-muted-foreground">{c.totalOrders}</td> */}
+                                        {/* <td className="px-4 py-3 font-semibold">{formatAdminPrice(c.totalSpent)}</td> */}
+                                        <td className="px-4 py-3 text-muted-foreground">{c?.createdAt ? format(c?.createdAt, "MMM dd, yyyy") : "None"}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1">
                                                 <Button variant="ghost" size="sm" onClick={() => setSelected(c)}>View</Button>
-                                                {/* {!usingMock && ( */}
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                        onClick={() => {
-                                                            if (!confirm(`Delete ${c.name}? This cannot be undone.`)) return;
-                                                            deleteMutation.mutate(c.id);
-                                                        }}
-                                                        disabled={deleteMutation.isPending}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                {/* )} */}
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                    onClick={() => {
+                                                        if (!confirm(`Delete ${c?.first_name} ${c?.first_name}? This cannot be undone.`)) return;
+                                                        deleteMutation.mutate(c.id);
+                                                    }}
+                                                    disabled={deleteMutation.isPending}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        {filtered.length === 0 && <div className="flex items-center justify-center py-12 text-muted-foreground">No customers found.</div>}
+                        {customers?.length <= 0 && <div className="flex items-center justify-center py-12 text-muted-foreground">No customers found.</div>}
                     </div>
                 </CardContent>
             </Card>
@@ -248,20 +211,21 @@ const AdminCustomers = () => {
                     <Card className="admin-card relative z-10 max-w-md w-full animate-fade-in">
                         <CardHeader>
                             <div className="flex items-center justify-between">
-                                <CardTitle>{selected.name}</CardTitle>
+                                <CardTitle>{selected?.first_name} {selected?.last_name}</CardTitle>
                                 <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>✕</Button>
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-muted-foreground">Email</span><p className="font-medium">{selected.email}</p></div>
-                                <div><span className="text-muted-foreground">Phone</span><p className="font-medium">{selected.phone}</p></div>
-                                <div><span className="text-muted-foreground">Plan</span><p className="font-medium">{selected.plan || "None"}</p></div>
-                                <div><span className="text-muted-foreground">Status</span><p className="font-medium">{selected.status}</p></div>
-                                <div><span className="text-muted-foreground">Total Orders</span><p className="font-medium">{selected.totalOrders}</p></div>
-                                <div><span className="text-muted-foreground">Total Spent</span><p className="font-medium">{formatAdminPrice(selected.totalSpent)}</p></div>
-                                <div><span className="text-muted-foreground">Joined</span><p className="font-medium">{selected.joinDate}</p></div>
-                                <div><span className="text-muted-foreground">Last Order</span><p className="font-medium">{selected.lastOrder || "—"}</p></div>
+                                <div><span className="text-muted-foreground">Email</span><p className="font-medium">{selected?.email}</p></div>
+                                <div><span className="text-muted-foreground">Phone</span><p className="font-medium">{selected?.phone}</p></div>
+                                {/* <div><span className="text-muted-foreground">Plan</span><p className="font-medium">{selected.plan || "None"}</p></div> */}
+                                <div><span className="text-muted-foreground">Status</span><p className="font-medium">{selected?.is_active}</p></div>
+                                {/* <div><span className="text-muted-foreground">Total Orders</span><p className="font-medium">{selected.totalOrders}</p></div> */}
+                                {/* <div><span className="text-muted-foreground">Total Spent</span><p className="font-medium">{formatAdminPrice(selected.totalSpent)}</p></div> */}
+                                <div><span className="text-muted-foreground">Joined</span><p className="font-medium">{selected?.createdAt ? format(selected?.createdAt, "MMM dd, yyyy") : "None"}</p></div>
+                                <div><span className="text-muted-foreground">Last Updated</span><p className="font-medium">{selected?.updatedAt ? format(selected?.updatedAt, "MMM dd, yyyy") : "None"}</p></div>
+                                {/* <div><span className="text-muted-foreground">Last Order</span><p className="font-medium">{selected.lastOrder || "—"}</p></div> */}
                             </div>
                             <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
                                 <Button size="sm" variant="outline">Pause Subscription</Button>

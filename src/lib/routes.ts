@@ -33,9 +33,12 @@ export const ROUTES = {
 
   // Admin routes
   adminLogin: "/admin/login",
+  adminInvitationSetup: "/admin/invitation",
   admin: "/admin",
   adminOrders: "/admin/orders",
   adminCustomers: "/admin/customers",
+  adminPlans: "/admin/plans",
+  addPlan: "/admin/add-plan",
   adminProducts: "/admin/products",
   adminSubscriptions: "/admin/subscriptions",
   adminDeliveries: "/admin/deliveries",

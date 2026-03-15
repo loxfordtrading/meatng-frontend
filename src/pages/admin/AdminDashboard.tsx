@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
@@ -24,8 +24,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
@@ -41,6 +39,21 @@ import {
   mockProductPopularity,
   mockRevenueData,
 } from "@/data/adminData";
+import { OrderStatus, OrderType, StatisticsType } from "@/types/admin";
+import { toast } from "react-toastify";
+import { axiosClient } from "@/GlobalApi";
+import { cn } from "@/lib/utils";
+import displayCurrency from "@/utils/displayCurrency";
+import { LoadingData } from "@/components/LoadingData";
+import { format } from "date-fns";
+
+const PLAN_COLORS = [
+  "#6366F1",
+  "#22C55E",
+  "#F59E0B",
+  "#EF4444",
+  "#14B8A6",
+];
 
 const statusColors: Record<string, string> = {
   Processing: "bg-amber-500/15 text-amber-700 border-amber-500/20",
@@ -73,6 +86,19 @@ const normalizeStatus = (s?: string): string => {
   return "Processing";
 };
 
+const mapStatus = (status: string): OrderStatus => {
+  switch (status) {
+    case "pending":
+      return "Processing";
+    case "paid":
+      return "Delivered";
+    case "failed":
+      return "Cancelled";
+    default:
+      return "Processing";
+  }
+};
+
 const formatDate = (iso?: string): string => {
   if (!iso) return "—";
   try {
@@ -81,124 +107,130 @@ const formatDate = (iso?: string): string => {
 };
 
 const AdminDashboard = () => {
+
   const token = tokenStorage.getAdminToken();
+  const [loading, setLoading] = useState(true)
+  const [orders, setOrders] = useState<OrderType[]>([]);
+  const [statistics, setStatistics] = useState<StatisticsType | null>(null);
 
-  const { data: apiOrders } = useQuery({
-    queryKey: ["admin-orders"],
-    queryFn: async () => {
-      try { return await listOrders(token); } catch { return null; }
-    },
-    staleTime: 30_000,
-  });
+  const revenueChartData = statistics?.charts?.revenue_momentum?.map((item) => ({
+    month: item.month,
+    revenue: item.revenue,
+    orders: 0, // placeholder until backend sends it
+  })) ?? [];
 
-  const { data: apiUsers } = useQuery({
-    queryKey: ["admin-users"],
-    queryFn: async () => {
-      try { return await listAdminUsers(token); } catch { return null; }
-    },
-    staleTime: 60_000,
-  });
+  const planDistribution = statistics?.charts?.plan_distribution?.map((plan, index) => ({
+    id: plan.plan_id,
+    plan: plan.plan_name,
+    count: plan.count,
+    percentage: plan.percentage,
+    color: PLAN_COLORS[index % PLAN_COLORS.length],
+  })) ?? [];
 
-  const recentOrders = useMemo(() => {
-    if (apiOrders) {
-      return apiOrders.slice(0, 5).map((o: ApiOrder) => {
-        const raw = o.raw ?? {};
-        const customer = (raw.customer ?? raw.user ?? {}) as Record<string, unknown>;
-        return {
-          id: o.id,
-          customerName: String(raw.customerName ?? raw.customer_name ?? customer.name ?? "—"),
-          date: formatDate(o.createdAt ?? String(raw.createdAt ?? "")),
-          total: o.total ?? 0,
-          status: normalizeStatus(o.status),
-        };
-      });
+  const topProducts = statistics?.charts?.top_products?.map((product) => ({
+    name: product.product_name,
+    shortName: product.product_name.length > 16
+      ? product.product_name.slice(0, 16) + "..."
+      : product.product_name,
+    orders: product.order_count,
+    quantity: product.quantity
+  })) ?? [];
+
+  const totalPlanCount = statistics?.charts?.plan_distribution?.reduce(
+    (sum, plan) => sum + plan.count,
+    0
+  );
+
+  useEffect(() => {
+    getDashboardStats()
+  }, [])
+
+  const getDashboardStats = async () => {
+    try {
+      const [statsRes, ordersRes] = await Promise.all([
+        axiosClient.get("/stats/dashboard"),
+        axiosClient.get("/orders?limit=5")
+      ]);
+
+      const orders = ordersRes.data.data || [];
+
+      const flattenedOrders = orders.map((order: any) => ({
+          id: order.id,
+          ...order.attributes,
+          status: mapStatus(order.attributes.status),
+          user: order.relationships?.userDetails?.data?.attributes || null,
+          plan: order.relationships?.planDetails?.data?.attributes || null,
+      }));
+
+      setStatistics(statsRes.data?.data?.attributes);
+      setOrders(flattenedOrders);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message);
+    } finally {
+      setLoading(false);
     }
-    return mockAdminOrders.slice(0, 5).map((o) => ({
-      id: o.id, customerName: o.customerName, date: o.date, total: o.total, status: o.status,
-    }));
-  }, [apiOrders]);
+  };
 
-  const computedKpis = useMemo(() => {
-    const orders = apiOrders ?? [];
-    const users = apiUsers ?? [];
-
-    const totalRevenue = orders.length > 0
-      ? orders.reduce((sum, o) => sum + (o.total ?? 0), 0)
-      : mockKPIs.totalRevenue;
-
-    const pendingOrders = orders.length > 0
-      ? orders.filter((o) => normalizeStatus(o.status).toLowerCase().includes("pending") || normalizeStatus(o.status).toLowerCase().includes("processing")).length
-      : mockKPIs.pendingOrders;
-
-    const totalCustomers = users.length > 0 ? users.length : mockKPIs.newCustomers30d;
-
-    const activeSubscriptions = users.length > 0
-      ? users.filter((u) => u.isActive).length
-      : mockKPIs.activeSubscriptions;
-
-    return { totalRevenue, pendingOrders, totalCustomers, activeSubscriptions };
-  }, [apiOrders, apiUsers]);
-
-  const usingMockKpis = !apiOrders && !apiUsers;
-
-  const kpis = [
-    {
-      label: "Total Revenue",
-      value: formatAdminPrice(computedKpis.totalRevenue),
-      change: usingMockKpis ? mockKPIs.revenueGrowth : null,
-      icon: DollarSign,
-      tone: "emerald" as const,
-    },
-    {
-      label: "Active Subscriptions",
-      value: computedKpis.activeSubscriptions.toString(),
-      change: usingMockKpis ? mockKPIs.subscriptionGrowth : null,
-      icon: Package,
-      tone: "blue" as const,
-    },
-    {
-      label: "Pending Orders",
-      value: computedKpis.pendingOrders.toString(),
-      change: null,
-      icon: ShoppingBag,
-      tone: "amber" as const,
-    },
-    {
-      label: "Total Customers",
-      value: computedKpis.totalCustomers.toString(),
-      change: usingMockKpis ? mockKPIs.customerGrowth : null,
-      icon: UserPlus,
-      tone: "teal" as const,
-    },
-  ];
-
-  const totalPlanCount = mockPlanDistribution.reduce((sum, plan) => sum + plan.count, 0);
-  const topProducts = mockProductPopularity.slice(0, 7).map((product) => ({
-    ...product,
-    shortName: product.name.length > 14 ? `${product.name.slice(0, 14)}...` : product.name,
-  }));
+  if (loading) {
+    return (
+        <LoadingData/>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-2xl font-display font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">Business overview and key metrics.{usingMockKpis && " (demo data)"}</p>
+          <p className="text-muted-foreground text-sm mt-1">Business overview and key metrics.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi, index) => (
-          <AdminMetricCard
-            key={kpi.label}
-            label={kpi.label}
-            value={kpi.value}
-            icon={kpi.icon}
-            tone={kpi.tone}
-            change={kpi.change}
-            delayMs={index * 70}
-          />
-        ))}
+        <Card className={cn("admin-card admin-animate-up")}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="admin-stat-icon" data-tone={"text-emerald-700"}>
+                <DollarSign />
+              </div>
+            </div>
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">TOTAL REVENUE</p>
+            <p className={cn("mt-1 text-2xl font-bold tracking-tight text-emerald-700")}>{displayCurrency(statistics?.summary?.total_revenue, "NGN")}</p>
+          </CardContent>
+        </Card>
+        <Card className={cn("admin-card admin-animate-up")}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="admin-stat-icon" data-tone={"text-blue-700"}>
+                <Package />
+              </div>
+            </div>
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">ACTIVE SUBSCRIPTIONS</p>
+            <p className={cn("mt-1 text-2xl font-bold tracking-tight text-blue-700")}>{statistics?.summary?.active_subscriptions}</p>
+          </CardContent>
+        </Card>
+        <Card className={cn("admin-card admin-animate-up")}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="admin-stat-icon" data-tone={"text-amber-700"}>
+                <ShoppingBag />
+              </div>
+            </div>
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">PENDING ORDERS</p>
+            <p className={cn("mt-1 text-2xl font-bold tracking-tight text-amber-700")}>{statistics?.summary?.pending_orders}</p>
+          </CardContent>
+        </Card>
+        <Card className={cn("admin-card admin-animate-up")}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="admin-stat-icon" data-tone={"text-teal-700"}>
+                <UserPlus />
+              </div>
+            </div>
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">TOTAL CUSTOMERS</p>
+            <p className={cn("mt-1 text-2xl font-bold tracking-tight text-teal-700")}>{statistics?.summary?.total_customers}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -206,12 +238,12 @@ const AdminDashboard = () => {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-base">Revenue Momentum</CardTitle>
-              <span className="text-xs text-muted-foreground">Last 6 months</span>
+              <span className="text-xs text-muted-foreground">Last {revenueChartData?.length} months</span>
             </div>
           </CardHeader>
           <CardContent className="pt-2">
             <ChartContainer config={revenueChartConfig} className="h-[260px] w-full">
-              <AreaChart data={mockRevenueData} margin={{ left: 10, right: 10, top: 14, bottom: 4 }}>
+              <AreaChart data={revenueChartData} margin={{ left: 10, right: 10, top: 14, bottom: 4 }}>
                 <defs>
                   <linearGradient id="revenueFillDashboard" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.4} />
@@ -264,7 +296,7 @@ const AdminDashboard = () => {
           <CardContent className="space-y-4 pt-2">
             <div className="relative">
               <ChartContainer
-                config={mockPlanDistribution.reduce<ChartConfig>((acc, plan) => {
+                config={planDistribution.reduce<ChartConfig>((acc, plan) => {
                   acc[plan.plan] = { label: plan.plan, color: plan.color };
                   return acc;
                 }, {})}
@@ -272,7 +304,7 @@ const AdminDashboard = () => {
               >
                 <PieChart>
                   <Pie
-                    data={mockPlanDistribution}
+                    data={planDistribution}
                     dataKey="count"
                     nameKey="plan"
                     innerRadius={54}
@@ -281,8 +313,8 @@ const AdminDashboard = () => {
                     stroke="hsl(var(--background))"
                     strokeWidth={3}
                   >
-                    {mockPlanDistribution.map((plan) => (
-                      <Cell key={plan.plan} fill={plan.color} />
+                    {planDistribution.map((plan) => (
+                      <Cell key={plan?.id} fill={plan.color} />
                     ))}
                   </Pie>
                   <ChartTooltip content={<ChartTooltipContent labelKey="plan" nameKey="plan" />} />
@@ -291,19 +323,19 @@ const AdminDashboard = () => {
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-3xl font-bold text-foreground">{totalPlanCount}</span>
                 <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Active plans
+                  plan{totalPlanCount > 1 && "s"}
                 </span>
               </div>
             </div>
             <div className="space-y-2">
-              {mockPlanDistribution.map((plan) => (
-                <div key={plan.plan} className="flex items-center justify-between text-sm">
+              {planDistribution.map((plan) => (
+                <div key={plan?.id} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: plan.color }} />
-                    <span className="font-medium">{plan.plan}</span>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: plan?.color }} />
+                    <span className="font-medium">{plan?.plan}</span>
                   </div>
                   <span className="text-muted-foreground">
-                    {plan.count} ({Math.round((plan.count / totalPlanCount) * 100)}%)
+                    {plan.count} ({plan.percentage}%)
                   </span>
                 </div>
               ))}
@@ -327,21 +359,21 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent className="p-0">
             <div>
-              {recentOrders.map((order) => (
+              {orders.map((order) => (
                 <div
-                  key={order.id}
+                  key={order?.id}
                   className="flex items-center justify-between px-6 py-3.5 border-t border-border/50 first:border-t-0 hover:bg-muted/35 transition-colors"
                 >
                   <div>
-                    <p className="text-sm font-semibold">{order.customerName}</p>
-                    <p className="text-xs text-muted-foreground">{order.id} | {order.date}</p>
+                    <p className="text-sm font-semibold">{order?.user?.email}</p>
+                    <p className="text-xs text-muted-foreground">{order?.id} | {order?.createdAt ? format(order?.createdAt, "MMM dd, yyyy") : "None"}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-semibold">{formatAdminPrice(order.total)}</p>
+                    <p className="text-sm font-semibold">{displayCurrency(order?.total_amount, "NGN")}</p>
                     <span
-                      className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[order.status]}`}
+                      className={`mt-1 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${statusColors[order?.status]}`}
                     >
-                      {order.status}
+                      {order?.status}
                     </span>
                   </div>
                 </div>

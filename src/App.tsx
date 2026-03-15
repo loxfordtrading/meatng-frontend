@@ -57,6 +57,9 @@ import VerificationEmailSent from "./pages/VerificationEmailSent";
 import UserGuard from "./protect/UserGuard";
 import { useAuthStore } from "./store/AuthStore";
 import AdminGuard from "./protect/AdminGuard";
+import AdminPlans from "./pages/admin/AdminPlans";
+import AdminInvitationSetup from "./pages/admin/AdminInvitationSetup";
+import { AddPlan } from "./pages/admin/AddPlan";
 
 const queryClient = new QueryClient();
 
@@ -73,9 +76,12 @@ const App = () => (
               <Routes>
                 {/* ─── Admin Routes (no Header/Footer) ─── */}
                 <Route path={ROUTES.adminLogin} element={<AdminLogin />} />
+                <Route path={ROUTES.adminInvitationSetup} element={<AdminInvitationSetup />} />
                 <Route path={ROUTES.admin} element={<AdminGuard><AdminDashboard /></AdminGuard>} />
                 <Route path={ROUTES.adminOrders} element={<AdminGuard><AdminOrders /></AdminGuard>} />
                 <Route path={ROUTES.adminCustomers} element={<AdminGuard><AdminCustomers /></AdminGuard>} />
+                <Route path={ROUTES.adminPlans} element={<AdminGuard><AdminPlans /></AdminGuard>} />
+                <Route path={ROUTES.addPlan} element={<AdminGuard><AddPlan /></AdminGuard>} />
                 <Route path={ROUTES.adminProducts} element={<AdminGuard><AdminProducts /></AdminGuard>} />
                 <Route path={ROUTES.adminSubscriptions} element={<AdminGuard><AdminSubscriptions /></AdminGuard>} />
                 <Route path={ROUTES.adminDeliveries} element={<AdminGuard><AdminDeliveries /></AdminGuard>} />

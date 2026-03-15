@@ -156,38 +156,6 @@ const AdminProducts = () => {
         },
     });
 
-    // const createMutation = useMutation({
-    //     mutationFn: (form: Partial<UiProduct>) =>
-    //         createProduct({
-    //             name: form.name,
-    //             description: form.description,
-    //             price: form.addOnPrice,
-    //             stock: form.stock,
-    //             sku: form.sku,
-    //             isActive: true,
-    //             images: form.image ? [form.image] : undefined,
-    //             categoryIds: form.categoryId ? [form.categoryId] : undefined,
-    //         }, token),
-    //     onSuccess: () => {
-    //         queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-    //         queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-    //         setCreatingProduct(false);
-    //         setCreateForm({});
-    //     },
-    // });
-
-    const openEdit = async (product: ProductType) => {
-        setEditingProduct(product);
-        setEditForm({ ...product });
-        // if (usingMock) return;
-        try {
-            const refreshed = await getProductById(product.id, token);
-            setEditForm({ ...mapApiToUi(refreshed, categories) });
-        } catch {
-            // Keep table payload if detail fetch fails.
-        }
-    };
-
     const handleActive = async (id: string) => {
         try {
             setDisablingId(id);
@@ -223,21 +191,6 @@ const AdminProducts = () => {
         } finally {
             setDeletingProductId(null);
         }
-    };
-
-    // const handleSave = () => {
-    //     if (!editingProduct) return;
-    //     // if (!usingMock) {
-    //         saveMutation.mutate({ id: editingProduct.id, form: editForm, original: editingProduct });
-    //     // } else {
-    //     //     setEditingProduct(null);
-    //     // }
-    // };
-    
-
-    const openCreate = () => {
-        setCreatingProduct(true);
-        setCreateForm({ isActive: true });
     };
 
     const handleCreate = async () => {

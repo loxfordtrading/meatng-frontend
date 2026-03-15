@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Save, Plus, Shield, Clock, Bell, Building2, Truck, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,19 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAdmin } from "@/contexts/AdminContext";
+import { axiosClient } from "@/GlobalApi";
+import { toast } from "react-toastify";
+import { CustomerType } from "@/types/admin";
+import { LoadingData } from "@/components/LoadingData";
+import { AddAdmin } from "@/components/admin/AddAdmin";
 
 type SettingsTab = "business" | "delivery" | "notifications" | "admins";
 
 const AdminSettings = () => {
-    const [tab, setTab] = useState<SettingsTab>("business");
+    const [tab, setTab] = useState<SettingsTab>("admins");
     const { admin } = useAdmin();
     const [adminUsers, setAdminUsers] = useState([]);
 
+    const [admins, setAdmins] = useState<CustomerType[]>([]);
+    const [meta, setMeta] = useState(null);
+    const [loading, setLoading] = useState(true)
+
     const tabs: { id: SettingsTab; label: string; icon: typeof Building2 }[] = [
-        { id: "business", label: "Business", icon: Building2 },
-        { id: "delivery", label: "Delivery", icon: Truck },
-        { id: "notifications", label: "Notifications", icon: Bell },
         { id: "admins", label: "Admin Users", icon: Users },
+        { id: "delivery", label: "Delivery", icon: Truck },
+        // { id: "business", label: "Business", icon: Building2 },
+        // { id: "notifications", label: "Notifications", icon: Bell },
     ];
 
     const mockAdminUsers = [
@@ -41,6 +50,38 @@ const AdminSettings = () => {
         setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, enabled: !n.enabled } : n)));
     };
 
+    useEffect(() => {
+        getAdmins()
+    }, [])
+
+    const getAdmins = async () => {
+        try {
+            setLoading(true)
+            const res = await axiosClient.get(`/users/admins`);
+
+            const admins = res.data.data || [];
+
+            const flattenedAdmins = admins.map((customer: any) => ({
+                id: customer.id,
+                ...customer.attributes,
+            }));
+
+            setAdmins(flattenedAdmins);
+            setMeta(res.data.meta);  
+
+        } catch (err: any) {
+            toast.error(err.response?.data?.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <LoadingData/>
+        );
+    }
+
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
             <div>
@@ -62,8 +103,45 @@ const AdminSettings = () => {
                 ))}
             </div>
 
+               {/* Admin Users */}
+            {tab === "admins" && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">{admins?.length} admin users</p>
+                        <AddAdmin getAdmins={getAdmins}/>
+                    </div>
+                    <Card className="admin-card admin-animate-up" style={{ animationDelay: "120ms" }}>
+                        <CardContent className="p-0">
+                            <div className="divide-y divide-border">
+                                {admins.map((user) => (
+                                    <div key={user?.id} className="flex items-center justify-between px-6 py-4 hover:bg-muted/20 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xs font-bold text-primary">
+                                                {user?.first_name[0]}{user?.last_name[0]}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium">{user?.first_name} {user?.last_name}</p>
+                                                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Badge variant="secondary" className="flex items-center gap-1">
+                                                <Shield className="h-3 w-3" /> {user?.role}
+                                            </Badge>
+                                            <Badge variant={user?.is_active ? "default" : "outline"}>
+                                                {user?.is_active ? "Active" : "Inactive"}
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
             {/* Business */}
-            {tab === "business" && (
+            {/* {tab === "business" && (
                 <Card className="admin-card admin-animate-up" style={{ animationDelay: "120ms" }}>
                     <CardHeader>
                         <CardTitle className="text-base">Business Information</CardTitle>
@@ -96,7 +174,7 @@ const AdminSettings = () => {
                         </Button>
                     </CardContent>
                 </Card>
-            )}
+            )} */}
 
             {/* Delivery */}
             {tab === "delivery" && (
@@ -144,7 +222,7 @@ const AdminSettings = () => {
             )}
 
             {/* Notifications */}
-            {tab === "notifications" && (
+            {/* {tab === "notifications" && (
                 <Card className="admin-card admin-animate-up" style={{ animationDelay: "120ms" }}>
                     <CardHeader>
                         <CardTitle className="text-base">Notification Preferences</CardTitle>
@@ -170,46 +248,7 @@ const AdminSettings = () => {
                         ))}
                     </CardContent>
                 </Card>
-            )}
-
-            {/* Admin Users */}
-            {tab === "admins" && (
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">{mockAdminUsers.length} admin users</p>
-                        <Button size="sm">
-                            <Plus className="mr-2 h-3.5 w-3.5" /> Invite Admin
-                        </Button>
-                    </div>
-                    <Card className="admin-card admin-animate-up" style={{ animationDelay: "120ms" }}>
-                        <CardContent className="p-0">
-                            <div className="divide-y divide-border">
-                                {mockAdminUsers.map((user) => (
-                                    <div key={user.email} className="flex items-center justify-between px-6 py-4 hover:bg-muted/20 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-xs font-bold text-primary">
-                                                {user.name.split(" ").map((n) => n[0]).join("")}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium">{user.name}</p>
-                                                <p className="text-xs text-muted-foreground">{user.email}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant="secondary" className="flex items-center gap-1">
-                                                <Shield className="h-3 w-3" /> {user.role}
-                                            </Badge>
-                                            <Badge variant={user.status === "Active" ? "default" : "outline"}>
-                                                {user.status}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+            )} */}
         </div>
     );
 };

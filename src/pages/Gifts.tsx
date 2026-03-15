@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Gift, Sparkles, Building2, Heart, Truck, CheckCircle2, CalendarDays, Package2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { giftBoxes, getProductById, formatPrice } from "@/data/products";
 import { useCart } from "@/contexts/CartContext";
 import { ROUTES } from "@/lib/routes";
-import { toast } from "@/hooks/use-toast";
+import { axiosClient } from "@/GlobalApi";
+import { toast } from "react-toastify";
+import { LoadingData } from "@/components/LoadingData";
+import { useGiftStore } from "@/store/giftStore";
+import { useGiftPlanStore } from "@/store/giftPlanState";
 
 const giftingOptions = [
   {
@@ -61,9 +65,14 @@ const giftBoxImageOverrides: Record<string, string> = {
 const getGiftBoxImage = (boxId: string): string => giftBoxImageOverrides[boxId] ?? "/placeholder.svg";
 
 const Gifts = () => {
+
   const cart = useCart();
   const navigate = useNavigate();
-
+  const { clearGift } = useGiftStore();
+  const { setGiftPlanInfo } = useGiftPlanStore();
+  const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState(null)
   const [selectedGiftBoxId, setSelectedGiftBoxId] = useState<string>(giftBoxes[0]?.id ?? "");
   const [senderName, setSenderName] = useState("");
   const [recipientName, setRecipientName] = useState("");
@@ -80,16 +89,37 @@ const Gifts = () => {
 
   const canContinue = !!selectedGiftBox && recipientName.trim().length > 0 && senderName.trim().length > 0;
 
-  const addGiftToCart = (goToCheckout: boolean) => {
-    if (!selectedGiftBox) return;
-    if (!canContinue) {
-      toast({
-        title: "Missing gift details",
-        description: "Add sender and recipient name before continuing.",
-        variant: "destructive",
-      });
+   useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    try {
+      const response = await axiosClient.get("/giftboxes/active")
+      setPlans(response.data.data || [])
+
+      if (response.data.data) {
+        setSelectedGiftBoxId(response.data.data[0].id);
+      }
+      setMeta(response.data.meta)
+    } catch (err) {
+      toast.error(err.response.data?.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addGiftToCart = () => {
+    if (!selectedGiftBox || !senderName) {
+      toast.error("Missing gift details")
       return;
     }
+
+    clearGift()
+      
+    // setGiftPlanInfo({
+    //   giftPlan: selectedGiftBox
+    // });
 
     cart.addGiftBox(selectedGiftBox, {
       senderName: senderName.trim(),
@@ -101,12 +131,20 @@ const Gifts = () => {
       preferredDeliveryWindow,
     });
 
-    toast({
-      title: goToCheckout ? "Gift added" : "Gift box added to cart",
-      description: `${selectedGiftBox.name} for ${recipientName.trim()} has been added.`,
-    });
+    // toast({
+    //   title: goToCheckout ? "Gift added" : "Gift box added to cart",
+    //   description: `${selectedGiftBox.name} for ${recipientName.trim()} has been added.`,
+    // });
 
-    navigate(goToCheckout ? ROUTES.checkout : ROUTES.cart);
+    toast.success("Gift added")
+
+    const url = `${ROUTES.buildBox}?planId=${selectedGiftBox?.id}`;
+
+    navigate(url);
+  }
+
+  const buyNow = async () => {
+    
   };
 
   return (
@@ -145,164 +183,177 @@ const Gifts = () => {
         </div>
       </section>
 
-      <section id="gift-builder" className="py-10 sm:py-16 bg-muted/30">
-        <div className="container grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-[1.15fr_0.85fr] items-start pb-28 lg:pb-0">
-          <div className="space-y-8">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Gift builder</p>
-              <h2 className="mt-3 text-3xl md:text-4xl font-display font-bold">Create your gift order</h2>
-              <p className="mt-3 text-muted-foreground">
-                Choose a gift box, add a message card, and send it to cart or straight to checkout.
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold mb-4">1. Choose a gift box</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {giftBoxes.map((box) => {
-                  const selected = selectedGiftBox?.id === box.id;
-                  return (
-                    <button
-                      key={box.id}
-                      type="button"
-                      onClick={() => setSelectedGiftBoxId(box.id)}
-                      className={`text-left rounded-2xl border bg-background transition overflow-hidden ${selected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40"}`}
-                    >
-                      <img src={getGiftBoxImage(box.id)} alt={box.name} className="h-36 w-full object-cover" loading="lazy" />
-                      <div className="p-4">
-                        <p className="font-semibold">{box.name}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{box.estimatedWeight}</p>
-                        <p className="text-sm text-primary font-semibold mt-2">{formatPrice(box.price)}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <Label htmlFor="sender-name">Sender name</Label>
-                <Input id="sender-name" value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Your name" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="recipient-name">Recipient name</Label>
-                <Input id="recipient-name" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Who is receiving this?" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="recipient-phone">Recipient phone</Label>
-                <Input id="recipient-phone" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="For delivery coordination" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="occasion">Occasion</Label>
-                <select id="occasion" className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={occasion} onChange={(e) => setOccasion(e.target.value)}>
-                  <option>Birthday</option>
-                  <option>Anniversary</option>
-                  <option>Wedding Gift</option>
-                  <option>Holiday Hosting</option>
-                  <option>Thank You</option>
-                  <option>Corporate Appreciation</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="delivery-date">Preferred delivery date</Label>
-                <Input id="delivery-date" type="date" value={preferredDeliveryDate} onChange={(e) => setPreferredDeliveryDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="delivery-window">Preferred delivery window</Label>
-                <select id="delivery-window" className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={preferredDeliveryWindow} onChange={(e) => setPreferredDeliveryWindow(e.target.value)}>
-                  {deliveryWindows.map((window) => (
-                    <option key={window} value={window}>{window}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="gift-message">Message card (Optional)</Label>
-                <Textarea
-                  id="gift-message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value.slice(0, 240))}
-                  placeholder="Write a short gift note for the recipient"
-                  rows={4}
-                />
-                <p className="text-xs text-muted-foreground">{message.length}/240 characters</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="hidden lg:block">
-            <Card className="sticky top-24 rounded-2xl">
-              <CardContent className="p-6 space-y-5">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Summary</p>
-                  <h3 className="mt-2 text-2xl font-display font-bold">Gift order preview</h3>
-                </div>
-
-                {selectedGiftBox && (
-                  <>
-                    <div className="rounded-xl border border-border overflow-hidden bg-background">
-                      <img src={getGiftBoxImage(selectedGiftBox.id)} alt={selectedGiftBox.name} className="h-40 w-full object-cover" loading="lazy" />
-                      <div className="p-4">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-semibold">{selectedGiftBox.name}</p>
-                            <p className="text-xs text-muted-foreground mt-1">{selectedGiftBox.estimatedWeight}</p>
-                          </div>
-                          <Badge variant="secondary">Gift box</Badge>
-                        </div>
-                        <p className="mt-2 text-sm font-semibold text-primary">{formatPrice(selectedGiftBox.price)}</p>
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-border p-4 space-y-2">
-                      <p className="text-sm font-semibold flex items-center gap-2"><Package2 className="h-4 w-4 text-primary" /> Included cuts</p>
-                      <div className="space-y-1">
-                        {selectedGiftBox.displayContents?.length
-                          ? selectedGiftBox.displayContents.map((line, index) => (
-                              <p key={`${selectedGiftBox.id}-${index}`} className="text-xs text-muted-foreground">
-                                {line}
-                              </p>
-                            ))
-                          : selectedGiftBox.contents.map((line) => {
-                              const product = getProductById(line.productId);
-                              return (
-                                <p key={`${line.productId}-${line.quantity}`} className="text-xs text-muted-foreground flex items-center justify-between gap-2">
-                                  <span>{product?.name ?? line.productId}</span>
-                                  <span>{line.quantity}x</span>
-                                </p>
-                              );
-                            })}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                <div className="rounded-xl border border-dashed border-border p-4 space-y-2 text-sm">
-                  <p className="font-medium">Recipient</p>
-                  <p className="text-muted-foreground">{recipientName || "Add recipient name"}</p>
-                  <p className="text-muted-foreground">From {senderName || "Add sender name"}</p>
-                  <p className="text-muted-foreground">Occasion: {occasion}</p>
-                  {preferredDeliveryDate && (
-                    <p className="text-muted-foreground flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {preferredDeliveryDate} - {preferredDeliveryWindow}</p>
-                  )}
-                  {message && <p className="text-foreground text-xs">"{message}"</p>}
-                </div>
-
-                <div className="grid grid-cols-1 gap-3">
-                  <Button size="lg" disabled={!canContinue} onClick={() => addGiftToCart(true)}>
-                    Buy Gift Now
-                  </Button>
-                  <Button size="lg" variant="outline" disabled={!canContinue} onClick={() => addGiftToCart(false)}>
-                    Add Gift to Cart
-                  </Button>
-                </div>
-
-                <p className="text-xs text-muted-foreground">Gift orders checkout through the one-time order flow. You can add regular products before payment.</p>
-              </CardContent>
-            </Card>
-          </div>
+      {loading && (
+        <div className="my-48">
+          <LoadingData/>
         </div>
-      </section>
+      )}
+
+      {/* Main */}
+      {!loading && plans.length > 0 && (
+        <section id="gift-builder" className="py-10 sm:py-16 bg-muted/30">
+          <div className="container grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-[1.15fr_0.85fr] items-start pb-28 lg:pb-0">
+            <div className="space-y-8">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Gift builder</p>
+                <h2 className="mt-3 text-3xl md:text-4xl font-display font-bold">Create your gift order</h2>
+                <p className="mt-3 text-muted-foreground">
+                  Choose a gift box, add a message card, and send it to cart or straight to checkout.
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-4">1. Choose a gift box</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {giftBoxes.map((box) => {
+                    const selected = selectedGiftBox?.id === box.id;
+                    return (
+                      <button
+                        key={box.id}
+                        type="button"
+                        onClick={() => setSelectedGiftBoxId(box.id)}
+                        className={`text-left rounded-2xl border bg-background transition overflow-hidden ${selected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40"}`}
+                      >
+                        <img src={getGiftBoxImage(box.id)} alt={box.name} className="h-36 w-full object-cover" loading="lazy" />
+                        <div className="p-4">
+                          <p className="font-semibold">{box.name}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{box.estimatedWeight}</p>
+                          <p className="text-sm text-primary font-semibold mt-2">{formatPrice(box.price)}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <Label htmlFor="sender-name">Sender name</Label>
+                  <Input id="sender-name" value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Your name" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recipient-name">Recipient name</Label>
+                  <Input id="recipient-name" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Who is receiving this?" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="recipient-phone">Recipient phone</Label>
+                  <Input id="recipient-phone" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="For delivery coordination" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="occasion">Occasion</Label>
+                  <select id="occasion" className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={occasion} onChange={(e) => setOccasion(e.target.value)}>
+                    <option>Birthday</option>
+                    <option>Anniversary</option>
+                    <option>Wedding Gift</option>
+                    <option>Holiday Hosting</option>
+                    <option>Thank You</option>
+                    <option>Corporate Appreciation</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="delivery-date">Preferred delivery date</Label>
+                  <Input id="delivery-date" type="date" value={preferredDeliveryDate} onChange={(e) => setPreferredDeliveryDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="delivery-window">Preferred delivery window</Label>
+                  <select id="delivery-window" className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={preferredDeliveryWindow} onChange={(e) => setPreferredDeliveryWindow(e.target.value)}>
+                    {deliveryWindows.map((window) => (
+                      <option key={window} value={window}>{window}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <Label htmlFor="gift-message">Message card (Optional)</Label>
+                  <Textarea
+                    id="gift-message"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value.slice(0, 240))}
+                    placeholder="Write a short gift note for the recipient"
+                    rows={4}
+                  />
+                  <p className="text-xs text-muted-foreground">{message.length}/240 characters</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="hidden lg:block">
+              <Card className="sticky top-24 rounded-2xl">
+                <CardContent className="p-6 space-y-5">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Summary</p>
+                    <h3 className="mt-2 text-2xl font-display font-bold">Gift order preview</h3>
+                  </div>
+
+                  {selectedGiftBox && (
+                    <>
+                      <div className="rounded-xl border border-border overflow-hidden bg-background">
+                        <img src={getGiftBoxImage(selectedGiftBox.id)} alt={selectedGiftBox.name} className="h-40 w-full object-cover" loading="lazy" />
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold">{selectedGiftBox.name}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{selectedGiftBox.estimatedWeight}</p>
+                            </div>
+                            <Badge variant="secondary">Gift box</Badge>
+                          </div>
+                          <p className="mt-2 text-sm font-semibold text-primary">{formatPrice(selectedGiftBox.price)}</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border p-4 space-y-2">
+                        <p className="text-sm font-semibold flex items-center gap-2"><Package2 className="h-4 w-4 text-primary" /> Included cuts</p>
+                        <div className="space-y-1">
+                          {selectedGiftBox.displayContents?.length
+                            ? selectedGiftBox.displayContents.map((line, index) => (
+                                <p key={`${selectedGiftBox.id}-${index}`} className="text-xs text-muted-foreground">
+                                  {line}
+                                </p>
+                              ))
+                            : selectedGiftBox.contents.map((line) => {
+                                const product = getProductById(line.productId);
+                                return (
+                                  <p key={`${line.productId}-${line.quantity}`} className="text-xs text-muted-foreground flex items-center justify-between gap-2">
+                                    <span>{product?.name ?? line.productId}</span>
+                                    <span>{line.quantity}x</span>
+                                  </p>
+                                );
+                              })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="rounded-xl border border-dashed border-border p-4 space-y-2 text-sm">
+                    <p className="font-medium">Recipient</p>
+                    <p className="text-muted-foreground">{recipientName || "Add recipient name"}</p>
+                    <p className="text-muted-foreground">From {senderName || "Add sender name"}</p>
+                    <p className="text-muted-foreground">Occasion: {occasion}</p>
+                    {preferredDeliveryDate && (
+                      <p className="text-muted-foreground flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {preferredDeliveryDate} - {preferredDeliveryWindow}</p>
+                    )}
+                    {message && <p className="text-foreground text-xs">"{message}"</p>}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3">
+                    <Button size="lg" disabled={!canContinue} 
+                      // onClick={() => addGiftToCart(true)}
+                    >
+                      Buy Gift Now
+                    </Button>
+                    <Button size="lg" variant="outline" disabled={!canContinue} 
+                      // onClick={() => addGiftToCart(false)}
+                    >
+                      Add Gift to Cart
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">Gift orders checkout through the one-time order flow. You can add regular products before payment.</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="py-16 bg-muted/40">
         <div className="container">
@@ -395,10 +446,14 @@ const Gifts = () => {
             <p className="text-lg font-bold text-primary">{selectedGiftBox ? formatPrice(selectedGiftBox.price) : "-"}</p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button size="sm" disabled={!canContinue} onClick={() => addGiftToCart(true)}>
+            <Button size="sm" disabled={!canContinue} 
+              // onClick={() => addGiftToCart(true)}
+            >
               Buy Now
             </Button>
-            <Button size="sm" variant="outline" disabled={!canContinue} onClick={() => addGiftToCart(false)}>
+            <Button size="sm" variant="outline" disabled={!canContinue} 
+              // onClick={() => addGiftToCart(false)}
+            >
               Add to Cart
             </Button>
           </div>
