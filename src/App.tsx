@@ -60,6 +60,7 @@ import AdminGuard from "./protect/AdminGuard";
 import AdminPlans from "./pages/admin/AdminPlans";
 import AdminInvitationSetup from "./pages/admin/AdminInvitationSetup";
 import { AddPlan } from "./pages/admin/AddPlan";
+import GiftCheckout from "./pages/GiftCheckout";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +99,7 @@ const App = () => (
                         <Route element={<UserGuard />}>
                           <Route path={ROUTES.checkout} element={<Checkout />} />
                           <Route path={ROUTES.dashboard} element={<Dashboard />} />
+                          <Route path={ROUTES.giftCheckout} element={<GiftCheckout />} />
                         </Route>
 
 

@@ -139,3 +139,35 @@ export interface OrderType {
   attributes: OrderAttributes;
   relationships: OrderRelationships;
 }
+
+export type GiftboxProduct = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+};
+
+export type GiftboxType = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  is_active: boolean;
+  weight: number;
+  weight_unit: "g" | "kg";
+  image: string;
+  createdAt: string;
+  updatedAt: string;
+
+  products: {
+    id: string;
+    name: string;
+    price: number;
+    weight: number;
+    weight_unit: "g" | "kg";
+    formatted_weight: string;
+    description: string;
+    is_active: boolean;
+    quantity: number;
+  }[];
+};

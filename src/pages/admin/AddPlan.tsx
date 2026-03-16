@@ -1,13 +1,14 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CreatePlanType } from "@/types/admin";
+import { CreatePlanType, paginationType, ProductType } from "@/types/admin";
 import { axiosClient } from "@/GlobalApi";
 import { toast } from "react-toastify";
 import { z } from "zod";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
+import { SetProduct } from "@/components/admin/SetProduct";
 
 const prefilledItemSchema = z.object({
   product_id: z.string().nonempty("Product is required"),
@@ -27,8 +28,7 @@ const categoryRuleSchema = z.object({
 
 const productRuleSchema = z.object({
   product_id: z.string().nonempty("Product is required"),
-  product_name: z.string().nonempty("Product name is required"),
-  label: z.string().nonempty("Label is required"),
+  label: z.string().nonempty("Product label is required"),
   max_weight: z.number().min(0.0001, "Max weight must be greater than 0"),
   weight_unit: z.enum(["g", "kg"]),
 });
@@ -70,10 +70,22 @@ export const AddPlan = () => {
     product_rules: [],
     prefilled_items: [],
   });
+
+    const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const navigate = useNavigate()
+  const [loadingProducts, setLoadingProducts] = useState(true)
+  const [loadingCategories, setLoadingCategories] = useState(true)
+    const [products, setProducts] = useState<ProductType[]>([])
+     const [categories, setCategories] = useState([]);
+    const [meta, setMeta] = useState<paginationType | null>(null);
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+    const [searchParams, setSearchParams] = useSearchParams();
+    const currentPage = Number(searchParams.get("page")) || 1;
+    const activeCategory = searchParams.get("slug") || "all";
 
     const handleFile = (selected: File) => {
         setFile(selected);
@@ -140,13 +152,100 @@ export const AddPlan = () => {
             navigate(ROUTES.adminPlans)
 
         } catch (err: any) {
-            toast.error(err?.response?.data?.message)
+            const message = err?.response?.data?.message;
+
+            if (Array.isArray(message)) {
+                message.forEach((msg, i) => toast.error(msg));
+            } else {
+                toast.error(message);
+            }
 
         } finally {
             setLoading(false);
         }
     };
 
+    useEffect(() => {
+        getProducts();
+    }, [currentPage, activeCategory, debouncedSearch]);
+
+    useEffect(() => {
+        getCategories();
+    }, []);
+
+    const getProducts = async () => {
+        try {
+            setLoadingProducts(true);
+        
+            let url = `/products?page=${currentPage}&limit=28`;
+        
+            if (activeCategory && activeCategory !== "all") {
+                url += `&slug=${activeCategory}`;
+            }
+            
+            if (debouncedSearch) {
+                url += `&search=${debouncedSearch}`;
+            }
+
+            const res = await axiosClient.get(url);
+
+            const productInfo = res.data.data || []
+    
+            const formattedProducts = productInfo.map((item: any) => ({
+                id: item.id,
+                name: item.attributes.name,
+                nameSlug: item.attributes.slug,
+                description: item.attributes.description,
+                status: item.attributes.status,
+                isActive: item.attributes.is_active,
+                image: item.attributes.image,
+                sku: item.attributes.sku,
+                isBestSelling: item.attributes.isBestSeller,
+                displayType: item.attributes.displayType,
+                price: item.attributes.price,
+                weight: item.attributes.mainValue,
+                weight_unit: item.attributes.unit,
+                formatted_weight: item.attributes.formattedWeight,
+                categoryId: item.relationships?.categoryDetails?.data?.[0]?.id || "other",
+                category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.name || "other",
+                categorySlug: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
+                stock: item.attributes.stockQuantity,
+            }));
+    
+            setProducts(formattedProducts);
+            setMeta(res.data.meta);
+
+        } catch (err) {
+            toast.error(err.response?.data?.message);
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
+
+    const getCategories = async () => {
+        try {
+            setLoadingCategories(true);
+            const res = await axiosClient.get("/product-categories/root");
+
+            const catInfo = res.data.data || []
+
+            const formattedCategories = catInfo.map((item: any) => ({
+                id: item.id,
+                name: item.attributes.name,
+                slug: item.attributes.slug,
+                description: item.attributes.description,
+                status: item.attributes.status,
+                isActive: item.attributes.is_active,
+            }));
+
+            setCategories(formattedCategories);
+
+        } catch (err) {
+            toast.error(err.response?.data?.message);
+        } finally {
+            setLoadingCategories(false);
+        }
+    };
 
   return (
     <div className="space-y-8 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-6 max-w-6xl mx-auto">
@@ -181,14 +280,13 @@ export const AddPlan = () => {
                         onChange={(e) =>
                             setForm((f) => ({
                                 ...f,
-                                plan_type: e.target.value as "standard" | "premium" | "custom",
+                                plan_type: e.target.value as "standard" | "custom",
                             }))
                         }
                         className="w-full border rounded-xl px-3 h-10"
                     >
                         <option value="standard">Standard</option>
-                        {/* <option value="premium">Premium</option>
-                        <option value="custom">Custom</option> */}
+                        <option value="custom">Custom</option>
                     </select>
                 </div>
                 <div className="space-y-2">
@@ -198,13 +296,13 @@ export const AddPlan = () => {
                         onChange={(e) =>
                             setForm((f) => ({
                                 ...f,
-                                pricing_model: e.target.value as "fixed" | "variable",
+                                pricing_model: e.target.value as "fixed" | "⁠⁠sum_of_items",
                             }))
                         }
                         className="w-full border rounded-xl px-3 h-10"
                     >
                     <option value="fixed">Fixed</option>
-                    {/* <option value="variable">Variable</option> */}
+                    <option value="⁠⁠sum_of_items">⁠⁠sum of items</option>
                     </select>
                 </div>
             </div>
@@ -376,7 +474,7 @@ export const AddPlan = () => {
                       name: "",
                       quantity: 1,
                       weight: 0,
-                      weight_unit: "g",
+                      weight_unit: "g"
                     },
                   ],
                 }))
@@ -387,62 +485,100 @@ export const AddPlan = () => {
           </div>
 
           {form.prefilled_items.map((item, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
-            >
+            <div key={index}>
+                <h2 className="text-sm text-primary font-semibold mb-2">
+                    {item?.name && item?.name}
+                </h2>
+                <div
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
+                >
 
-                {/* <select value={item.product_id} onChange={(e) => { const product = products.find((p) => p.id === e.target.value); const updated = [...form.prefilled_items]; updated[index].product_id = product?.id || ""; updated[index].name = product?.name || ""; setForm((f) => ({ ...f, prefilled_items: updated })); }} className="border rounded-xl px-2 h-10" > <option value="">Select Product</option> {products.map((p) => ( <option key={p.id} value={p.id}> {p.name} </option> ))} </select> */}
+                    <div className="space-y-1">
+                        <Label className="text-xs">Select</Label>
+                        <SetProduct
+                            products={products}
+                            loading={loadingProducts}
+                            meta={meta}
+                            addProduct={(product) => {
+                                setForm((f) => {
+                                const updated = [...f.prefilled_items];
 
-              <Input
-                type="number"
-                placeholder="Quantity"
-                value={item.quantity}
-                onChange={(e) => {
-                  const updated = [...form.prefilled_items];
-                  updated[index].quantity = Number(e.target.value);
-                  setForm((f) => ({ ...f, prefilled_items: updated }));
-                }}
-              />
+                                updated[index] = {
+                                    ...updated[index],
+                                    product_id: product.id,
+                                    name: product.name,
+                                    weight: product.weight,
+                                    weight_unit: product.weight_unit,
+                                };
 
-              <Input
-                type="number"
-                placeholder="Weight"
-                value={item.weight}
-                onChange={(e) => {
-                  const updated = [...form.prefilled_items];
-                  updated[index].weight = Number(e.target.value);
-                  setForm((f) => ({ ...f, prefilled_items: updated }));
-                }}
-              />
+                                return {
+                                    ...f,
+                                    prefilled_items: updated,
+                                };
+                                });
+                            }}
+                        />
+                    </div>
 
-              <select
-                value={item.weight_unit}
-                onChange={(e) => {
-                  const updated = [...form.prefilled_items];
-                  updated[index].weight_unit = e.target.value as "g" | "kg";
-                  setForm((f) => ({ ...f, prefilled_items: updated }));
-                }}
-                className="border rounded-xl px-2 h-10"
-              >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-              </select>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Quantity</Label>
+                        <Input
+                            type="number"
+                            placeholder="Quantity"
+                            value={item.quantity}
+                            onChange={(e) => {
+                            const updated = [...form.prefilled_items];
+                            updated[index].quantity = Number(e.target.value);
+                            setForm((f) => ({ ...f, prefilled_items: updated }));
+                            }}
+                        />
+                    </div>
 
-              <Button
-                type="button"
-                variant="destructive"
-                className="w-full sm:w-auto"
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    prefilled_items: f.prefilled_items.filter((_, i) => i !== index),
-                  }))
-                }
-              >
-                Remove
-              </Button>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Weight</Label>
+                        <Input
+                            type="number"
+                            placeholder="Weight"
+                            value={item.weight}
+                            onChange={(e) => {
+                            const updated = [...form.prefilled_items];
+                            updated[index].weight = Number(e.target.value);
+                            setForm((f) => ({ ...f, prefilled_items: updated }));
+                            }}
+                        />
+                    </div>
 
+                    <div className="space-y-1">
+                        <Label className="text-xs">Weight Unit</Label>
+                        <select
+                            value={item.weight_unit}
+                            onChange={(e) => {
+                            const updated = [...form.prefilled_items];
+                            updated[index].weight_unit = e.target.value as "g" | "kg";
+                            setForm((f) => ({ ...f, prefilled_items: updated }));
+                            }}
+                            className="border rounded-xl px-2 h-10 w-full"
+                        >
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                        </select>
+                    </div>
+
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        className="w-full sm:w-auto"
+                        onClick={() =>
+                        setForm((f) => ({
+                            ...f,
+                            prefilled_items: f.prefilled_items.filter((_, i) => i !== index),
+                        }))
+                        }
+                    >
+                        Remove
+                    </Button>
+
+                </div>
             </div>
           ))}
 
@@ -478,61 +614,93 @@ export const AddPlan = () => {
           </div>
 
           {form.category_rules.map((rule, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
-            >
+            <div>
+                <div
+                    key={index}
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
+                >
 
-                {/* <select value={rule.category_id} onChange={(e) => { const category = categories.find((c) => c.id === e.target.value); const updated = [...form.category_rules]; updated[index].category_id = category?.id || ""; updated[index].category_name = category?.name || ""; setForm((f) => ({ ...f, category_rules: updated })); }} className="border rounded-xl px-2 h-10" > <option value="">Select Category</option> {categories.map((c) => ( <option key={c.id} value={c.id}> {c.name} </option> ))} </select> */}
+                    <div className="space-y-1">
+                        <Label className="text-xs">Select</Label>
+                        <select 
+                            value={rule.category_id} 
+                            onChange={(e) => { 
+                                const category = categories.find((c) => c.id === e.target.value); 
+                                const updated = [...form.category_rules]; 
+                                updated[index].category_id = category?.id || ""; 
+                                updated[index].category_name = category?.name || ""; 
+                                updated[index].label = category?.name || ""; 
+                                setForm((f) => ({ ...f, category_rules: updated })); 
+                            }} 
+                            className="border rounded-xl px-2 h-10 w-full" 
+                        > 
+                            <option value="">Select Category</option> 
+                            {categories.map((c) => ( 
+                                <option key={c.id} value={c?.id}> {c.name} </option> 
+                            ))} 
+                        </select>
+                    </div>
 
-              <Input
-                placeholder="Label"
-                value={rule.label}
-                onChange={(e) => {
-                  const updated = [...form.category_rules];
-                  updated[index].label = e.target.value;
-                  setForm((f) => ({ ...f, category_rules: updated }));
-                }}
-              />
+                    <div className="space-y-1">
+                        <Label className="text-xs">Name</Label>
+                        <Input
+                            placeholder="Name"
+                            value={rule.category_name}
+                            onChange={(e) => {
+                            const updated = [...form.category_rules];
+                            updated[index].category_name = e.target.value;
+                            setForm((f) => ({ ...f, category_rules: updated }));
+                            }}
+                            disabled
+                            readOnly
+                        />
+                    </div>
 
-              <Input
-                type="number"
-                placeholder="Weight Required"
-                value={rule.weight_required}
-                onChange={(e) => {
-                  const updated = [...form.category_rules];
-                  updated[index].weight_required = Number(e.target.value);
-                  setForm((f) => ({ ...f, category_rules: updated }));
-                }}
-              />
+                    <div className="space-y-1">
+                        <Label className="text-xs">Weight Required</Label>
+                        <Input
+                            type="number"
+                            placeholder="Weight Required"
+                            value={rule.weight_required}
+                            onChange={(e) => {
+                            const updated = [...form.category_rules];
+                            updated[index].weight_required = Number(e.target.value);
+                            setForm((f) => ({ ...f, category_rules: updated }));
+                            }}
+                        />
+                    </div>
 
-              <select
-                value={rule.weight_unit}
-                onChange={(e) => {
-                  const updated = [...form.category_rules];
-                  updated[index].weight_unit = e.target.value as "g" | "kg";
-                  setForm((f) => ({ ...f, category_rules: updated }));
-                }}
-                className="border rounded-xl px-2 h-10"
-              >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-              </select>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Weight Unit</Label>
+                        <select
+                            value={rule.weight_unit}
+                            onChange={(e) => {
+                            const updated = [...form.category_rules];
+                            updated[index].weight_unit = e.target.value as "g" | "kg";
+                            setForm((f) => ({ ...f, category_rules: updated }));
+                            }}
+                            className="border rounded-xl px-2 h-10 w-full"
+                        >
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                        </select>
+                    </div>
 
-              <Button
-                type="button"
-                variant="destructive"
-                className="w-full sm:w-auto"
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    category_rules: f.category_rules.filter((_, i) => i !== index),
-                  }))
-                }
-              >
-                Remove
-              </Button>
+                <Button
+                    type="button"
+                    variant="destructive"
+                    className="w-full sm:w-auto"
+                    onClick={() =>
+                    setForm((f) => ({
+                        ...f,
+                        category_rules: f.category_rules.filter((_, i) => i !== index),
+                    }))
+                    }
+                >
+                    Remove
+                </Button>
 
+                </div>
             </div>
           ))}
 
@@ -568,61 +736,103 @@ export const AddPlan = () => {
           </div>
 
           {form.product_rules.map((rule, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
-            >
+            <div key={index}>
+                <h2 className="text-sm text-primary font-semibold mb-2">
+                    {rule?.label && rule?.label}
+                </h2>
+                <div
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
+                >
 
-                {/* <select value={rule.product_id} onChange={(e) => { const product = products.find((p) => p.id === e.target.value); const updated = [...form.product_rules]; updated[index].product_id = product?.id || ""; updated[index].product_name = product?.name || ""; setForm((f) => ({ ...f, product_rules: updated })); }} className="border rounded-xl px-2 h-10" > <option value="">Select Product</option> {products.map((p) => ( <option key={p.id} value={p.id}> {p.name} </option> ))} </select> */}
+                    <div className="space-y-1">
+                        <Label className="text-xs">Select</Label>
+                        <SetProduct
+                            products={products}
+                            loading={loadingProducts}
+                            meta={meta}
+                            addProduct={(product) => {
+                                setForm((f) => {
+                                const updated = [...f.product_rules];
 
-              <Input
-                placeholder="Label"
-                value={rule.label}
-                onChange={(e) => {
-                  const updated = [...form.product_rules];
-                  updated[index].label = e.target.value;
-                  setForm((f) => ({ ...f, product_rules: updated }));
-                }}
-              />
+                                updated[index] = {
+                                    ...updated[index],
+                                    product_id: product.id,
+                                    label: product.name,
+                                    max_weight: product.weight,
+                                    weight_unit: product.weight_unit,
+                                };
 
-              <Input
-                type="number"
-                placeholder="Max Weight"
-                value={rule.max_weight}
-                onChange={(e) => {
-                  const updated = [...form.product_rules];
-                  updated[index].max_weight = Number(e.target.value);
-                  setForm((f) => ({ ...f, product_rules: updated }));
-                }}
-              />
+                                return {
+                                    ...f,
+                                    product_rules: updated,
+                                };
+                                });
+                            }}
+                        />
+                    </div>
+                            
+                    <div className="space-y-1">
+                        <Label className="text-xs">Label</Label>
+                        <Input
+                            placeholder="Label"
+                            value={rule.label}
+                            onChange={(e) => {
+                            const updated = [...form.product_rules];
+                            updated[index].label = e.target.value;
+                            setForm((f) => ({ ...f, product_rules: updated }));
+                            }}
+                            disabled
+                            readOnly
+                        />
+                    </div>
 
-              <select
-                value={rule.weight_unit}
-                onChange={(e) => {
-                  const updated = [...form.product_rules];
-                  updated[index].weight_unit = e.target.value as "g" | "kg";
-                  setForm((f) => ({ ...f, product_rules: updated }));
-                }}
-                className="border rounded-xl px-2 h-10"
-              >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
-              </select>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Max Weight</Label>
+                        <Input
+                            type="number"
+                            placeholder="Max Weight"
+                            value={rule.max_weight}
+                            onChange={(e) => {
+                            const updated = [...form.product_rules];
+                            updated[index].max_weight = Number(e.target.value);
+                            setForm((f) => ({ ...f, product_rules: updated }));
+                            }}
+                        />
+                    </div>
 
-              <Button
-                type="button"
-                variant="destructive"
-                className="w-full sm:w-auto"
-                onClick={() =>
-                  setForm((f) => ({
-                    ...f,
-                    product_rules: f.product_rules.filter((_, i) => i !== index),
-                  }))
-                }
-              >
-                Remove
-              </Button>
+                    <div className="space-y-1">
+                        <Label className="text-xs">Max Weight</Label>
+                        <select
+                            value={rule.weight_unit}
+                            onChange={(e) => {
+                            const updated = [...form.product_rules];
+                            updated[index].weight_unit = e.target.value as "g" | "kg";
+                            setForm((f) => ({ ...f, product_rules: updated }));
+                            }}
+                            className="border rounded-xl px-2 h-10 w-full"
+                        >
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                        </select>
+                    </div>
 
+                
+
+                    <Button
+                        type="button"
+                        variant="destructive"
+                        className="w-full sm:w-auto"
+                        onClick={() =>
+                        setForm((f) => ({
+                            ...f,
+                            product_rules: f.product_rules.filter((_, i) => i !== index),
+                        }))
+                        }
+                    >
+                        Remove
+                    </Button>
+
+                </div>
             </div>
           ))}
 

@@ -176,6 +176,7 @@ type PrefilledItem = {
   product_id: string;
   name: string;
   quantity: number;
+  image?: string;
   weight: number;
   weight_unit: string;
 };
@@ -218,8 +219,8 @@ export type CreatePlanType = {
   weight_unit: "g" | "kg";
   temp_image_id?: string;
   is_active: boolean;
-  plan_type: "standard" | "premium" | "custom";
-  pricing_model: "fixed" | "variable";
+  plan_type: "standard" | "custom";
+  pricing_model: "fixed" | "⁠⁠sum_of_items";
   category_rules: CategoryRule[];
   product_rules: ProductRule[];
   prefilled_items: PrefilledItem[];

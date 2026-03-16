@@ -118,6 +118,7 @@ const AdminPlans = () => {
 
     const getPlans = async () => {
         try {
+            setLoading(true)
             const res = await axiosClient.get(`/plans`);
 
             const plans = res.data?.data || [];
@@ -167,7 +168,7 @@ const AdminPlans = () => {
                 <div className="mt-3">
                     <Link to={ROUTES.addPlan}>
                         <Button size="sm">
-                            Add a plan
+                            Add plan
                         </Button>
                     </Link>
                 </div>

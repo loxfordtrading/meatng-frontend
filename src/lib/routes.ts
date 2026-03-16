@@ -7,6 +7,7 @@ export const ROUTES = {
   cart: "/cart",
   cartReview: "/cart-review",
   checkout: "/checkout",
+  giftCheckout: "/gift-checkout",
   confirmation: "/confirmation",
   verifyPayment: "/verify-payment",
   dashboard: "/dashboard",

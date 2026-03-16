@@ -127,7 +127,7 @@ export default function BuildCatalog({ products}: {products: any}) {
               </div>
             );
           })}
-          {products?.length === 0 && <p className="text-sm text-muted-foreground">No items in this category.</p>}
+          {products?.length <= 0 && <p className="text-sm text-muted-foreground">No product found.</p>}
         </div>
       </CardContent>
     </Card>

@@ -97,7 +97,7 @@ export const ViewPlan = ({plan}: {plan: PlanType}) => {
                         className={`rounded-2xl border p-4 transition border-border`}
                       >
                         <img
-                          src={item?.image || "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200"}
+                          src={item?.image}
                           alt={item.name}
                           className="mb-3 h-32 w-full rounded-xl object-cover"
                         />
@@ -134,7 +134,7 @@ export const ViewPlan = ({plan}: {plan: PlanType}) => {
                       </div>
                     );
                   })}
-                  {plan?.prefilled_items?.length <= 0 && <p className="text-sm text-muted-foreground">No category rules added on this plan.</p>}
+                  {plan?.category_rules?.length <= 0 && <p className="text-sm text-muted-foreground">No category rules added on this plan.</p>}
                 </div>
               </div>
               <div className="grid gap-2">
@@ -155,7 +155,7 @@ export const ViewPlan = ({plan}: {plan: PlanType}) => {
                       </div>
                     );
                   })}
-                  {plan?.prefilled_items?.length <= 0 && <p className="text-sm text-muted-foreground">No product rules added on this plan.</p>}
+                  {plan?.product_rules?.length <= 0 && <p className="text-sm text-muted-foreground">No Product rules added on this plan.</p>}
                 </div>
               </div>
               <div className="grid gap-2">

@@ -90,11 +90,9 @@ const mapApiToUi = (p: ApiProduct, cats: UiCategory[]): UiProduct => {
 };
 
 const AdminProducts = () => {
+
     const [search, setSearch] = useState("");
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-    const [editingProduct, setEditingProduct] = useState<ProductType| null>(null);
-    const [editForm, setEditForm] = useState<Partial<UiProduct>>({});
-    const [creatingProduct, setCreatingProduct] = useState(false);
     const [createForm, setCreateForm] = useState<Partial<UiProduct>>({});
     const [activeTab, setActiveTab] = useState<"products" | "categories">("products");
     const [editingCategory, setEditingCategory] = useState<ApiCategory | null>(null);
@@ -111,50 +109,10 @@ const AdminProducts = () => {
     const [products, setProducts] = useState<ProductType[]>([])
     const [meta, setMeta] = useState<paginationType | null>(null);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
-    const [addingProduct, setAddingProduct] = useState(false);
 
     const [searchParams, setSearchParams] = useSearchParams();
     const currentPage = Number(searchParams.get("page")) || 1;
     const activeCategory = searchParams.get("slug") || "all";
-
-    const token = tokenStorage.getAdminToken();
-    const queryClient = useQueryClient();
-
-
-    const saveMutation = useMutation({
-        mutationFn: async ({ id, form, original }: { id: string; form: Partial<UiProduct>; original: UiProduct }) => {
-            const nextCategoryId = form.categoryId || undefined;
-            const previousCategoryId = original.categoryId || undefined;
-            const nextStock = typeof form.stock === "number" ? form.stock : undefined;
-
-            const updated = await updateProduct(id, {
-                name: form.name,
-                description: form.description,
-                price: form.addOnPrice,
-                stock: form.stock,
-                sku: form.sku,
-                images: form.image ? [form.image] : undefined,
-                categoryIds: nextCategoryId ? [nextCategoryId] : undefined,
-            }, token);
-
-            if (previousCategoryId && previousCategoryId !== nextCategoryId) {
-                void removeCategoryFromProduct(id, previousCategoryId, token).catch(() => undefined);
-            }
-            if (nextCategoryId && previousCategoryId !== nextCategoryId) {
-                void addCategoryToProduct(id, nextCategoryId, token).catch(() => undefined);
-            }
-            if (typeof nextStock === "number" && nextStock !== (original.stock ?? 0)) {
-                void updateProductStock(id, nextStock, token).catch(() => undefined);
-            }
-
-            return updated;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-products"] });
-            queryClient.invalidateQueries({ queryKey: ["catalog-products"] });
-            setEditingProduct(null);
-        },
-    });
 
     const handleActive = async (id: string) => {
         try {
@@ -190,43 +148,6 @@ const AdminProducts = () => {
             toast.error(error.response?.data?.message);
         } finally {
             setDeletingProductId(null);
-        }
-    };
-
-    const handleCreate = async () => {
-        if (!createForm.name || !createForm.categoryId) {
-            toast.error("Name and Category are required");
-            return;
-        }
-
-        try {
-            setAddingProduct(false)
-
-            const payload = {
-                name: createForm.name,
-                slug: createForm.slug,
-                // sku: "MS-RB-001",
-                price: createForm.addOnPrice,
-                isBestSeller: false,
-                displayType: "total_weight",
-                mainValue: createForm.packSize,
-                secondaryValue: 5.3,
-                tertiaryValue: 40,
-                unit: createForm.unit,
-                isApproximate: false,
-                stockQuantity: createForm.stock,
-                description: createForm.description,
-                categories: [createForm.categoryId],
-                temp_id: "507f1f77bcf86cd799439011"
-            };
-
-            const response = await axiosClient.post("/products",payload);
-
-            toast.error("Product created successfully");
-        } catch (error: any) {
-            toast.error(error.response?.data?.message);
-        } finally {
-            setAddingProduct(false)
         }
     };
 
