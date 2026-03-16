@@ -98,16 +98,9 @@ type cartType = {
 
 const Checkout = () => {
 
-  const navigate = useNavigate();
   const subscription = useSubscription();
-  const cart = useCart();
-  const { state } = subscription;
 
   const { subInfo } = useSubscriptionStore();
-  const { items, add, setQty, totalItems } = useCartStore();
-  const { addonItems, setAddonQty, totalAddonPrice } = useAddonStore();
-  const { userInfo } = useAuthStore();
-  const addonTotal = totalAddonPrice(); 
   const [cartItems, setCartItems] = useState<cartType | null>(null)
 
   const [firstName, setFirstName] = useState("");
@@ -136,13 +129,12 @@ const Checkout = () => {
   const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [addresses, setAddresses] = useState([])
   const [loadingAddress, setLoadingAddress] = useState(true)
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
 
    const stateInfo = getDeliveryState(selectedState);
   const isLagos = stateInfo?.hasZones ?? false;
   const lagosZoneInfo = isLagos ? findLagosZoneByArea(selectedArea) : null;
-    const deliveryFee = isLagos
-    ? (lagosZoneInfo?.fee ?? 0)
-    : (stateInfo?.flatFee ?? 0);
 
   const [paymentReference, setPaymentReference] = useState(() => {
     const suffix = Math.floor(100000 + Math.random() * 900000).toString();
@@ -231,13 +223,6 @@ const Checkout = () => {
     }
   }
 
-  // useEffect(() => {
-  //   const defaultAddress = addresses.find(a => a.attributes.is_default)
-  //   if(defaultAddress){
-  //     handleSelectSavedAddress(defaultAddress.id)
-  //   }
-  // }, [addresses])
-
   const validateForm = () => {
     const result = checkoutSchema.safeParse({
       firstName,
@@ -310,39 +295,14 @@ const Checkout = () => {
       setPaystackInitLoading(true);
 
       try {
+
         const basePayload: any = {
-          auto_subscribe: autoSubscribe,
+          address_id: selectedAddressId,
+          delivery_note: deliveryNote,
+          frequency_weeks: getFrequencyWeeks(subInfo?.selectedFrequency),
+          auto_subscribe: true,
+          enable_auto_debit: true
         };
-
-        // send address_id if it exists
-        if (selectedAddressId) {
-          basePayload.address_id = selectedAddressId;
-        } else {
-          // otherwise send full address
-          basePayload.shipping_address = {
-            address_type: "shipping",
-            label: "Home",
-            first_name: firstName,
-            last_name: lastName,
-            email: email,
-            phone: phone,
-            street_address: streetAddress,
-            apartment_suite: apartment,
-            city: city || selectedArea,
-            state: selectedState,
-            zip_code: zipCode,
-            country: "Nigeria",
-            is_default: isDefaultAddresss,
-          };
-        }
-
-        // add auto-subscription fields
-        if (autoSubscribe) {
-          basePayload.frequency_weeks = getFrequencyWeeks(
-            subInfo?.selectedFrequency
-          );
-          basePayload.enable_auto_debit = autoDebit;
-        }
 
         const response = await axiosClient.post("/checkout", basePayload);
 
@@ -386,21 +346,6 @@ const Checkout = () => {
     }
   }
 
-  // const handleSuccessContinue = () => {
-  //   if (isOneTimeCheckout) {
-  //     cart.clearCart();
-  //   }
-  //   navigate(ROUTES.confirmation, {
-  //     state: {
-  //       paymentReference,
-  //       paymentMethod,
-  //       nextBillingDate: billingDate?.toISOString(),
-  //       cutoffDate: cutoffDate?.toISOString(),
-  //       deliveryWindow,
-  //     },
-  //   });
-  // };
-
   const getCartItems = async () => {
     try {
       const res = await axiosClient.get("/carts/my-cart");
@@ -412,6 +357,60 @@ const Checkout = () => {
       setLoadingCart(false)
     }
   };
+
+  useEffect(() => {
+    if (!selectedState) return;
+
+    if (isLagos && !selectedArea) return;
+    if (!isLagos && !city) return;
+
+    getDeliveryFee();
+  }, [selectedState, selectedArea, city, apartment, streetAddress]);
+
+   const getDeliveryFee = async () => {
+    if (!validateForm()) return;
+    setDeliveryFee(0)
+    try {
+        setDeliveryLoading(true);
+
+        let addressId = selectedAddressId;
+
+        // If user did NOT select saved address → create one
+        if (!selectedAddressId) {
+            const address = {
+              address_type: "shipping",
+              label: "Home",
+              first_name: firstName,
+              last_name: lastName,
+              email: email,
+              phone: phone,
+              street_address: streetAddress,
+              apartment_suite: apartment,
+              city: city || selectedArea,
+              state: selectedState,
+              zip_code: zipCode,
+              country: "Nigeria",
+              is_default: isDefaultAddresss,
+            };
+
+            const addressRes = await axiosClient.post("/addresses", address);
+
+            addressId = addressRes.data?.data?.id;
+            setSelectedAddressId(addressId)
+        }
+
+        // Use the correct address id
+        const res = await axiosClient.post("/delivery/quote", {
+            address_id: addressId,
+        });
+
+        setDeliveryFee(res.data?.data?.attributes?.delivery_fee || 0);
+    } catch (error: any) {
+        toast.error(error.response?.data?.message || "Failed to fetch delivery fee");
+    } finally {
+        setDeliveryLoading(false);
+    }
+    };
 
   return (
     <div className="min-h-screen bg-background">
@@ -444,6 +443,7 @@ const Checkout = () => {
               <>
                 <p className="flex justify-between"><span className="text-muted-foreground">Plan</span><span>{subInfo?.subscription?.attributes?.name}</span></p>
                 <p className="flex justify-between"><span className="text-muted-foreground">Weight</span><span>{subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}</span></p>
+                <p className="flex justify-between"><span className="text-muted-foreground">Delivery Fee</span><span>{displayCurrency(deliveryFee, "NGN")}</span></p>
                 <p className="flex justify-between"><span className="text-muted-foreground">Plan price</span><span>{displayCurrency(cartItems?.attributes?.planUnitPrice, "NGN")}</span></p>
                 {cartItems?.attributes?.addonTotal > 0 && (
                   <p className="flex justify-between"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>
@@ -466,7 +466,7 @@ const Checkout = () => {
               <CardHeader>
                 <CardTitle>Delivery Information</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid gap-4">
                 {/* Saved address selector */}
                 {loadingAddress && (
                   <div className="w-full space-y-2 col-span-2">
@@ -517,14 +517,14 @@ const Checkout = () => {
                     <p className="text-sm text-destructive">{formErrors.lastName}</p>
                   )}
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
                   <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.email && (
                     <p className="text-sm text-destructive">{formErrors.email}</p>
                   )}
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="phone">Phone number <span className="text-destructive">*</span></Label>
                   <Input id="phone" placeholder="08012345678" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.phone && (
@@ -533,7 +533,7 @@ const Checkout = () => {
                 </div>
 
                 {/* State picker */}
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="delivery-state">State <span className="text-destructive">*</span></Label>
                   <select
                     id="delivery-state"
@@ -558,7 +558,7 @@ const Checkout = () => {
 
                 {/* Lagos: area dropdown */}
                 {isLagos && (
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 col-span-2">
                     <Label htmlFor="area-select">Delivery area</Label>
                     <select
                       id="area-select"
@@ -570,25 +570,12 @@ const Checkout = () => {
                       <option value="">Select your area</option>
                       {lagosAreas.map((item) => (
                         <option key={`${item.zoneId}-${item.area}`} value={item.area}>
-                          {item.area} — {formatPlanPrice(item.fee)}
+                          {item.area} {deliveryFee &&  `— ${displayCurrency(deliveryFee)}`}
                         </option>
                       ))}
                     </select>
                     {formErrors.city && (
                       <p className="text-sm text-destructive">{formErrors.city}</p>
-                    )}
-                    {lagosZoneInfo && (
-                      <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/[0.03] p-3">
-                        <MapPin className="h-5 w-5 shrink-0 text-primary" />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold">{selectedArea}</p>
-                          <p className="text-xs text-muted-foreground">Lagos</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-primary">{displayCurrency(deliveryFee, "NGN")}</p>
-                          <p className="text-[10px] text-muted-foreground">delivery fee</p>
-                        </div>
-                      </div>
                     )}
                   </div>
                 )}
@@ -596,7 +583,7 @@ const Checkout = () => {
                 {/* Other states: city input + flat rate display */}
                 {selectedState && !isLagos && (
                   <>
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2 col-span-2">
                       <Label htmlFor="city">City / Town <span className="text-destructive">*</span></Label>
                       <Input
                         id="city"
@@ -609,23 +596,15 @@ const Checkout = () => {
                         <p className="text-sm text-destructive">{formErrors.city}</p>
                       )}
                     </div>
-                    <div className="md:col-span-2">
-                      <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/[0.03] p-3">
-                        <Truck className="h-5 w-5 shrink-0 text-primary" />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold">{selectedState} delivery</p>
-                          <p className="text-xs text-muted-foreground">Flat rate — statewide</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-primary">{formatPlanPrice(deliveryFee)}</p>
-                          <p className="text-[10px] text-muted-foreground">delivery fee</p>
-                        </div>
-                      </div>
-                    </div>
                   </>
                 )}
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="flex items-center space-x-2 col-span-2">
+                  <Switch id="airplane-mode" checked={isDefaultAddresss} onCheckedChange={handleSetAddressAsDefault}/>
+                  <Label htmlFor="airplane-mode">Set as default address</Label>
+                </div>
+
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="street-address">Street address <span className="text-destructive">*</span></Label>
                   <Input id="street-address" placeholder="12 Adeniyi Jones Avenue" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.streetAddress && (
@@ -633,7 +612,7 @@ const Checkout = () => {
                   )}
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="apartment">Apartment<span className="text-destructive">*</span></Label>
                   <Input id="apartment" placeholder="e.g First Floor, Room 10" value={apartment} onChange={(e) => setApartment(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.apartment && (
@@ -641,18 +620,30 @@ const Checkout = () => {
                   )}
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="zip-code">Zip Code (optional)</Label>
                   <Input id="zip-code" placeholder="102045" value={zipCode} onChange={(e) => setZipCode(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.zipCode && (
                     <p className="text-sm text-destructive">{formErrors.zipCode}</p>
                   )}
+
+                  {(selectedArea || city) && selectedState && (
+                    <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/[0.03] p-3">
+                        <MapPin className="h-5 w-5 shrink-0 text-primary" />
+                        <div className="flex-1">
+                            <p className="text-sm font-semibold">{selectedArea || city}</p>
+                            <p className="text-xs text-muted-foreground">{selectedState}</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm font-bold text-primary">
+                                {deliveryLoading ? "Calculating..." : displayCurrency(deliveryFee, "NGN")}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">delivery fee</p>
+                        </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Label htmlFor="airplane-mode">Set as default address</Label>
-                  <Switch id="airplane-mode" checked={isDefaultAddresss} onCheckedChange={handleSetAddressAsDefault}/>
-                </div>
               </CardContent>
             </Card>
 
@@ -678,19 +669,17 @@ const Checkout = () => {
                 <CardContent className="space-y-4 text-sm">
                   <p className="flex items-center justify-between">
                     <span className="text-muted-foreground">Frequency</span>
-                    <span>{subInfo?.selectedFrequency}</span>
+                    <span className="font-semibold">{subInfo?.selectedFrequency}</span>
                   </p>
-                  <div className="flex items-center justify-between space-x-2">
+                  {/* <div className="flex items-center justify-between space-x-2">
                     <Label htmlFor="airplane-mode">Enable Auto Subscribe</Label>
                     <Switch id="airplane-mode" checked={autoSubscribe} onCheckedChange={setAutoSubscribe}/>
                   </div>
                   <div className="flex items-center justify-between space-x-2">
                     <Label htmlFor="airplane-mode">Enable Auto Debit</Label>
                     <Switch id="airplane-mode" checked={autoDebit} onCheckedChange={setAutoDebit}/>
-                  </div>
-                  {/* <p className="flex items-center justify-between"><span className="text-muted-foreground">Next billing date</span><span>{formatDate(billingDate)}</span></p>
-                  <p className="flex items-center justify-between"><span className="text-muted-foreground">Estimated delivery window</span><span>{deliveryWindow}</span></p>
-                  <p className="flex items-center justify-between"><span className="text-muted-foreground">Edit cutoff</span><span>{formatDateTime(cutoffDate)}</span></p> */}
+                  </div> */}
+                  <p className="text-justify">By continuing with your payment, you agree to our <Link className="underline font-semibold" to={"/"}>Terms of Use</Link>and <Link className="underline font-semibold" to={"/"}>Privacy Policy</Link>, you agree that one or more items in your cart is a deferred or recurring purchase, you agree to purchase a continuous subscription, and you agree that your payment method will automatically be charged at the price and frequency listed on this page until it ends or you cancel. Prices are subject to change. All cancellations are subject to our cancellation policy. Cancel your subscription through your account or by emailing <a className="underline font-semibold" href="mailto:support@meatng.com">support@meatng.com</a></p>
                 </CardContent>
               </Card>
             )}
@@ -727,11 +716,11 @@ const Checkout = () => {
                 {paystackError && <p className="text-sm text-destructive">{paystackError}</p>}
                 <Button
                   type="button"
-                  disabled={!canSubmit || !cartItems || paystackInitLoading}
+                  disabled={!canSubmit || !cartItems || !deliveryFee || !selectedAddressId || paystackInitLoading}
                   onClick={handlePaystackCheckout}
                 >
                   {paymentMethod === "paystack"
-                    ? (paystackInitLoading ? "Initializing payment..." : "Pay")
+                    ? (paystackInitLoading ? "Initializing payment..." : "Pay Now")
                     : "I Have Made Transfer"}
                 </Button>
               </CardContent>
@@ -866,6 +855,12 @@ const Checkout = () => {
                       <Separator />
                       <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan price</span><span>{displayCurrency(cartItems?.attributes?.planUnitPrice, "NGN")}</span></p>
                       {cartItems?.attributes?.addonTotal && <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>}
+                      <p className="flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <Truck className="h-3.5 w-3.5" /> Delivery Fee
+                        </span>
+                        <span>{deliveryFee ? displayCurrency(deliveryFee, "NGN") : "Select location"}</span>
+                      </p>
                     </>
                   )}
 
@@ -907,7 +902,7 @@ const Checkout = () => {
                   <Separator />
                   <p className="flex items-center justify-between text-lg font-bold">
                     <span>Total due now</span>
-                    <span className="text-primary">{displayCurrency(cartItems?.attributes?.totalPrice, "NGN")}</span>
+                    <span className="text-primary">{displayCurrency((cartItems?.attributes?.totalPrice || 0) + deliveryFee, "NGN")}</span>
                   </p>
                   {/* <Badge variant="outline" className="w-full justify-center">Ref: {paymentReference}</Badge> */}
                 </CardContent>

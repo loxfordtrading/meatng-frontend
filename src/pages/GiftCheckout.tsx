@@ -103,7 +103,7 @@ const GiftCheckout = () => {
   const [addresses, setAddresses] = useState([])
   const [loadingAddress, setLoadingAddress] = useState(true)
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
-    const [deliveryLoading, setDeliveryLoading] = useState(false);
+  const [deliveryLoading, setDeliveryLoading] = useState(false);
 
    const stateInfo = getDeliveryState(selectedState);
   const isLagos = stateInfo?.hasZones ?? false;
@@ -488,7 +488,7 @@ const GiftCheckout = () => {
               <CardHeader>
                 <CardTitle>Delivery Information</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <CardContent className="grid gap-4">
                 {/* Saved address selector */}
                 {loadingAddress && (
                   <div className="w-full space-y-2 col-span-2">
@@ -539,14 +539,14 @@ const GiftCheckout = () => {
                     <p className="text-sm text-destructive">{formErrors.lastName}</p>
                   )}
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
                   <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.email && (
                     <p className="text-sm text-destructive">{formErrors.email}</p>
                   )}
                 </div>
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="phone">Phone number <span className="text-destructive">*</span></Label>
                   <Input id="phone" placeholder="08012345678" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.phone && (
@@ -555,7 +555,7 @@ const GiftCheckout = () => {
                 </div>
 
                 {/* State picker */}
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="delivery-state">State <span className="text-destructive">*</span></Label>
                   <select
                     id="delivery-state"
@@ -580,7 +580,7 @@ const GiftCheckout = () => {
 
                 {/* Lagos: area dropdown */}
                 {isLagos && (
-                  <div className="space-y-2 md:col-span-2">
+                  <div className="space-y-2 col-span-2">
                     <Label htmlFor="area-select">Delivery area</Label>
                     <select
                       id="area-select"
@@ -605,7 +605,7 @@ const GiftCheckout = () => {
                 {/* Other states: city input + flat rate display */}
                 {selectedState && !isLagos && (
                   <>
-                    <div className="space-y-2 md:col-span-2">
+                    <div className="space-y-2 col-span-2">
                       <Label htmlFor="city">City / Town <span className="text-destructive">*</span></Label>
                       <Input
                         id="city"
@@ -635,12 +635,12 @@ const GiftCheckout = () => {
                 )}
 
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 col-span-2">
                   <Switch id="airplane-mode" checked={isDefaultAddresss} onCheckedChange={handleSetAddressAsDefault}/>
                   <Label htmlFor="airplane-mode">Set as default address</Label>
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="street-address">Street address <span className="text-destructive">*</span></Label>
                   <Input id="street-address" placeholder="12 Adeniyi Jones Avenue" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.streetAddress && (
@@ -648,7 +648,7 @@ const GiftCheckout = () => {
                   )}
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="apartment">Apartment<span className="text-destructive">*</span></Label>
                   <Input id="apartment" placeholder="e.g First Floor, Room 10" value={apartment} onChange={(e) => setApartment(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.apartment && (
@@ -656,7 +656,7 @@ const GiftCheckout = () => {
                   )}
                 </div>
 
-                <div className="space-y-2 md:col-span-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="zip-code">Zip Code (optional)</Label>
                   <Input id="zip-code" placeholder="102045" value={zipCode} onChange={(e) => setZipCode(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
                   {formErrors.zipCode && (
@@ -721,7 +721,7 @@ const GiftCheckout = () => {
                   onClick={handlePaystackCheckout}
                 >
                   {paymentMethod === "paystack"
-                    ? (paystackInitLoading ? "Initializing payment..." : "Pay")
+                    ? (paystackInitLoading ? "Initializing payment..." : "Pay Now")
                     : "I Have Made Transfer"}
                 </Button>
               </CardContent>
