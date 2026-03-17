@@ -119,7 +119,6 @@ const AdminCustomers = () => {
                 <h1 className="text-2xl font-display font-bold text-foreground">Customer Management</h1>
                 <p className="text-muted-foreground text-sm mt-1">
                     View and manage your customer base.
-                    {/* {usingMock && <span className="ml-1 text-xs text-amber-600">(demo data)</span>} */}
                 </p>
             </div>
 

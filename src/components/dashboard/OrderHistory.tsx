@@ -10,19 +10,20 @@ import { ROUTES } from "@/lib/routes";
 import { toast } from "react-toastify";
 import { axiosClient } from "@/GlobalApi";
 import { useEffect, useState } from "react";
-import { FormattedOrderType } from "@/types/types";
+import { FormattedOrderType, OrderMetaType } from "@/types/types";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import displayCurrency from "@/utils/displayCurrency";
 import OrderStatusBadge from "../OrderStatusBadge";
-import ViewOrder from "../ViewOrder";
 import { LoadingData } from "../LoadingData";
+import { ViewOrder } from "../ViewOrder";
 
 const OrderHistory = () => {
 
     const navigate = useNavigate()
     const [orders, setOrders] = useState<FormattedOrderType[]>([]);
     const [loading, setLoading] = useState(true)
+    const [meta, setMeta] = useState<OrderMetaType | null>(null);
 
     useEffect(() => {
         getOrders()
@@ -34,32 +35,18 @@ const OrderHistory = () => {
 
             const orders = res.data.data || [];
 
-            const formattedOrders: FormattedOrderType[] = orders.map((order: any) => ({
+            const flattenedOrders = orders.map((order: any) => ({
                 id: order.id,
-                userId: order.attributes.user_id,
-                planId: order.attributes.plan_id,
+                ...order.attributes,
                 status: order.attributes.status,
-                totalAmount: order.attributes.total_amount,
-                createdAt: order.attributes.createdAt,
-                updatedAt: order.attributes.updatedAt,
-
-                items: order.attributes.items.map((item: any) => ({
-                    productId: item.product_id,
-                    name: item.name,
-                    unitPrice: item.unit_price,
-                    quantity: item.quantity,
-                    itemType: item.item_type,
-                    isPrefilled: item.is_prefilled,
-                })),
-
-                plan: {
-                    id: order.relationships?.planDetails?.data?.id,
-                    name: order.relationships?.planDetails?.data?.attributes?.name,
-                    maxItems: order.relationships?.planDetails?.data?.attributes?.max_items,
-                },
+                user: order.relationships?.userDetails?.data?.attributes || null,
+                plan: order.relationships?.planDetails?.data?.attributes || null,
+                giftBoxDetails: order.relationships?.giftBoxDetails?.data?.attributes || null,
+                giftFormDetails: order.relationships?.giftDetails?.data?.attributes || null,
             }));
 
-            setOrders(formattedOrders);
+            setOrders(flattenedOrders);
+            setMeta(res.data.meta); 
 
         } catch (err: any) {
             toast.error(err.response?.data?.message);
@@ -96,9 +83,10 @@ const OrderHistory = () => {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-border bg-muted/40">
-                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Reference</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Order ID</th>
                                         <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Date</th>
                                         <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Items</th>
+                                        <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Order Type</th>
                                         <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Total</th>
                                         <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                                         <th className="px-4 py-3 text-left font-semibold text-muted-foreground">View</th>
@@ -106,14 +94,14 @@ const OrderHistory = () => {
                                 </thead>
                                 <tbody>
                                     {orders.map((order) => (
-                                        <tr key={order.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                        <tr key={order?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                                             <td className="px-4 py-3 font-mono font-medium text-foreground">{order?.id}</td>
                                             <td className="px-4 py-3 text-muted-foreground">{order?.createdAt ? format(new Date(order?.createdAt), "dd MMM yyyy") : "N/A"}</td>
-                                            {/* <td className="px-4 py-3 text-muted-foreground">{order?.createdAt ? format(new Date(order?.createdAt), "dd MMM yyyy, hh:mm a") : "N/A"}</td> */}
                                             <td className="px-4 py-3 text-muted-foreground">{order?.items?.length} item{order?.items?.length > 1 ? "s" : ""}</td>
-                                            <td className="px-4 py-3 font-semibold">{displayCurrency(order?.totalAmount, "NGN")}</td>
+                                            <td className="px-4 py-3 text-muted-foreground">{order?.order_type}</td>
+                                            <td className="px-4 py-3 font-semibold">{displayCurrency(order?.total_amount, "NGN")}</td>
                                             <td className="px-4 py-3">
-                                                <OrderStatusBadge status={order.status} />
+                                                <OrderStatusBadge status={order?.status} />
                                             </td>
                                             <td>
                                                 <ViewOrder order={order} />
