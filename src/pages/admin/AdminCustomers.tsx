@@ -14,6 +14,9 @@ import { toast } from "react-toastify";
 import { CustomerType } from "@/types/admin";
 import { format } from "date-fns";
 import { LoadingData } from "@/components/LoadingData";
+import displayCurrency from "@/utils/displayCurrency";
+import { ViewCustomer } from "@/components/admin/ViewCustomer";
+import { cn } from "@/lib/utils";
 
 const statusBadge: Record<string, string> = {
     true: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
@@ -36,6 +39,7 @@ const AdminCustomers = () => {
     const [customers, setCustomers] = useState<CustomerType[]>([]);
     const [meta, setMeta] = useState(null);
     const [loading, setLoading] = useState(true)
+    const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
     const token = tokenStorage.getAdminToken();
     const queryClient = useQueryClient();
@@ -69,6 +73,7 @@ const AdminCustomers = () => {
 
     const getCustomers = async () => {
         try {
+            setLoading(true)
             const res = await axiosClient.get(`/users/all`);
 
             const customers = res.data.data || [];
@@ -85,6 +90,20 @@ const AdminCustomers = () => {
             toast.error(err.response?.data?.message);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Delete this customer? This cannot be undone.")) return;
+        try {
+            setDeletingPlanId(id);
+            const res = await axiosClient.delete(`/users/delete-user/${id}`)
+            toast.success("Customer deleted successfully")
+            getCustomers()
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setDeletingPlanId(null);
         }
     };
 
@@ -106,27 +125,39 @@ const AdminCustomers = () => {
 
             {/* Summary */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <AdminMetricCard
-                    label="Total Customers"
-                    value={customers.length.toString()}
-                    icon={Users}
-                    tone="blue"
-                    delayMs={0}
-                />
-                <AdminMetricCard
-                    label="Active Subscribers"
-                    value={"0"}
-                    icon={ShoppingBag}
-                    tone="emerald"
-                    delayMs={70}
-                />
-                <AdminMetricCard
-                    label="Total Revenue"
-                    value={formatAdminPrice(0)}
-                    icon={DollarSign}
-                    tone="amber"
-                    delayMs={140}
-                />
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-emerald-700"}>
+                            <Users />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Customers</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-emerald-700")}>{meta?.summary?.total_customers}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-blue-700"}>
+                            <ShoppingBag/>
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Active Subscribers</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-blue-700")}>{meta?.summary?.active_subscribers}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-amber-700"}>
+                            <DollarSign />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Revenue</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-amber-700")}>{displayCurrency(meta?.summary?.total_revenue, "NGN")}</p>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Search */}
@@ -147,8 +178,8 @@ const AdminCustomers = () => {
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Orders</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Total Spent</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Joined</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground"></th>
+                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Member Since</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -165,7 +196,7 @@ const AdminCustomers = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        {/* <td className="px-4 py-3">{c.plan ? <Badge variant="secondary">{c.plan}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td> */}
+                                        <td className="px-4 py-3">{c.plan_name ? <Badge variant="secondary">{c.plan_name}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
                                         <td className="px-4 py-3">
                                             <span
                                                 className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
@@ -175,23 +206,24 @@ const AdminCustomers = () => {
                                                 {c?.is_active ? "Active" : "Inactive"}
                                             </span>
                                         </td>
-                                        {/* <td className="px-4 py-3 text-muted-foreground">{c.totalOrders}</td> */}
-                                        {/* <td className="px-4 py-3 font-semibold">{formatAdminPrice(c.totalSpent)}</td> */}
-                                        <td className="px-4 py-3 text-muted-foreground">{c?.createdAt ? format(c?.createdAt, "MMM dd, yyyy") : "None"}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{c?.total_orders}</td>
+                                        <td className="px-4 py-3 font-semibold">{displayCurrency(c?.total_spent, "NGN")}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{c?.member_since ? format(c?.member_since, "MMM dd, yyyy") : <span className="text-muted-foreground text-xs">—</span>}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1">
-                                                <Button variant="ghost" size="sm" onClick={() => setSelected(c)}>View</Button>
+                                                <ViewCustomer customer={c}/>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                    onClick={() => {
-                                                        if (!confirm(`Delete ${c?.first_name} ${c?.first_name}? This cannot be undone.`)) return;
-                                                        deleteMutation.mutate(c.id);
-                                                    }}
-                                                    disabled={deleteMutation.isPending}
+                                                    onClick={() => handleDelete(c?.id)}
+                                                    disabled={deletingPlanId === c?.id}
                                                 >
-                                                    <Trash2 className="h-4 w-4" />
+                                                    {deletingPlanId === c?.id ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                    ) : (
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    )}
                                                 </Button>
                                             </div>
                                         </td>
@@ -203,53 +235,6 @@ const AdminCustomers = () => {
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Detail Modal */}
-            {selected && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => setSelected(null)} />
-                    <Card className="admin-card relative z-10 max-w-md w-full animate-fade-in">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>{selected?.first_name} {selected?.last_name}</CardTitle>
-                                <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>✕</Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-muted-foreground">Email</span><p className="font-medium">{selected?.email}</p></div>
-                                <div><span className="text-muted-foreground">Phone</span><p className="font-medium">{selected?.phone}</p></div>
-                                {/* <div><span className="text-muted-foreground">Plan</span><p className="font-medium">{selected.plan || "None"}</p></div> */}
-                                <div><span className="text-muted-foreground">Status</span><p className="font-medium">{selected?.is_active}</p></div>
-                                {/* <div><span className="text-muted-foreground">Total Orders</span><p className="font-medium">{selected.totalOrders}</p></div> */}
-                                {/* <div><span className="text-muted-foreground">Total Spent</span><p className="font-medium">{formatAdminPrice(selected.totalSpent)}</p></div> */}
-                                <div><span className="text-muted-foreground">Joined</span><p className="font-medium">{selected?.createdAt ? format(selected?.createdAt, "MMM dd, yyyy") : "None"}</p></div>
-                                <div><span className="text-muted-foreground">Last Updated</span><p className="font-medium">{selected?.updatedAt ? format(selected?.updatedAt, "MMM dd, yyyy") : "None"}</p></div>
-                                {/* <div><span className="text-muted-foreground">Last Order</span><p className="font-medium">{selected.lastOrder || "—"}</p></div> */}
-                            </div>
-                            <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-                                <Button size="sm" variant="outline">Pause Subscription</Button>
-                                <Button size="sm" variant="outline">Add Credit</Button>
-                                <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">Reset Password</Button>
-                                {/* {!usingMock && ( */}
-                                    <Button
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() => {
-                                            if (!selected?.id) return;
-                                            if (!confirm("Delete this customer account? This action cannot be undone.")) return;
-                                            deleteMutation.mutate(selected.id);
-                                        }}
-                                        disabled={deleteMutation.isPending}
-                                    >
-                                        {deleteMutation.isPending ? "Deleting..." : "Delete User"}
-                                    </Button>
-                                {/* )} */}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
         </div>
     );
 };

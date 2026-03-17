@@ -180,6 +180,13 @@ export interface CustomerType {
   first_name: string;
   phone: string;
   last_name: string;
+  total_orders: number;
+  total_spent: number;
+  plan_name: string | null;
+  subscription_status: string | null;
+  next_delivery_date: Date | null;
+  member_status: string | null;
+  member_since: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

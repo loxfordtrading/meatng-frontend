@@ -135,7 +135,7 @@ export const AddPlan = () => {
             const formData = new FormData();
             formData.append("image", file);
 
-            const result = await axiosClient.post("/upload?type=PRODUCT", formData)
+            const result = await axiosClient.post("/upload?type=PLAN", formData)
             const imagedata = {
                 url: result.data?.data?.attributes?.url,
                 temp_id: result.data?.data?.attributes?.temp_id

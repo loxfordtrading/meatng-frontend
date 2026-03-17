@@ -96,6 +96,7 @@ export const EditPlan = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const navigate = useNavigate()
   const [loadingProducts, setLoadingProducts] = useState(true)
@@ -145,7 +146,7 @@ export const EditPlan = () => {
 
             setImageInfo({
                 url: attributes?.image,
-                temp_id: "",
+                temp_id: attributes?.temp_image_id || "",
             });
 
             setPreview(attributes?.image);
@@ -155,7 +156,7 @@ export const EditPlan = () => {
         } finally {
             setLoading(false);
         }
-        };
+    };
 
     const handleFile = (selected: File) => {
         setFile(selected);
@@ -185,7 +186,7 @@ export const EditPlan = () => {
             const formData = new FormData();
             formData.append("image", file);
 
-            const result = await axiosClient.post("/upload?type=PRODUCT", formData)
+            const result = await axiosClient.post("/upload?type=PLAN", formData)
             const imagedata = {
                 url: result.data?.data?.attributes?.url,
                 temp_id: result.data?.data?.attributes?.temp_id
@@ -215,7 +216,7 @@ export const EditPlan = () => {
         }
 
         try {
-            setLoading(true);
+            setIsUpdating(true);
 
             let payload = { ...form };
 
@@ -238,7 +239,7 @@ export const EditPlan = () => {
             }
 
         } finally {
-            setLoading(false);
+            setIsUpdating(false);
         }
     };
 
@@ -980,9 +981,9 @@ export const EditPlan = () => {
         <Button
           type="submit"
           className="w-full h-12 text-base"
-          disabled={loading}
+          disabled={isUpdating}
         >
-          {loading ? "Creating..." : "Create Plan"}
+          {isUpdating ? "Updating..." : "Update Plan"}
         </Button>
 
       </form>
