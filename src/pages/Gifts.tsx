@@ -284,9 +284,11 @@ const Gifts = () => {
                         key={box.id}
                         type="button"
                         onClick={() => setSelectedGiftBoxId(box.id)}
-                        className={`text-left rounded-2xl border bg-background transition overflow-hidden ${selected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40"}`}
+                        className={`text-left flex flex-col rounded-2xl border bg-background transition overflow-hidden ${selected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/40"}`}
                       >
-                        <img src={box?.image} alt={box?.name} className="h-36 w-full object-cover" loading="lazy" />
+                        <div className="h-36 w-full">
+                          <img src={box?.image} alt={box?.name} className="h-full w-full object-cover" loading="lazy" />
+                        </div>
                         <div className="p-4">
                           <p className="font-semibold">{box?.name}</p>
                           <p className="text-xs text-muted-foreground mt-1">
