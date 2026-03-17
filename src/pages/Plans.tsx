@@ -236,10 +236,8 @@ const Plans = () => {
                       ))}  */}
                       {selectedPlan?.attributes?.prefilled_items?.map((item) => ( 
                         <p key={item?.product_id} className="text-xs text-muted-foreground">{item?.name} — {item?.weight}{item?.weight_unit}</p>
-                      ))} 
-                      {selectedPlan?.attributes?.category_rules?.map((item) => ( 
-                        <p key={item?.category_id} className="text-xs text-primary font-medium pt-1"> + Pick {item?.weight_required}{item?.weight_unit} of {item?.label}  </p>
-                      ))} 
+                      ))}
+                      <p className="text-xs text-primary font-medium pt-1"> + Pick the remaining {selectedPlan?.attributes?.remaining_weight}{selectedPlan?.attributes?.weight_unit}</p>
                     </div>
                   )}
 
@@ -255,23 +253,15 @@ const Plans = () => {
 
                   {/* Benefits */} 
                   <div className="space-y-1 mt-4">
-                    {selectedPlan?.attributes?.product_rules.length > 0 && (
-                      selectedPlan?.attributes?.product_rules?.map((item) => (
+                    {selectedPlan?.attributes?.highlights?.length > 0 && (
+                      selectedPlan?.attributes?.highlights?.map((item) => (
                         <p key={item?.product_id}  className="text-xs flex items-start gap-2"> 
                           <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" /> 
-                          <span>+ Pick {item?.max_weight}{item?.weight_unit} of {item?.label}</span> 
+                          <span>{item}</span> 
                         </p>
                       ))
                     )
                     }
-                      <p className="text-xs flex items-start gap-2"> 
-                        <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" /> 
-                        <span>Dashboard control (edit/skip/pause)</span> 
-                      </p>
-                      <p className="text-xs flex items-start gap-2"> 
-                        <CheckCircle2 className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" /> 
-                        <span>Flexible delivery scheduling</span> 
-                      </p>
                   </div>
 
                   <Button

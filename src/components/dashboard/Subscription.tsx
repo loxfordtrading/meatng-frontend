@@ -30,11 +30,8 @@ const Subscription = () => {
     const userInfo = useAuthStore(state => state.userInfo)
     const [subscriptions, setSubscriptions] = useState<FormattedSubscriptionType[]>([]);
     const [loading, setLoading] = useState(true)
-    const [isCancelling, setIsCancelling] = useState(false)
-    const [isPausing, setIsPausing] = useState(false)
-    const [isResuming, setIsResuming] = useState(false)
-
-    const currentSubscription = subscriptions[0] || null;
+    const [pausingId, setPausingId] = useState<string | null>(null);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
 
     useEffect(() => {
         getSubscriptions()
@@ -42,6 +39,7 @@ const Subscription = () => {
 
     const getSubscriptions = async () => {
         try {
+            setLoading(true)
             const res = await axiosClient.get(`/subscriptions/by-user/${userInfo.userId}`);
 
             const subs = res.data.data || [];
@@ -61,41 +59,42 @@ const Subscription = () => {
     };
 
     const cancelSubscription = async (subscriptionId: string) => {
+        if (!confirm("Cancel this subscription? This cannot be undone.")) return;
         try {
-            setIsCancelling(true)
+            setCancellingId(subscriptionId)
             const res = await axiosClient.patch(`/subscriptions/${subscriptionId}/cancel`);
             getSubscriptions()
             toast.success("Subscription cancelled");
         } catch (error) {
             toast.error(error.response?.data?.message);
         } finally {
-            setIsCancelling(false)
+            setCancellingId(null)
         }
     }
 
     const pauseSubscription = async (subscriptionId: string) => {
         try {
-            setIsPausing(true)
+            setPausingId(subscriptionId)
             const res = await axiosClient.patch(`/subscriptions/${subscriptionId}/pause`);
             getSubscriptions()
             toast.success("Subscription paused");
         } catch (error) {
             toast.error(error.response?.data?.message);
         } finally {
-            setIsPausing(false)
+            setPausingId(null)
         }
     }
 
      const resumeSubscription = async (subscriptionId: string) => {
         try {
-            setIsResuming(true)
+            setPausingId(subscriptionId)
             const res = await axiosClient.patch(`/subscriptions/${subscriptionId}/resume`);
             getSubscriptions()
             toast.success("Subscription resumed");
         } catch (error) {
             toast.error(error.response?.data?.message);
         } finally {
-            setIsResuming(false)
+            setPausingId(null)
         }
     }
 
@@ -165,16 +164,18 @@ const Subscription = () => {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => resumeSubscription(sub.id)}
+                                        disabled={pausingId == sub?.id}
                                     >
-                                        Resume
+                                        {pausingId == sub?.id ? "Resuming..." : "Resume"}
                                     </Button>
                                 ) : sub.status === "active" ? (
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => pauseSubscription(sub.id)}
+                                        disabled={pausingId == sub?.id}
                                     >
-                                        Pause
+                                        {pausingId == sub?.id ? "Pausing..." : "Pause"}
                                     </Button>
                                 ) : null}
 
@@ -184,8 +185,9 @@ const Subscription = () => {
                                         size="sm"
                                         className="text-destructive"
                                         onClick={() => cancelSubscription(sub.id)}
+                                        disabled={cancellingId == sub?.id}
                                     >
-                                        Cancel Subscription
+                                        {cancellingId == sub?.id ? "Cancelling..." : "Cancel Subscription"}
                                     </Button>
                                 ) : (
                                     <span className="text-destructive">

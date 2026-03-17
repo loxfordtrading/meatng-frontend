@@ -134,7 +134,6 @@ const BuildBox = () => {
   };
 
    const totalGransInCart = totalGramWeight()
-   const totalItemsinCart = totalItems();
 
     const mainWeightG = toGrams(
       subInfo?.subscription?.attributes?.weight ?? 0,
@@ -149,13 +148,17 @@ const BuildBox = () => {
     const progress = mainWeightG
     ? (totalFilled / mainWeightG) * 100
     : 0;
+
+    const buildProgress = remainingWeightG
+    ? (totalGransInCart / remainingWeightG) * 100
+    : 0;
     
     let error = "";
     
     if (totalGransInCart !== remainingWeightG) {
       const remainingWeight = remainingWeightG - totalGransInCart;
   
-      error = `Fill remaining ${formatWeight(remainingWeight)} of ${subInfo?.subscription?.attributes?.category_rules?.[0]?.category_name} to continue`;
+      error = `Fill remaining ${formatWeight(remainingWeight)} of ${formatWeight(remainingWeightG)} to continue`;
     }
 
   const location = useLocation();
@@ -421,6 +424,21 @@ const BuildBox = () => {
                             </div>
                           );
                         })}
+
+                      {subInfo?.subscription?.attributes?.remaining_weight && (
+                        <div>
+                          <div className="mb-1 flex items-center justify-between text-xs">
+                            <span>Build selections</span>
+
+                            <span>
+                              {formatWeight(totalGransInCart)} / {formatWeight(remainingWeightG)}
+                            </span>
+                          </div>
+
+                          <Progress value={buildProgress} className="h-1.5" />
+                        </div>
+                      )}
+                        
                     </div>
                   </div>
                </div>

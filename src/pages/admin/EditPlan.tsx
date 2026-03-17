@@ -224,6 +224,11 @@ export const EditPlan = () => {
                 const { price, ...rest } = payload;
                 payload = rest;
             }
+            
+            payload.prefilled_items = payload.prefilled_items?.map(
+                ({ image_url, ...rest }: any) => rest
+            );
+
             const response = await axiosClient.put(`/plans/${planId}`,payload);
 
             toast.success("Plan updated successfully");
