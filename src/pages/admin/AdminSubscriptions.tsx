@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Pause, Play, X as XIcon, TrendingDown, Repeat, DollarSign } from "lucide-react";
+import { Search, Pause, Play, X as XIcon, TrendingDown, Repeat, DollarSign, Loader2 } from "lucide-react";
 import { AdminMetricCard } from "@/components/admin/AdminMetricCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,14 @@ import {
     updateBox,
     type Box,
 } from "@/lib/api/admin";
+import { axiosClient } from "@/GlobalApi";
+import { LoadingData } from "@/components/LoadingData";
+import { SubscriptionMetaType, SubscriptionType } from "@/types/admin";
+import { cn } from "@/lib/utils";
+import displayCurrency from "@/utils/displayCurrency";
+import { getFrequencyWeeks, getFrequencyWeeksString } from "@/utils/conversion";
+import { format } from "date-fns";
+import { toast } from "react-toastify";
 
 type SubFilter = "all" | "Active" | "Paused" | "Cancelled";
 
@@ -29,82 +37,65 @@ const statusColors: Record<string, string> = {
 const AdminSubscriptions = () => {
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<SubFilter>("all");
-    // const [subs, setSubs] = useState<AdminSubscription[]>(mockAdminSubscriptions);
     const [subs, setSubs] = useState<AdminSubscription[]>([]);
-    const [selectedBox, setSelectedBox] = useState<Box | null>(null);
-    const token = tokenStorage.getAdminToken();
-    const queryClient = useQueryClient();
-
-    const { data: boxes } = useQuery({
-        queryKey: ["admin-boxes"],
-        queryFn: async () => {
-            try { return await listBoxes(token); } catch { return null; }
-        },
-        staleTime: 60_000,
-    });
-    const { data: activeBoxes } = useQuery({
-        queryKey: ["admin-boxes-active"],
-        queryFn: async () => {
-            try { return await listActiveBoxes(token); } catch { return null; }
-        },
-        staleTime: 60_000,
-    });
-    const createBoxMutation = useMutation({
-        mutationFn: () =>
-            createBox(
-                {
-                    name: `Draft Box ${new Date().toISOString().slice(0, 16)}`,
-                    description: "Draft template",
-                    isActive: false,
-                    price: 0,
-                    weightKg: 0,
-                },
-                token,
-            ),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-boxes"] });
-            queryClient.invalidateQueries({ queryKey: ["admin-boxes-active"] });
-        },
-    });
-    const updateBoxMutation = useMutation({
-        mutationFn: ({ id, input }: { id: string; input: Parameters<typeof updateBox>[1] }) =>
-            updateBox(id, input, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-boxes"] });
-            queryClient.invalidateQueries({ queryKey: ["admin-boxes-active"] });
-        },
-    });
-    const deleteBoxMutation = useMutation({
-        mutationFn: (id: string) => deleteBox(id, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-boxes"] });
-            queryClient.invalidateQueries({ queryKey: ["admin-boxes-active"] });
-            setSelectedBox(null);
-        },
-    });
-
-    const filtered = subs.filter((s) => {
-        const matchSearch = s.customerName.toLowerCase().includes(search.toLowerCase());
-        const matchFilter = filter === "all" || s.status === filter;
-        return matchSearch && matchFilter;
-    });
+    const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
+    const [meta, setMeta] = useState<SubscriptionMetaType | null>(null);
+    const [loading, setLoading] = useState(true)
+    const [disablingId, setDisablingId] = useState<string | null>(null);
 
     const updateStatus = (id: string, status: AdminSubscription["status"]) => {
         setSubs((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
     };
 
-    const activeSubs = subs.filter((s) => s.status === "Active");
-    const avgValue = activeSubs.length ? activeSubs.reduce((s, sub) => s + sub.monthlyValue, 0) / activeSubs.length : 0;
     const tabs: SubFilter[] = ["all", "Active", "Paused", "Cancelled"];
-    const handleViewBox = async (id: string) => {
+
+    const handleStatus = async (id: string, status: string) => {
         try {
-            const detailed = await getBoxById(id, token);
-            setSelectedBox(detailed);
-        } catch {
-            setSelectedBox(null);
+            setDisablingId(id);
+
+            await axiosClient.patch(`/subscriptions/${id}/${status}`);
+            toast.success(`Subscription marked as ${status}`)
+
+            getSubscriptions()
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setDisablingId(null);
         }
     };
 
+    useEffect(() => {
+        getSubscriptions()
+    }, [])
+
+    const getSubscriptions = async () => {
+        try {
+            setLoading(true)
+            const res = await axiosClient.get(`/subscriptions`);
+
+            const subs = res.data?.data || [];
+
+            const flattenedSubs = subs.map((plan: any) => ({
+                id: plan.id,
+                ...plan.attributes,
+            }));
+
+            setSubscriptions(flattenedSubs);
+            setMeta(res.data.meta);  
+
+        } catch (err: any) {
+            toast.error(err.response?.data?.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <LoadingData/>
+        );
+    }
+    
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
             <div>
@@ -114,28 +105,39 @@ const AdminSubscriptions = () => {
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <AdminMetricCard
-                    label="Active Subscriptions"
-                    value={activeSubs.length.toString()}
-                    icon={Repeat}
-                    tone="emerald"
-                    delayMs={0}
-                />
-                <AdminMetricCard
-                    label="Avg Monthly Value"
-                    value={formatAdminPrice(Math.round(avgValue))}
-                    icon={DollarSign}
-                    tone="blue"
-                    delayMs={70}
-                />
-                <AdminMetricCard
-                    label="Churn Rate"
-                    value={`${mockKPIs.churnRate}%`}
-                    icon={TrendingDown}
-                    tone="amber"
-                    change={-mockKPIs.churnRate}
-                    delayMs={140}
-                />
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-emerald-700"}>
+                            <Repeat />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Active Subscriptions</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-emerald-700")}>{meta?.summary?.active_subscriptions}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-blue-700"}>
+                            <DollarSign/>
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Avg Monthly Value</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-blue-700")}>{displayCurrency(meta?.summary?.avg_monthly_subscription, "NGN")}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-amber-700"}>
+                            <TrendingDown />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Churn Rate</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-amber-700")}>{meta?.summary?.churn_rate}%</p>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Filters */}
@@ -176,37 +178,49 @@ const AdminSubscriptions = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((sub) => (
+                                {subscriptions.map((sub) => (
                                     <tr key={sub.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                                         <td className="px-4 py-3">
-                                            <p className="font-medium">{sub.customerName}</p>
-                                            <p className="text-xs text-muted-foreground">{sub.customerEmail}</p>
+                                            <p className="font-medium">{sub?.customer_name}</p>
+                                            <p className="text-xs text-muted-foreground">{sub?.customer_email}</p>
                                         </td>
-                                        <td className="px-4 py-3"><Badge variant="secondary">{sub.plan}</Badge></td>
-                                        <td className="px-4 py-3 text-muted-foreground">{sub.weightKg}kg</td>
-                                        <td className="px-4 py-3 text-muted-foreground">{sub.frequency}</td>
-                                        <td className="px-4 py-3 font-semibold">{formatAdminPrice(sub.monthlyValue)}</td>
-                                        <td className="px-4 py-3 text-muted-foreground">{sub.nextBilling}</td>
+                                        <td className="px-4 py-3"><Badge variant="secondary">{sub?.plan_name}</Badge></td>
+                                        <td className="px-4 py-3 text-muted-foreground">{sub?.box_weight}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{getFrequencyWeeksString(sub?.frequency)}</td>
+                                        <td className="px-4 py-3 font-semibold">{displayCurrency(sub?.monthly_value)}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{sub?.next_billing_at ? format(new Date(sub?.next_billing_at), "dd MMM yyyy") : "N/A"}</td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusColors[sub.status]}`}>
-                                                {sub.status}
+                                                {sub?.status}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex gap-1">
-                                                {sub.status === "Active" && (
-                                                    <Button variant="ghost" size="sm" onClick={() => updateStatus(sub.id, "Paused")} title="Pause">
-                                                        <Pause className="h-3.5 w-3.5" />
+                                                {sub?.status === "Active" && (
+                                                    <Button variant="ghost" size="sm" disabled={disablingId === sub?.id} onClick={() => handleStatus(sub?.id, "paused")} title="Pause">
+                                                        {disablingId === sub?.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                        ) : (
+                                                            <Pause className="h-3.5 w-3.5" />
+                                                        )}
                                                     </Button>
                                                 )}
                                                 {sub.status === "Paused" && (
-                                                    <Button variant="ghost" size="sm" onClick={() => updateStatus(sub.id, "Active")} title="Resume">
-                                                        <Play className="h-3.5 w-3.5" />
+                                                    <Button variant="ghost" size="sm" disabled={disablingId === sub?.id} onClick={() => handleStatus(sub?.id, "active")} title="Resume">
+                                                        {disablingId === sub?.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                        ) : (
+                                                            <Play className="h-3.5 w-3.5" />
+                                                        )}
                                                     </Button>
                                                 )}
                                                 {sub.status !== "Cancelled" && (
-                                                    <Button variant="ghost" size="sm" onClick={() => updateStatus(sub.id, "Cancelled")} title="Cancel" className="text-destructive hover:text-destructive">
-                                                        <XIcon className="h-3.5 w-3.5" />
+                                                    <Button variant="ghost" size="sm" disabled={disablingId === sub?.id} onClick={() => handleStatus(sub?.id, "cancel")} title="Cancel" className="text-destructive hover:text-destructive">
+                                                         {disablingId === sub?.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                        ) : (
+                                                            <XIcon className="h-3.5 w-3.5" />
+                                                        )}
                                                     </Button>
                                                 )}
                                             </div>
@@ -215,99 +229,8 @@ const AdminSubscriptions = () => {
                                 ))}
                             </tbody>
                         </table>
-                        {filtered.length === 0 && <div className="flex items-center justify-center py-12 text-muted-foreground">No subscriptions found.</div>}
+                        {subscriptions.length === 0 && <div className="flex items-center justify-center py-12 text-muted-foreground">No subscriptions found.</div>}
                     </div>
-                </CardContent>
-            </Card>
-
-            <Card className="admin-card admin-animate-up" style={{ animationDelay: "220ms" }}>
-                <CardContent className="space-y-4 p-4 sm:p-5">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div>
-                            <p className="font-semibold">Box Templates</p>
-                            <p className="text-xs text-muted-foreground">
-                                {boxes?.length ?? 0} total, {activeBoxes?.length ?? 0} active
-                            </p>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={() => createBoxMutation.mutate()} disabled={createBoxMutation.isPending}>
-                            {createBoxMutation.isPending ? "Creating..." : "Create Draft Box"}
-                        </Button>
-                    </div>
-
-                    <div className="space-y-2">
-                        {(boxes ?? []).map((box) => (
-                            <div key={box.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                                <div>
-                                    <p className="text-sm font-medium">{box.name ?? box.id}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {(box.weightKg ?? 0)}kg • {formatAdminPrice(box.price ?? 0)}
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Badge variant={box.isActive ? "default" : "secondary"}>
-                                        {box.isActive ? "Active" : "Draft"}
-                                    </Badge>
-                                    <Button size="sm" variant="ghost" onClick={() => void handleViewBox(box.id)}>View</Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => updateBoxMutation.mutate({
-                                            id: box.id,
-                                            input: { isActive: !box.isActive, name: box.name, price: box.price, weightKg: box.weightKg },
-                                        })}
-                                    >
-                                        {box.isActive ? "Disable" : "Enable"}
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => {
-                                            const next = prompt("Rename box", box.name ?? "");
-                                            if (!next || !next.trim()) return;
-                                            updateBoxMutation.mutate({
-                                                id: box.id,
-                                                input: {
-                                                    name: next.trim(),
-                                                    isActive: box.isActive,
-                                                    price: box.price,
-                                                    weightKg: box.weightKg,
-                                                    description: box.description,
-                                                    planTier: box.planTier,
-                                                    items: box.items,
-                                                },
-                                            });
-                                        }}
-                                    >
-                                        Rename
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-destructive hover:text-destructive"
-                                        onClick={() => {
-                                            if (!confirm("Delete this box template?")) return;
-                                            deleteBoxMutation.mutate(box.id);
-                                        }}
-                                    >
-                                        Delete
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                        {(boxes ?? []).length === 0 && (
-                            <p className="text-sm text-muted-foreground">No box templates available.</p>
-                        )}
-                    </div>
-
-                    {selectedBox && (
-                        <div className="rounded-lg border border-border p-3 text-sm">
-                            <p className="font-medium">{selectedBox.name ?? selectedBox.id}</p>
-                            <p className="text-muted-foreground mt-1">{selectedBox.description ?? "No description"}</p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                                Tier: {selectedBox.planTier ?? "N/A"} • Items: {selectedBox.items?.length ?? 0}
-                            </p>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
         </div>

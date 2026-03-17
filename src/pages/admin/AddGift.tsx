@@ -70,7 +70,7 @@ export const createPlanSchema = z
 
 type CreatePlanFormValues = z.infer<typeof createPlanSchema>
 
-export const AddPlan = () => {
+export const AddGift = () => {
 
   const [file, setFile] = useState<File | null>(null);
   const [imageInfo, setImageInfo] = useState(null)
@@ -279,9 +279,9 @@ export const AddPlan = () => {
 
       {/* HEADER */}
       <div>
-        <h1 className="text-2xl font-bold">Add Plan</h1>
+        <h1 className="text-2xl font-bold">Add Gift Box</h1>
         <p className="text-muted-foreground text-sm">
-          Create a subscription plan for customers
+          Create a gift box for customers
         </p>
       </div>
 

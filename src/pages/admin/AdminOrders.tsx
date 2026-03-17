@@ -14,138 +14,45 @@ import { axiosClient } from "@/GlobalApi";
 import { OrderStatus, OrderType, OrdersMetaType } from "@/types/admin";
 import displayCurrency from "@/utils/displayCurrency";
 import { format } from "date-fns";
-
-type StatusFilter = "all" | "Processing" | "In Transit" | "Delivered" | "Cancelled";
+import { ViewOrder } from "@/components/admin/ViewOrder";
 
 const statusColors: Record<string, string> = {
-    Processing: "bg-amber-500/15 text-amber-700 border-amber-500/20",
-    "In Transit": "bg-blue-500/15 text-blue-700 border-blue-500/20",
-    Delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
-    Cancelled: "bg-red-500/15 text-red-700 border-red-500/20",
+    pending: "bg-amber-500/15 text-amber-700 border-amber-500/20",
+    shipped: "bg-blue-500/15 text-blue-700 border-blue-500/20",
+    delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
+    paid: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
+    payment_failed: "bg-red-500/15 text-red-700 border-red-500/20",
+    cancelled: "bg-red-500/15 text-red-700 border-red-500/20",
 };
 
-const normalizeStatus = (s?: string): AdminOrder["status"] => {
-    if (!s) return "Processing";
-    const lower = s.toLowerCase();
-    if (lower.includes("transit")) return "In Transit";
-    if (lower.includes("deliver")) return "Delivered";
-    if (lower.includes("cancel")) return "Cancelled";
-    return "Processing";
-};
-
-const formatDate = (iso?: string): string => {
-    if (!iso) return "—";
-    try {
-        return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-    } catch {
-        return iso;
-    }
-};
-
-const mapApiOrder = (o: ApiOrder): AdminOrder => {
-    const raw = o.raw ?? {};
-    const customer = (raw.customer ?? raw.user ?? {}) as Record<string, unknown>;
-    const apiLineItems = o.lineItems ?? (Array.isArray(raw.line_items) ? raw.line_items as AdminOrderLineItem[] : undefined);
-    return {
-        id: o.id,
-        customerName: String(raw.customerName ?? raw.customer_name ?? customer.name ?? customer.firstName ?? "—"),
-        customerEmail: String(raw.customerEmail ?? raw.customer_email ?? customer.email ?? "—"),
-        date: formatDate(o.createdAt ?? String(raw.createdAt ?? "")),
-        items: Number(raw.items ?? raw.itemCount ?? (apiLineItems?.length ?? 0)),
-        total: o.total ?? 0,
-        status: normalizeStatus(o.status),
-        plan: o.planName ?? String(raw.plan ?? raw.planName ?? raw.subscriptionPlan ?? "—"),
-        planWeightKg: o.planWeightKg ?? Number(raw.planWeightKg ?? raw.plan_weight_kg ?? 0),
-        address: String(raw.address ?? raw.deliveryAddress ?? raw.shipping_address ?? "—"),
-        paymentMethod: String(raw.paymentMethod ?? raw.payment_method ?? "—"),
-        lineItems: apiLineItems,
-    };
-};
-
-const statusTabs: StatusFilter[] = ["all", "Processing", "In Transit", "Delivered", "Cancelled"];
-
-const mapStatus = (status: string): OrderStatus => {
-  switch (status) {
-    case "pending":
-      return "Processing";
-    case "paid":
-      return "Delivered";
-    case "failed":
-      return "Cancelled";
-    default:
-      return "Processing";
-  }
-};
+const statusTabs: (OrderStatus | "all")[] = ["all", "paid", "payment_failed", "pending", "shipped", "delivered", "cancelled"];
 
 const AdminOrders = () => {
 
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-    const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+    const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
     const [orders, setOrders] = useState<OrderType[]>([]);
     const [meta, setMeta] = useState<OrdersMetaType | null>(null);
     const [loading, setLoading] = useState(true)
-    const token = tokenStorage.getAdminToken();
-    const queryClient = useQueryClient();
+    const [disablingId, setDisablingId] = useState<string | null>(null);
+    const [status, setStatus] = useState<string | null>(null);
 
-    // const { data: apiOrders, isLoading, isError } = useQuery({
-    //     queryKey: ["admin-orders"],
-    //     queryFn: async () => {
-    //         try { return await listOrders(token); } catch { return null; }
-    //     },
-    //     staleTime: 30_000,
-    // });
-
-    // const orders: AdminOrder[] = useMemo(() => {
-    //     if (apiOrders) return apiOrders.map(mapApiOrder);
-    //     return [];
-    //     // return mockAdminOrders;
-    // }, [apiOrders]);
-
-    // const usingMock = !apiOrders;
-
-    const statusMutation = useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) =>
-            updateOrderStatus(id, status, token),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
-    });
-
-    // const createOrderMutation = useMutation({
-    //     mutationFn: () =>
-    //         createOrder(
-    //             {
-    //                 status: "Processing",
-    //                 total: 0,
-    //                 currency: "NGN",
-    //                 customerId: apiOrders?.[0]?.customerId,
-    //             },
-    //             token,
-    //         ),
-    //     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-orders"] }),
-    // });
-
-    const updateStatus = (orderId: string, newStatus: AdminOrder["status"]) => {
-        // if (!usingMock) statusMutation.mutate({ id: orderId, status: newStatus });
-        if (selectedOrder?.id === orderId) setSelectedOrder((prev) => prev ? { ...prev, status: newStatus } : null);
-    };
-    const handleViewOrder = async (order: AdminOrder) => {
-        setSelectedOrder(order);
-        // if (usingMock) return;
+    const handleUpdateStatus = async (id: string, status: string) => {
         try {
-            const detailed = await getOrderById(order.id, token);
-            setSelectedOrder(mapApiOrder(detailed));
-        } catch {
-            // Keep list payload if detail fetch fails.
+            setDisablingId(id);
+            setStatus(status)
+
+            await axiosClient.patch(`/orders/${id}/status`, { status });
+            toast.success(`Order marked as ${status}`)
+
+            getOrders()
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setDisablingId(null);
+            setStatus(null)
         }
     };
-
-    const filteredOrders = orders.filter((o) => {
-        // const matchesSearch =
-        //     o.customerName.toLowerCase().includes(search.toLowerCase()) ||
-        //     o.id.toLowerCase().includes(search.toLowerCase());
-        // const matchesStatus = statusFilter === "all" || o.status === statusFilter;
-        // return matchesSearch && matchesStatus;
-    });
 
     useEffect(() => {
         getOrders()
@@ -153,6 +60,7 @@ const AdminOrders = () => {
 
     const getOrders = async () => {
         try {
+            setLoading(true)
             const res = await axiosClient.get(`/orders`);
 
             const orders = res.data.data || [];
@@ -168,7 +76,7 @@ const AdminOrders = () => {
             const flattenedOrders = orders.map((order: any) => ({
                 id: order.id,
                 ...order.attributes,
-                status: mapStatus(order.attributes.status),
+                status: order.attributes.status,
                 user: order.relationships?.userDetails?.data?.attributes || null,
                 plan: order.relationships?.planDetails?.data?.attributes || null,
             }));
@@ -189,43 +97,17 @@ const AdminOrders = () => {
         );
     }
 
-    // if (isError) {
-    //     return (
-    //         <div className="flex justify-center py-24 text-muted-foreground">
-    //         Failed to load orders
-    //         </div>
-    //     );
-    // }
-
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
             <div>
                 <h1 className="text-2xl font-display font-bold text-foreground">Order Management</h1>
                 <p className="text-muted-foreground text-sm mt-1">
                     View, track, and manage all customer orders.
-                    {/* {usingMock && <span className="ml-1 text-xs text-amber-600">(demo data)</span>} */}
                 </p>
-                {/* {!usingMock && (
-                    <div className="mt-3">
-                        <Button size="sm" variant="outline" onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending}>
-                            {createOrderMutation.isPending ? "Creating..." : "Create Test Order"}
-                        </Button>
-                    </div>
-                )} */}
-                {orders?.length > 0 && (
-                    <div className="mt-3">
-                        <Button size="sm" variant="outline" 
-                            // onClick={() => createOrderMutation.mutate()} disabled={createOrderMutation.isPending}
-                        >
-                            Create Test Order
-                            {/* {createOrderMutation.isPending ? "Creating..." : "Create Test Order"} */}
-                        </Button>
-                    </div>
-                )}
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -235,7 +117,7 @@ const AdminOrders = () => {
                         className="pl-9 h-10 rounded-xl"
                     />
                 </div>
-                <div className="flex gap-1 bg-muted/60 rounded-xl p-1">
+                <div className="flex gap-1 flex-wrap bg-muted/60 rounded-xl p-1">
                     {statusTabs.map((tab) => (
                         <button
                             key={tab}
@@ -282,31 +164,49 @@ const AdminOrders = () => {
                                         </td>
                                         <td className="px-4 py-3">
                                             <div className="flex gap-1">
-                                                {/* <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg border border-border/70 p-0" onClick={() => void handleViewOrder(order)}>
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                </Button> */}
-                                                {order?.status !== "Delivered" && order?.status !== "Cancelled" && (
-                                                    <div className="relative group">
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg border border-border/70 p-0">
-                                                            <ChevronDown className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                        <div className="absolute right-0 top-full z-10 mt-1 w-36 rounded-lg border border-border bg-background shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                                                            {order?.status === "Processing" && (
-                                                                <button onClick={() => updateStatus(order.id, "In Transit")} className="block w-full px-3 py-2 text-left text-xs hover:bg-muted">
-                                                                    → In Transit
-                                                                </button>
+                                                <ViewOrder order={order} />
+                                                <div className="relative group">
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg border border-border/70 p-0">
+                                                        <ChevronDown className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                    <div className="absolute right-0 top-full z-10 mt-1 w-36 rounded-lg border border-border bg-background shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                                                        <button disabled={disablingId === order?.id} onClick={() => handleUpdateStatus(order.id, "pending")} className="block w-full px-3 py-2 text-left text-xs hover:bg-muted">
+                                                            {(disablingId === order?.id) && (status == "pending") ? (
+                                                                "Updating..."
+                                                            ) : (
+                                                                "→ Pending"
                                                             )}
-                                                            {(order.status === "Processing" || order.status === "In Transit") && (
-                                                                <button onClick={() => updateStatus(order.id, "Delivered")} className="block w-full px-3 py-2 text-left text-xs hover:bg-muted">
-                                                                    → Delivered
-                                                                </button>
+                                                        </button>
+                                                        <button disabled={disablingId === order?.id} onClick={() => handleUpdateStatus(order.id, "paid")} className="block w-full px-3 py-2 text-left text-xs hover:bg-muted">
+                                                            {(disablingId === order?.id) && (status == "paid") ? (
+                                                                "Updating..."
+                                                            ) : (
+                                                                "→ Paid"
                                                             )}
-                                                            <button onClick={() => updateStatus(order.id, "Cancelled")} className="block w-full px-3 py-2 text-left text-xs text-destructive hover:bg-muted">
-                                                                → Cancel
-                                                            </button>
-                                                        </div>
+                                                        </button>
+                                                        <button disabled={disablingId === order?.id} onClick={() => handleUpdateStatus(order.id, "shipped")} className="block w-full px-3 py-2 text-left text-xs hover:bg-muted">
+                                                            {(disablingId === order?.id) && (status == "shipped") ? (
+                                                                "Updating..."
+                                                            ) : (
+                                                                "→ Shipped"
+                                                            )}
+                                                        </button>
+                                                        <button disabled={disablingId === order?.id} onClick={() => handleUpdateStatus(order.id, "delivered")} className="block w-full px-3 py-2 text-left text-xs hover:bg-muted">
+                                                            {(disablingId === order?.id) && (status == "delivered") ? (
+                                                                "Updating..."
+                                                            ) : (
+                                                                "→ Delivered"
+                                                            )}
+                                                        </button>
+                                                        <button disabled={disablingId === order?.id} onClick={() => handleUpdateStatus(order.id, "cancelled")} className="block w-full px-3 py-2 text-left text-xs text-destructive hover:bg-muted">
+                                                            {(disablingId === order?.id) && (status == "cancelled") ? (
+                                                                "Updating..."
+                                                            ) : (
+                                                                "→ Cancel"
+                                                            )}
+                                                        </button>
                                                     </div>
-                                                )}
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -319,100 +219,6 @@ const AdminOrders = () => {
                     </div>
                 </CardContent>
             </Card>
-
-            {/* Order Detail Modal */}
-            {selectedOrder && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedOrder(null)} />
-                    <Card className="admin-card relative z-10 max-w-lg w-full max-h-[80vh] overflow-y-auto animate-fade-in">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <CardTitle>Order {selectedOrder?.id}</CardTitle>
-                                <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(null)}>✕</Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                                <div><span className="text-muted-foreground">Customer</span><p className="font-medium">{selectedOrder.customerName}</p></div>
-                                <div><span className="text-muted-foreground">Email</span><p className="font-medium">{selectedOrder.customerEmail}</p></div>
-                                <div><span className="text-muted-foreground">Date</span><p className="font-medium">{selectedOrder.date}</p></div>
-                                <div><span className="text-muted-foreground">Plan</span><p className="font-medium">{selectedOrder.plan}{selectedOrder.planWeightKg ? ` (${selectedOrder.planWeightKg}kg)` : ""}</p></div>
-                                <div><span className="text-muted-foreground">Items</span><p className="font-medium">{selectedOrder.items} items</p></div>
-                                <div><span className="text-muted-foreground">Payment</span><p className="font-medium">{selectedOrder.paymentMethod}</p></div>
-                            </div>
-
-                            {/* Line items breakdown */}
-                            {selectedOrder.lineItems && selectedOrder.lineItems.length > 0 && (
-                                <div className="rounded-lg border border-border p-3 space-y-3">
-                                    {/* Mandatory items */}
-                                    {selectedOrder.lineItems.filter((li) => li.type === "mandatory").length > 0 && (
-                                        <div>
-                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Mandatory Cuts</p>
-                                            {selectedOrder.lineItems.filter((li) => li.type === "mandatory").map((li) => (
-                                                <div key={li.name} className="flex justify-between text-sm py-0.5">
-                                                    <span>{li.name}</span>
-                                                    <span className="text-muted-foreground">{li.weightG >= 1000 ? `${li.weightG / 1000}kg` : `${li.weightG}g`} x{li.quantity}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {/* Offal picks */}
-                                    {selectedOrder.lineItems.filter((li) => li.type === "offal-pick").length > 0 && (
-                                        <div>
-                                            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1.5">Offal Picks</p>
-                                            {selectedOrder.lineItems.filter((li) => li.type === "offal-pick").map((li) => (
-                                                <div key={li.name} className="flex justify-between text-sm py-0.5">
-                                                    <span>{li.name}</span>
-                                                    <span className="text-muted-foreground">{li.weightG >= 1000 ? `${li.weightG / 1000}kg` : `${li.weightG}g`} x{li.quantity}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {/* Build picks */}
-                                    {selectedOrder.lineItems.filter((li) => li.type === "build-pick").length > 0 && (
-                                        <div>
-                                            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1.5">Custom Picks</p>
-                                            {selectedOrder.lineItems.filter((li) => li.type === "build-pick").map((li) => (
-                                                <div key={li.name} className="flex justify-between text-sm py-0.5">
-                                                    <span>{li.name}</span>
-                                                    <span className="text-muted-foreground">{li.weightG >= 1000 ? `${li.weightG / 1000}kg` : `${li.weightG}g`} x{li.quantity}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {/* Add-ons */}
-                                    {selectedOrder.lineItems.filter((li) => li.type === "add-on").length > 0 && (
-                                        <div>
-                                            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1.5">Add-ons</p>
-                                            {selectedOrder.lineItems.filter((li) => li.type === "add-on").map((li) => (
-                                                <div key={li.name} className="flex justify-between text-sm py-0.5">
-                                                    <span>{li.name}</span>
-                                                    <span className="text-muted-foreground">{li.weightG >= 1000 ? `${li.weightG / 1000}kg` : `${li.weightG}g`} x{li.quantity}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="rounded-lg border border-border p-3">
-                                <span className="text-xs text-muted-foreground">Delivery Address</span>
-                                <p className="text-sm font-medium mt-1">{selectedOrder.address}</p>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground text-sm">Total</span>
-                                <span className="text-xl font-bold text-primary">{formatAdminPrice(selectedOrder.total)}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-muted-foreground text-sm">Status</span>
-                                <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusColors[selectedOrder.status]}`}>
-                                    {selectedOrder.status}
-                                </span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
         </div>
     );
 };

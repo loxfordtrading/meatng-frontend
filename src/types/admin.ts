@@ -1,8 +1,13 @@
 export type OrderStatus =
-  | "Processing"
-  | "In Transit"
-  | "Delivered"
-  | "Cancelled";
+   "pending"
+  | "paid"
+  | "payment_failed"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+export type DeliveryStatus =
+  "pending" | "assigned" | "in_transit" | "delivered" | "failed" | "cancelled";
 
 export type OrderType = {
   id: string;
@@ -14,10 +19,35 @@ export type OrderType = {
     product_id: string;
     name: string;
     unit_price: number;
+    image_url: string;
     quantity: number;
     item_type: "base" | "addon";
     is_prefilled: boolean;
   }[];
+
+  delivery_address_snapshot?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    address_type: "shipping" | "billing";
+    label: string;
+    street_address: string;
+    apartment_suite: string;
+    city: string;
+    state: string;
+    zip_code: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  };
+
+  delivery_note: string;
+  is_gift: boolean;
+  warehouse_id: string;
+  delivery_distance_km: number;
+  delivery_fee: number;
+  order_type: "plan" | "gift";
 
   total_amount: number;
 
@@ -196,6 +226,7 @@ export type PlanType = {
   category_rules: CategoryRule[];
   product_rules: ProductRule[];
   prefilled_items: PrefilledItem[];
+  highlights: string[];
 
   image: string;
   image_public_id: string;
@@ -224,4 +255,106 @@ export type CreatePlanType = {
   category_rules: CategoryRule[];
   product_rules: ProductRule[];
   prefilled_items: PrefilledItem[];
+  highlights: string[];
+};
+
+export type SubscriptionType = {
+  id: string
+  user_id: string
+  plan_id: string
+  customer_name: string
+  customer_email: string
+  customer_phone: string
+  plan_name: string
+  box_weight: string
+  frequency: number
+  monthly_value: number
+  next_billing_at: string
+  status: "active" | "inactive" | "cancelled" | "paused"
+}
+
+export type SubscriptionMetaType = {
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  summary: {
+    churn_rate: number;
+    active_subscriptions: number;
+    avg_monthly_subscription: number;
+  };
+};
+
+export type DeliveryType = {
+  id: string;
+  order_id: string;
+  user_id: string;
+  warehouse_id: string;
+
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number: string;
+
+  state: string;
+  city: string;
+  street_address: string;
+  apartment_suite: string;
+  zip_code: string;
+  country: string;
+
+  delivery_note: string;
+
+  customer_latitude: number;
+  customer_longitude: number;
+
+  delivery_distance_km: number;
+  delivery_fee: number;
+
+  status: DeliveryStatus;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryMetaType = {
+  total: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+  summary: {
+    active_delivery: number;
+    upcoming_delivery: number;
+    delivered: number;
+  };
+};
+
+export type GiftboxProductItem = {
+  product_id: {
+    _id: string;
+    id: string;
+    name: string;
+    price: number;
+    displayType: string;
+    mainValue: number;
+    unit: "g" | "kg";
+    isApproximate: boolean;
+    description: string;
+    is_active: boolean;
+    formattedWeight: string;
+  };
+  quantity: number;
+};
+
+export type GiftboxType = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  weight: number;
+  weight_unit: "g" | "kg";
+  products: GiftboxProductItem[];
+  is_active: boolean;
+  createdAt: string;
+  updatedAt: string;
 };

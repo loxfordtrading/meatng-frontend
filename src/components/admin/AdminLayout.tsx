@@ -15,6 +15,7 @@ import {
     Bell,
     ChevronRight,
     PanelLeft,
+    Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAdmin } from "@/contexts/AdminContext";
@@ -35,8 +36,9 @@ const sidebarLinks: SidebarLink[] = [
     { href: "/admin/subscriptions", label: "Subscriptions", icon: Repeat },
     { href: "/admin/deliveries", label: "Deliveries", icon: MapPin },
     { href: "/admin/plans", label: "Plans", icon: Repeat },
+    { href: "/admin/gifts", label: "GiftBoxes", icon: Gift },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-    { href: "/admin/settings", label: "Settings", icon: Settings },
+    { href: "/admin/settings", label: "Settings", icon: Settings }
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

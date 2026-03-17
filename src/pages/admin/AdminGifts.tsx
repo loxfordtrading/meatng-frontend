@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Eye, ChevronDown, Loader2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,37 +7,38 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingData } from "@/components/LoadingData";
 import { toast } from "react-toastify";
 import { axiosClient } from "@/GlobalApi";
-import { OrderStatus, OrderType, OrdersMetaType, PlanType } from "@/types/admin";
+import { GiftboxType, OrderStatus, OrderType, OrdersMetaType, PlanType } from "@/types/admin";
 import displayCurrency from "@/utils/displayCurrency";
 import { format } from "date-fns";
 import { ViewPlan } from "@/components/admin/ViewPlan";
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
+import { ViewGift } from "@/components/admin/ViewGift";
 
-const AdminPlans = () => {
+const AdminGifts = () => {
 
-    const [plans, setPlans] = useState<PlanType[]>([]);
+    const [giftBoxes, setGiftBoxes] = useState<GiftboxType[]>([]);
     const [meta, setMeta] = useState<OrdersMetaType | null>(null);
     const [loading, setLoading] = useState(true)
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
     useEffect(() => {
-        getPlans()
+        getGiftboxes()
     }, [])
 
-    const getPlans = async () => {
+    const getGiftboxes = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/plans`);
+            const res = await axiosClient.get(`/giftboxes`);
 
-            const plans = res.data?.data || [];
+            const gifts = res.data?.data || [];
 
-            const flattenedPlans = plans.map((plan: any) => ({
-            id: plan.id,
-            ...plan.attributes,
+            const flattenedPlans = gifts.map((giftbox: any) => ({
+            id: giftbox.id,
+            ...giftbox.attributes,
             }));
 
-            setPlans(flattenedPlans);
+            setGiftBoxes(flattenedPlans);
             setMeta(res.data.meta);  
 
         } catch (err: any) {
@@ -49,12 +49,12 @@ const AdminPlans = () => {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("Delete this plan? This cannot be undone.")) return;
+        if (!confirm("Delete this giftbox? This cannot be undone.")) return;
         try {
             setDeletingPlanId(id);
-            const res = await axiosClient.delete(`/plans/${id}`)
-            toast.success("Plan deleted successfully")
-            getPlans()
+            const res = await axiosClient.delete(`/giftboxes/${id}`)
+            toast.success("Giftbox deleted successfully")
+            getGiftboxes()
         } catch (error) {
             toast.error(error.response?.data?.message);
         } finally {
@@ -71,14 +71,14 @@ const AdminPlans = () => {
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
             <div>
-                <h1 className="text-2xl font-display font-bold text-foreground">Plan Management</h1>
+                <h1 className="text-2xl font-display font-bold text-foreground">Gift Management</h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                    View, track, create and manage all plans.
+                    View, track, create and manage all gifts.
                 </p>
                 <div className="mt-3">
-                    <Link to={ROUTES.addPlan}>
+                    <Link to={ROUTES.addGift}>
                         <Button size="sm">
-                            Add plan
+                            Add gift Box
                         </Button>
                     </Link>
                 </div>
@@ -91,35 +91,31 @@ const AdminPlans = () => {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-border bg-muted/40">
-                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Plan name</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Gift name</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Price</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Total Weight</th>
-                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">to be filled</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Weight</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Unit</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Created on</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {plans?.map((plan) => (
-                                    <tr key={plan?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                                        <td className="px-4 py-3 font-mono font-medium">{plan?.name}</td>
+                                {giftBoxes?.map((giftbox) => (
+                                    <tr key={giftbox?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
+                                        <td className="px-4 py-3 font-mono font-medium">{giftbox?.name}</td>
+                                        <td className="px-4 py-3 font-semibold">{displayCurrency(giftbox?.price,"NGN")}</td>
+                                        <td className="px-4 py-3 font-semibold">{giftbox?.weight}{giftbox?.weight_unit}</td>
+                                        <td className="px-4 py-3 font-semibold">{giftbox?.weight_unit}</td>
+                                        <td className="px-4 py-3 text-muted-foreground">{giftbox?.createdAt ? format(giftbox?.createdAt, "MMM dd, yyyy") : "None"}</td>
                                         <td className="px-4 py-3">
-                                            <p className="font-medium">{plan?.pricing_model === "sum_of_items" ? "-" : displayCurrency(plan?.price,"NGN")}</p>
-                                            <p className="text-xs text-muted-foreground">{plan?.pricing_model}</p>
-                                        </td>
-                                        <td className="px-4 py-3 font-semibold">{plan?.total_weight}{plan?.weight_unit}</td>
-                                        <td className="px-4 py-3 font-semibold">{plan?.remaining_weight}{plan?.weight_unit}</td>
-                                        <td className="px-4 py-3 font-semibold">{plan?.weight_unit}</td>
-                                        {/* <td className="px-4 py-3 text-muted-foreground">{order?.createdAt ? format(order?.createdAt, "MMM dd, yyyy") : "None"}</td> */}
-                                        <td className="px-4 py-3">
-                                            <Badge variant={plan?.is_active ? "default" : "destructive"}>
-                                                {plan?.is_active ? "Active" : "Inactive"}
+                                            <Badge variant={giftbox?.is_active ? "default" : "destructive"}>
+                                                {giftbox?.is_active ? "Active" : "Inactive"}
                                             </Badge>
                                         </td>
                                         <td className="px-4 py-3 flex gap-2 items-center">
-                                            <ViewPlan plan={plan} />
-                                            <Link to={`/admin/edit-plan/${plan?.id}`}>
+                                            <ViewGift giftbox={giftbox} />
+                                            <Link to={`/admin/edit-gift/${giftbox?.id}`}>
                                                 <Button variant="outline" size="sm">
                                                     Edit
                                                 </Button>
@@ -128,10 +124,10 @@ const AdminPlans = () => {
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-destructive hover:text-destructive"
-                                                onClick={() => handleDelete(plan?.id)}
-                                                disabled={deletingPlanId === plan?.id}
+                                                onClick={() => handleDelete(giftbox?.id)}
+                                                disabled={deletingPlanId === giftbox?.id}
                                             >
-                                                {deletingPlanId === plan?.id ? (
+                                                {deletingPlanId === giftbox?.id ? (
                                                     <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                                 ) : (
                                                     <Trash2 className="h-3.5 w-3.5" />
@@ -142,8 +138,8 @@ const AdminPlans = () => {
                                 ))}
                             </tbody>
                         </table>
-                        {plans?.length <= 0 && (
-                            <div className="flex items-center justify-center py-12 text-muted-foreground">No plans found.</div>
+                        {giftBoxes?.length <= 0 && (
+                            <div className="flex items-center justify-center py-12 text-muted-foreground">No giftboxes found.</div>
                         )}
                     </div>
                 </CardContent>
@@ -152,4 +148,4 @@ const AdminPlans = () => {
     );
 };
 
-export default AdminPlans;
+export default AdminGifts

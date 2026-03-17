@@ -66,29 +66,6 @@ interface UiCategory {
     name: string;
 }
 
-const mapApiToUi = (p: ApiProduct, cats: UiCategory[]): UiProduct => {
-    const raw = p.raw ?? {};
-    const catId = p.categoryIds?.[0];
-    const catName = catId ? (cats.find((c) => c.id === catId)?.name ?? catId) : String(raw.category ?? "");
-    return {
-        id: p.id,
-        name: p.name ?? String(raw.name ?? "Unnamed"),
-        image: p.images?.[0] ?? String(raw.imageUrl ?? raw.image ?? "/placeholder.svg"),
-        packSize: String(raw.packSize ?? raw.pack_size ?? raw.weight ?? p.sku ?? "—"),
-        category: catName,
-        categoryId: catId,
-        addOnPrice: p.price ?? 0,
-        isPremiumDrop: Boolean(raw.isPremiumDrop ?? raw.is_premium_drop ?? false),
-        description: p.description ?? String(raw.description ?? ""),
-        isActive: p.isActive ?? true,
-        sku: p.sku,
-        stock: p.stock,
-        slug: "dd",
-        mainValue: 60,
-        unit: "kg"
-    };
-};
-
 const AdminProducts = () => {
 
     const [search, setSearch] = useState("");

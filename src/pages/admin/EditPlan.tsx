@@ -6,9 +6,10 @@ import { CreatePlanType, paginationType, ProductType } from "@/types/admin";
 import { axiosClient } from "@/GlobalApi";
 import { toast } from "react-toastify";
 import { z } from "zod";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { SetProduct } from "@/components/admin/SetProduct";
+import { LoadingData } from "@/components/LoadingData";
 
 const prefilledItemSchema = z.object({
   product_id: z.string().nonempty("Product is required"),
@@ -70,8 +71,9 @@ export const createPlanSchema = z
 
 type CreatePlanFormValues = z.infer<typeof createPlanSchema>
 
-export const AddPlan = () => {
+export const EditPlan = () => {
 
+  const { planId } = useParams();
   const [file, setFile] = useState<File | null>(null);
   const [imageInfo, setImageInfo] = useState(null)
   const [form, setForm] = useState<CreatePlanType>({
@@ -91,7 +93,7 @@ export const AddPlan = () => {
     highlights: [""]
   });
 
-    const [search, setSearch] = useState("");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -106,6 +108,54 @@ export const AddPlan = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const currentPage = Number(searchParams.get("page")) || 1;
     const activeCategory = searchParams.get("slug") || "all";
+
+    useEffect(() => {
+        if (planId) {
+            getPlan();
+        }
+    }, [planId]);
+
+    const getPlan = async () => {
+        try {
+            setLoading(true);
+
+            const res = await axiosClient.get(`/plans/${planId}`);
+
+            const data = res.data?.data;
+
+            const attributes = data?.attributes;
+
+            setForm({
+                name: attributes?.name || "",
+                description: attributes?.description || "",
+                price: attributes?.price || 0,
+                max_items: attributes?.max_items || 1,
+                weight: attributes?.weight || 0,
+                weight_unit: attributes?.weight_unit || "kg",
+                temp_image_id: attributes?.temp_image_id || "",
+                is_active: attributes?.is_active ?? true,
+                plan_type: attributes?.plan_type || "standard",
+                pricing_model: attributes?.pricing_model || "fixed",
+
+                category_rules: attributes?.category_rules || [],
+                product_rules: attributes?.product_rules || [],
+                prefilled_items: attributes?.prefilled_items || [],
+                highlights: attributes?.highlights || [""],
+            });
+
+            setImageInfo({
+                url: attributes?.image,
+                temp_id: "",
+            });
+
+            setPreview(attributes?.image);
+
+        } catch (err: any) {
+            toast.error(err.response?.data?.message);
+        } finally {
+            setLoading(false);
+        }
+        };
 
     const handleFile = (selected: File) => {
         setFile(selected);
@@ -173,9 +223,9 @@ export const AddPlan = () => {
                 const { price, ...rest } = payload;
                 payload = rest;
             }
-            const response = await axiosClient.post("/plans",payload);
+            const response = await axiosClient.put(`/plans/${planId}`,payload);
 
-            toast.success("Plan created successfully");
+            toast.success("Plan updated successfully");
             navigate(ROUTES.adminPlans)
 
         } catch (err: any) {
@@ -274,14 +324,20 @@ export const AddPlan = () => {
         }
     };
 
+    if (loading) {
+        return (
+            <LoadingData/>
+        );
+    }
+
   return (
     <div className="space-y-8 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-6 max-w-6xl mx-auto">
 
       {/* HEADER */}
       <div>
-        <h1 className="text-2xl font-bold">Add Plan</h1>
+        <h1 className="text-2xl font-bold">Edit Plan</h1>
         <p className="text-muted-foreground text-sm">
-          Create a subscription plan for customers
+          Edit a subscription plan for customers
         </p>
       </div>
 

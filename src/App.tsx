@@ -41,6 +41,7 @@ import AuthResetPassword from "@/pages/AuthResetPassword";
 import AuthAcceptInvitation from "@/pages/AuthAcceptInvitation";
 import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
+import { NetworkBanner } from "@/components/NetworkBanner";
 
 // Admin Pages
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -61,6 +62,10 @@ import AdminPlans from "./pages/admin/AdminPlans";
 import AdminInvitationSetup from "./pages/admin/AdminInvitationSetup";
 import { AddPlan } from "./pages/admin/AddPlan";
 import GiftCheckout from "./pages/GiftCheckout";
+import { EditPlan } from "./pages/admin/EditPlan";
+import AdminGifts from "./pages/admin/AdminGifts";
+import { AddGift } from "./pages/admin/AddGift";
+import { EditGift } from "./pages/admin/EditGift";
 
 const queryClient = new QueryClient();
 
@@ -82,7 +87,11 @@ const App = () => (
                 <Route path={ROUTES.adminOrders} element={<AdminGuard><AdminOrders /></AdminGuard>} />
                 <Route path={ROUTES.adminCustomers} element={<AdminGuard><AdminCustomers /></AdminGuard>} />
                 <Route path={ROUTES.adminPlans} element={<AdminGuard><AdminPlans /></AdminGuard>} />
+                <Route path={ROUTES.adminGifts} element={<AdminGuard><AdminGifts /></AdminGuard>} />
                 <Route path={ROUTES.addPlan} element={<AdminGuard><AddPlan /></AdminGuard>} />
+                <Route path={ROUTES.addGift} element={<AdminGuard><AddGift /></AdminGuard>} />
+                <Route path={ROUTES.editPlan} element={<AdminGuard><EditPlan /></AdminGuard>} />
+                <Route path={ROUTES.editGift} element={<AdminGuard><EditGift /></AdminGuard>} />
                 <Route path={ROUTES.adminProducts} element={<AdminGuard><AdminProducts /></AdminGuard>} />
                 <Route path={ROUTES.adminSubscriptions} element={<AdminGuard><AdminSubscriptions /></AdminGuard>} />
                 <Route path={ROUTES.adminDeliveries} element={<AdminGuard><AdminDeliveries /></AdminGuard>} />
@@ -145,6 +154,7 @@ const App = () => (
           </ProductCatalogProvider>
         </SubscriptionProvider>
       </CartProvider>
+      <NetworkBanner />
     </TooltipProvider>
     <ToastContainer />
   </QueryClientProvider>

@@ -502,11 +502,11 @@ const Index = () => {
                       <p className="text-sm text-primary font-medium mb-3">{plan.attributes?.plan_type}</p>
                       <p className="text-muted-foreground text-sm mb-4">{plan?.attributes?.description}</p>
                       <ul className="space-y-2 mb-6">
-                        {plan?.attributes?.category_rules?.slice(0, 4).map((rule, i) => (
+                        {plan?.attributes?.highlights?.slice(0, 6).map((rule, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm">
                             <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                             <span>
-                              {rule?.label} ({rule?.min_items} - {rule?.max_items} items)
+                              {rule}
                             </span>
                           </li>
                         ))}
