@@ -170,6 +170,7 @@ const Settings = () => {
       };
 
       setOriginalProfile(formatted);
+      toast.success("Profile updated successfully")
 
     } catch (err) {
       toast.error(err.response?.data?.message);

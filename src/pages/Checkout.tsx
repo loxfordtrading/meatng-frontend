@@ -854,7 +854,7 @@ const Checkout = () => {
                       </div>
                       <Separator />
                       <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan price</span><span>{displayCurrency(cartItems?.attributes?.planUnitPrice, "NGN")}</span></p>
-                      {cartItems?.attributes?.addonTotal && <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>}
+                      {Number(cartItems?.attributes?.addonTotal) > 0 && <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(Number(cartItems?.attributes?.addonTotal), "NGN")}</span></p>}
                       <p className="flex items-center justify-between text-sm">
                         <span className="flex items-center gap-1.5 text-muted-foreground">
                           <Truck className="h-3.5 w-3.5" /> Delivery Fee

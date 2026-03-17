@@ -168,6 +168,7 @@ const AdminSubscriptions = () => {
                             <thead>
                                 <tr className="border-b border-border bg-muted/40">
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Customer</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Phone</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Plan</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Box Weight</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Frequency</th>
@@ -184,6 +185,7 @@ const AdminSubscriptions = () => {
                                             <p className="font-medium">{sub?.customer_name}</p>
                                             <p className="text-xs text-muted-foreground">{sub?.customer_email}</p>
                                         </td>
+                                        <td className="px-4 py-3 text-muted-foreground">{sub?.customer_phone}</td>
                                         <td className="px-4 py-3"><Badge variant="secondary">{sub?.plan_name}</Badge></td>
                                         <td className="px-4 py-3 text-muted-foreground">{sub?.box_weight}</td>
                                         <td className="px-4 py-3 text-muted-foreground">{getFrequencyWeeksString(sub?.frequency)}</td>

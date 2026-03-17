@@ -86,26 +86,6 @@ const normalizeStatus = (s?: string): string => {
   return "Processing";
 };
 
-const mapStatus = (status: string): OrderStatus => {
-  switch (status) {
-    case "pending":
-      return "Processing";
-    case "paid":
-      return "Delivered";
-    case "failed":
-      return "Cancelled";
-    default:
-      return "Processing";
-  }
-};
-
-const formatDate = (iso?: string): string => {
-  if (!iso) return "—";
-  try {
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  } catch { return iso; }
-};
-
 const AdminDashboard = () => {
 
   const token = tokenStorage.getAdminToken();
@@ -157,7 +137,7 @@ const AdminDashboard = () => {
       const flattenedOrders = orders.map((order: any) => ({
           id: order.id,
           ...order.attributes,
-          status: mapStatus(order.attributes.status),
+          status: order.attributes.status,
           user: order.relationships?.userDetails?.data?.attributes || null,
           plan: order.relationships?.planDetails?.data?.attributes || null,
       }));

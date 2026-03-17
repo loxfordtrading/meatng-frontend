@@ -65,20 +65,14 @@ const AdminOrders = () => {
 
             const orders = res.data.data || [];
 
-            // flatten orders
-            // const flattenedOrders = orders.map((order: any) => ({
-            //     id: order.id,
-            //     ...order.attributes,
-            //     user: order.relationships?.userDetails?.data?.attributes || null,
-            //     plan: order.relationships?.planDetails?.data?.attributes || null,
-            // }));
-
             const flattenedOrders = orders.map((order: any) => ({
                 id: order.id,
                 ...order.attributes,
                 status: order.attributes.status,
                 user: order.relationships?.userDetails?.data?.attributes || null,
                 plan: order.relationships?.planDetails?.data?.attributes || null,
+                giftBoxDetails: order.relationships?.giftBoxDetails?.data?.attributes || null,
+                giftFormDetails: order.relationships?.giftDetails?.data?.attributes || null,
             }));
 
             setOrders(flattenedOrders);
@@ -138,6 +132,7 @@ const AdminOrders = () => {
                             <thead>
                                 <tr className="border-b border-border bg-muted/40">
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Reference</th>
+                                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Order Type</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Customer</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Date</th>
                                     <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Plan</th>
@@ -150,6 +145,7 @@ const AdminOrders = () => {
                                 {orders.map((order) => (
                                     <tr key={order?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                                         <td className="px-4 py-3 font-mono font-medium">{order?.id}</td>
+                                        <td className="px-4 py-3 font-mono font-medium">{order?.order_type}</td>
                                         <td className="px-4 py-3">
                                             <p className="font-medium">{order?.user?.first_name} {order?.user?.last_name}</p>
                                             <p className="text-xs text-muted-foreground">{order?.user?.email}</p>

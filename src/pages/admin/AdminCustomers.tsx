@@ -11,7 +11,7 @@ import { tokenStorage } from "@/lib/auth/tokenStorage";
 import { deleteAdminUser, listAdminUsers, type AdminUser as ApiUser } from "@/lib/api/admin";
 import { axiosClient } from "@/GlobalApi";
 import { toast } from "react-toastify";
-import { CustomerType } from "@/types/admin";
+import { CustomerMeta, CustomerType } from "@/types/admin";
 import { format } from "date-fns";
 import { LoadingData } from "@/components/LoadingData";
 import displayCurrency from "@/utils/displayCurrency";
@@ -37,7 +37,7 @@ const AdminCustomers = () => {
     const [selected, setSelected] = useState<CustomerType | null>(null);
 
     const [customers, setCustomers] = useState<CustomerType[]>([]);
-    const [meta, setMeta] = useState(null);
+    const [meta, setMeta] = useState<CustomerMeta | null>(null);
     const [loading, setLoading] = useState(true)
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
 
@@ -124,7 +124,7 @@ const AdminCustomers = () => {
             </div>
 
             {/* Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <Card className={cn("admin-card admin-animate-up")}>
                     <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -133,7 +133,7 @@ const AdminCustomers = () => {
                         </div>
                         </div>
                         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Customers</p>
-                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-emerald-700")}>{meta?.summary?.total_customers}</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-emerald-700")}>{meta?.total_customers}</p>
                     </CardContent>
                 </Card>
                 <Card className={cn("admin-card admin-animate-up")}>
@@ -144,7 +144,7 @@ const AdminCustomers = () => {
                         </div>
                         </div>
                         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Active Subscribers</p>
-                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-blue-700")}>{meta?.summary?.active_subscribers}</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-blue-700")}>{meta?.active_subscribers}</p>
                     </CardContent>
                 </Card>
                 <Card className={cn("admin-card admin-animate-up")}>
@@ -155,7 +155,62 @@ const AdminCustomers = () => {
                         </div>
                         </div>
                         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Total Revenue</p>
-                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-amber-700")}>{displayCurrency(meta?.summary?.total_revenue, "NGN")}</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-amber-700")}>{displayCurrency(meta?.total_revenue, "NGN")}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-emerald-700"}>
+                            <Users />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Verified Users</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-emerald-700")}>{meta?.verified_users}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-blue-700"}>
+                            <Users />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Community Members</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-blue-700")}>{meta?.community_members}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-amber-700"}>
+                            <Users />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Subscribed Users</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-amber-700")}>{meta?.subscribed_users}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-emerald-700"}>
+                            <Users />
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Active Users</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-emerald-700")}>{meta?.active_users}</p>
+                    </CardContent>
+                </Card>
+                <Card className={cn("admin-card admin-animate-up")}>
+                    <CardContent className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                        <div className="admin-stat-icon" data-tone={"text-blue-700"}>
+                            <ShoppingBag/>
+                        </div>
+                        </div>
+                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Inactive Users</p>
+                        <p className={cn("mt-1 text-2xl font-bold tracking-tight text-blue-700")}>{meta?.inactive_users}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -211,7 +266,7 @@ const AdminCustomers = () => {
                                         <td className="px-4 py-3 text-muted-foreground">{c?.member_since ? format(c?.member_since, "MMM dd, yyyy") : <span className="text-muted-foreground text-xs">—</span>}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-1">
-                                                <ViewCustomer customer={c}/>
+                                                <ViewCustomer customer={c} getCustomers={getCustomers}/>
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"

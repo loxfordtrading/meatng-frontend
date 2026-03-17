@@ -96,7 +96,7 @@ export const useCartStore = create<CartState>()(
             const existingWeight = get().getProductWeight(product.id);
   
             if (existingWeight + productWeightG > maxWeight) {
-              toast.error(`You have reached the max limit for ${product?.name}`)
+              toast.error(`This product exceeds the max weight limit for ${product?.name}`)
               return;
             }
 
@@ -158,7 +158,7 @@ export const useCartStore = create<CartState>()(
             const existingCategoryWeight = get().getCategoryWeight(product.categoryId);
 
             if (existingCategoryWeight + productWeightG > maxCategoryWeight) {
-              toast.error(`You have reached the max limit for ${product?.category}`)
+              toast.error(`This product exceeds the max weight limit for ${product?.category}`)
               return;
             }
           }
@@ -255,7 +255,7 @@ export const useCartStore = create<CartState>()(
 
             if(isAdding){
               if (existingCategoryWeight + productWeightG > maxCategoryWeight) {
-                toast.error(`You have reached the max limit for ${product?.category}`)
+                toast.error(`This product exceeds the max weight limit for ${product?.category}`)
                 return;
               }
             }

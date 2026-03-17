@@ -21,6 +21,7 @@ import { LoadingData } from "../LoadingData";
 import { getFrequencyWeeksString } from "@/utils/conversion";
 import displayCurrency from "@/utils/displayCurrency";
 import { useNavigate } from "react-router-dom";
+import { FaWhatsapp } from "react-icons/fa6";
 
 type OverviewProps = {
   handleNavClick: (tab: string) => void;
@@ -33,6 +34,12 @@ type statType = {
     total_orders: string
     next_delivery_date: Date
     member_since: Date
+    membership?: {
+        member_id: string;
+        status: string;
+        joined_at: Date;
+        whatsapp_community_url: string;
+    };
     price: number
     weight: string
     weight_unit: string
@@ -65,6 +72,7 @@ const Overview = ({ handleNavClick }: OverviewProps) => {
                 total_orders: res.data?.data?.attributes?.summary?.total_orders,
                 next_delivery_date: res.data?.data?.attributes?.summary?.next_delivery_date,
                 member_since: res.data?.data?.attributes?.summary?.member_since,
+                membership: res.data?.data?.attributes?.summary?.membership,
                 next_billing_date: res.data?.data?.attributes?.summary?.next_billing_date,
                 next_cutoff_at: res.data?.data?.attributes?.summary?.next_cutoff_at,
             }
@@ -115,18 +123,22 @@ const Overview = ({ handleNavClick }: OverviewProps) => {
                         <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6">
                             <div className="flex items-center justify-between flex-wrap gap-4">
                                 <div>
-                                    <Badge className="bg-primary/15 text-primary border-primary/20 mb-2">{stat?.active_plan_status == "active" ? "Active" : "Inactive"} Subscription</Badge>
+                                    {stat?.active_plan_status == "active" && (
+                                        <Badge className="bg-primary/15 text-primary border-primary/20 mb-2">{stat?.active_plan_status == "active" ? "Active" : "Inactive"} Subscription</Badge>
+                                    )}
                                     {stat?.active_plan_name ? <h3 className="text-xl font-bold text-foreground">{stat?.active_plan_name} Plan</h3> : <h3 className="text-xl font-bold text-foreground">No Plan</h3>}
                                     <p className="text-muted-foreground text-sm mt-1">
                                         {stat?.weight}{stat?.weight_unit} • {getFrequencyWeeksString(stat?.frequency)} delivery
                                     </p>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-3xl font-bold text-primary">
-                                        {displayCurrency(stat?.price, "NGN")}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">per cycle</p>
-                                </div>
+                                {stat?.price && (
+                                    <div className="text-right">
+                                        <p className="text-3xl font-bold text-primary">
+                                            {displayCurrency(stat?.price, "NGN")}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">per cycle</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <CardContent className="p-6">
@@ -159,7 +171,7 @@ const Overview = ({ handleNavClick }: OverviewProps) => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="mt-4 flex flex-wrap gap-2">
+                            <div className="mt-8 flex flex-wrap gap-2">
                                 <Button size="sm" 
                                     onClick={() => handleNavClick("subscription")}
                                 >
@@ -169,6 +181,17 @@ const Overview = ({ handleNavClick }: OverviewProps) => {
                                 <Button size="sm" variant="outline" onClick={() => navigate(ROUTES.buildBox)}>
                                     Edit Box
                                 </Button>
+                                {stat?.membership?.whatsapp_community_url && (stat?.membership?.status == "active") && (
+                                    <a href={stat?.membership?.whatsapp_community_url}>
+                                        <Button
+                                            size="sm"
+                                            className="shadow-lg shadow-primary/20"
+                                        >
+                                            <FaWhatsapp className="h-4 w-4" />
+                                            Join Our Whatsapp Community
+                                        </Button>
+                                    </a>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

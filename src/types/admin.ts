@@ -14,6 +14,7 @@ export type OrderType = {
 
   user_id: string;
   plan_id: string;
+  gift_box_id: string;
 
   items: {
     product_id: string;
@@ -48,6 +49,7 @@ export type OrderType = {
   delivery_distance_km: number;
   delivery_fee: number;
   order_type: "plan" | "gift";
+  planDetails: null | Record<string, any>;
 
   total_amount: number;
 
@@ -55,6 +57,9 @@ export type OrderType = {
 
   subscriptionDetails: unknown | null;
   subscriptionCycleDetails: unknown | null;
+
+  delivery_date: Date;
+  delivery_window_label: string;
 
   createdAt: string;
   updatedAt: string;
@@ -73,6 +78,30 @@ export type OrderType = {
     prefilled_items_total_weight: number;
     remaining_weight: number | null;
   } | null;
+
+  giftBoxDetails: {
+    name: string;
+    price: number;
+    is_active: boolean;
+    image: string;
+  } | null,
+  
+  giftFormDetails: {
+    sender_name: string;
+    sender_email: string;
+    recipient_email: string;
+    recipient_name: string;
+    recipient_phone: string;
+    occasion: string;
+    message: string;
+
+    delivery_date: Date;
+    delivery_window_label: string;
+
+    status: "pending" | "purchased" | "delivered";
+
+    order_id: string;
+  } | null
 };
 
 export type OrdersMetaType = {
@@ -189,6 +218,22 @@ export interface CustomerType {
   member_since: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export type CustomerMeta = {
+  total: number;
+  total_users: number;
+  total_customers: number;
+  active_users: number;
+  inactive_users: number;
+  verified_users: number;
+  subscribed_users: number;
+  active_subscribers: number;
+  community_members: number;
+  total_revenue: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
 }
 
 type CategoryRule = {
@@ -356,6 +401,7 @@ export type GiftboxProductItem = {
 export type GiftboxType = {
   id: string;
   name: string;
+  image: string;
   description: string;
   price: number;
   weight: number;

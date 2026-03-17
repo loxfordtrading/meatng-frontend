@@ -44,6 +44,7 @@ import Settings from "@/components/dashboard/Settings";
 import Addresses from "@/components/dashboard/Addresses";
 import Overview from "@/components/dashboard/Overview";
 import { useAuthStore } from "@/store/AuthStore";
+import { useSearchParams } from "react-router-dom";
 
 type DashboardSection = "overview" | "subscription" | "orders" | "addresses" | "settings";
 
@@ -63,26 +64,14 @@ const sidebarItems: SidebarItem[] = [
     // { id: "referrals", label: "Referrals", icon: Gift },
 ];
 
-// Fallback mock data (shown when API returns nothing)
-const mockOrders = [
-    { id: "MN-482917", date: "Feb 10, 2026", items: 8, total: 55000, status: "Delivered" as const },
-    { id: "MN-381204", date: "Jan 27, 2026", items: 8, total: 55000, status: "Delivered" as const },
-    { id: "MN-293847", date: "Jan 13, 2026", items: 10, total: 62000, status: "Delivered" as const },
-    { id: "MN-184729", date: "Dec 30, 2025", items: 8, total: 55000, status: "Delivered" as const },
-];
-
-const addressTypeOptions = ["shipping", "billing"];
-
-const statusColors: Record<string, string> = {
-    Delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
-    "In Transit": "bg-blue-500/15 text-blue-700 border-blue-500/20",
-    Processing: "bg-amber-500/15 text-amber-700 border-amber-500/20",
-};
-
 const Dashboard = () => {
 
+    const [searchParams, setSearchParams] = useSearchParams();
+    const validTabs = sidebarItems.map(item => item.id);
+    const currentTabRaw = searchParams.get("tab");
+    const currentTab: DashboardSection = validTabs.includes(currentTabRaw as DashboardSection) ? (currentTabRaw as DashboardSection) : "overview";
     const userInfo = useAuthStore(state => state.userInfo)
-    const [activeSection, setActiveSection] = useState<DashboardSection>("overview");
+    // const [activeSection, setActiveSection] = useState<DashboardSection>("overview");
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
@@ -111,6 +100,10 @@ const Dashboard = () => {
 
     const { state } = subscription;
     const user = state.user;
+
+    const setTab = (tab: string) => {
+        setSearchParams({ tab });
+    };
 
     // useEffect(() => {
     //     if (!user) return;
@@ -214,7 +207,7 @@ const Dashboard = () => {
 
 
     const handleNavClick = (section: DashboardSection) => {
-        setActiveSection(section);
+        setTab(section);
         setIsMobileSidebarOpen(false);
     };
 
@@ -318,7 +311,7 @@ const Dashboard = () => {
     );
 
     const renderContent = () => {
-        switch (activeSection) {
+        switch (currentTab) {
             case "overview": return <Overview handleNavClick={handleNavClick}/>;
             case "subscription": return <Subscription/>
             case "orders": return <OrderHistory/>
@@ -365,12 +358,12 @@ const Dashboard = () => {
 
             <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
                 {sidebarItems.map((item) => {
-                    const isActive = activeSection === item.id;
+                    const isActive = currentTab === item.id;
                     return (
                         <button
                             key={item.id}
                             onClick={() => handleNavClick(item.id)}
-                            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${isActive
+                            className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${currentTab === item?.id
                                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                                 : "text-muted-foreground hover:bg-muted/70 hover:text-foreground"
                                 } ${collapsed ? "justify-center px-2" : ""}`}
@@ -414,7 +407,7 @@ const Dashboard = () => {
                     <Menu className="h-5 w-5 mr-2" />
                     Menu
                 </Button>
-                <span className="text-sm font-semibold capitalize">{activeSection}</span>
+                <span className="text-sm font-semibold capitalize">{currentTab}</span>
                 <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-5 w-5" />
                     <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />

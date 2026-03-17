@@ -34,8 +34,8 @@ const AdminGifts = () => {
             const gifts = res.data?.data || [];
 
             const flattenedPlans = gifts.map((giftbox: any) => ({
-            id: giftbox.id,
-            ...giftbox.attributes,
+                id: giftbox.id,
+                ...giftbox.attributes,
             }));
 
             setGiftBoxes(flattenedPlans);

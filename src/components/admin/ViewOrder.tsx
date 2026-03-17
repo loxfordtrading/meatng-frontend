@@ -9,19 +9,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSeparator,
-  FieldSet,
-} from "@/components/ui/field"
 import { OrderType, PlanType } from '@/types/admin'
 import displayCurrency from '@/utils/displayCurrency'
 import { format } from 'date-fns'
-import { Card } from '../ui/card'
 import { Eye } from 'lucide-react'
 
 export const ViewOrder = ({order}: {order: OrderType}) => {
@@ -35,46 +25,46 @@ export const ViewOrder = ({order}: {order: OrderType}) => {
         </DialogTrigger>
         <DialogContent className="lg:max-w-[1024px] max-h-[95%] bg-white overflow-y-auto scrollbar-rounded">
           <DialogHeader>
-            <DialogTitle>{order?.name}</DialogTitle>
+            <DialogTitle>Order Type: {order?.order_type}</DialogTitle>
           </DialogHeader>
-          <div>
+          <div className='space-y-6'>
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col">
-                <h2 className="text-gray-600 font-medium">Description:</h2>
-                <h2 className='font-semibold'>{order?.description}</h2>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Total Weight:</h2>
-                  <h2 className='font-semibold'>{order?.total_weight}{order?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">Account Name:</h2>
+                  <h2 className='font-semibold'>{order?.user?.first_name} {order?.user?.last_name}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Prefilled Total Weight:</h2>
-                  <h2 className='font-semibold'>{order?.prefilled_items_total_weight}{order?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">Account Email:</h2>
+                  <h2 className='font-semibold'>{order?.user?.email}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Remaining Weight to fill:</h2>
-                  <h2 className='font-semibold'>{order?.remaining_weight}{order?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">Plan:</h2>
+                  <h2 className='font-semibold'>{order?.plan?.name}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Weight Unit:</h2>
-                  <h2 className='font-semibold'>{order?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">Plan ID:</h2>
+                  <h2 className='font-semibold'>{order?.plan_id}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Price:</h2>
-                  <h2 className='font-semibold'>{order?.pricing_model === "sum_of_items" ? "-" : displayCurrency(order?.price,"NGN")}</h2>
+                  <h2 className="text-gray-600 font-medium">Gift Box ID:</h2>
+                  <h2 className='font-semibold'>{order?.gift_box_id}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Pricing Model:</h2>
-                  <h2 className='font-semibold'>{order?.pricing_model}</h2>
+                  <h2 className="text-gray-600 font-medium">is Gift:</h2>
+                  <h2 className='font-semibold'>{order?.is_gift ? "True" : "False"}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Pricing Model:</h2>
-                  <h2 className='font-semibold'>{order?.order_type}</h2>
+                  <h2 className="text-gray-600 font-medium">Delivery Fee:</h2>
+                  <h2 className='font-semibold'>{displayCurrency(order?.delivery_fee, "NGN")}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Total Ampunt:</h2>
+                  <h2 className='font-semibold'>{displayCurrency(order?.total_amount, "NGN")}</h2>
                 </div>
                 <div className="flex flex-col">
                   <h2 className="text-gray-600 font-medium">Status:</h2>
-                  <h2 className='font-semibold'>{order?.is_active ? "Active" : "Inactive"}</h2>
+                  <h2 className='font-semibold'>{order?.status}</h2>
                 </div>
                 <div className="flex flex-col">
                   <h2 className="text-gray-600 font-medium">Date created:</h2>
@@ -88,9 +78,9 @@ export const ViewOrder = ({order}: {order: OrderType}) => {
             </div>
             <div className="mt-4 grid gap-6">
               <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Prefilled Products</h3>
+                <h3 className="font-semibold text-lg">Products</h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  {order?.prefilled_items?.map((item) => {
+                  {order?.items?.map((item) => {
 
                     return (
                       <div
@@ -98,92 +88,157 @@ export const ViewOrder = ({order}: {order: OrderType}) => {
                         className={`rounded-2xl border p-4 transition border-border`}
                       >
                         <img
-                          src={item?.image}
+                          src={item?.image_url}
                           alt={item.name}
                           className="mb-3 h-32 w-full rounded-xl object-cover"
                         />
                         <div className="mb-2 flex flex-1 items-start justify-between gap-2">
                           <div>
                             <p className="text-sm font-semibold">{item?.name}</p>
+                            <p className="text-sm font-semibold">item type: {item?.item_type}</p>
+                            {item?.is_prefilled && <p className="text-sm font-semibold text-primary">Prefilled</p>}
+                            <p className="text-sm font-semibold">{displayCurrency(item?.unit_price, "NGN")}</p>
                             <p className="text-sm font-semibold">Qty: {item?.quantity}</p>
-                            <div className="mt-1 flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">{item?.weight}{item?.weight_unit}</span>
-                            </div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
-                  {order?.prefilled_items?.length <= 0 && <p className="text-sm text-muted-foreground">No prefilled items added on this order.</p>}
+                  {order?.items?.length <= 0 && <p className="text-sm text-muted-foreground">No prefilled items added on this order.</p>}
                 </div>
               </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Category Rules</h3>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  {order?.category_rules?.map((item) => {
-
-                    return (
-                      <div
-                        key={item?.category_id}
-                        className={`rounded-2xl border p-4 transition border-border`}
-                      >
-                        <div className="mb-2 flex flex-1 items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium">customers must choose {item?.weight_required}{item?.weight_unit} in product category <span className='font-bold'>{item?.category_name}</span> for this order</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {order?.category_rules?.length <= 0 && <p className="text-sm text-muted-foreground">No category rules added on this order.</p>}
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Gift Information</h3>
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Gift Box Name:</h2>
+                    <h2 className='font-semibold'>{order?.giftBoxDetails?.name}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Price:</h2>
+                    <h2 className='font-semibold'>{displayCurrency(order?.giftBoxDetails?.price)}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Status:</h2>
+                    <h2 className='font-semibold'>{order?.giftBoxDetails?.is_active ? "Active" : "Inactive"}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Sender Name:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.sender_name}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Sender Email:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.sender_email}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Recipient Name:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.recipient_name}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Recipient Phone no:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.recipient_phone}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Occasion:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.occasion}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Delivery Date:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.delivery_date ? format(new Date(order?.giftFormDetails?.delivery_date), "dd MMM yyyy") : "N/A"}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Delivery Window:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.delivery_window_label}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Status:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.status}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Order ID:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.order_id}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">message:</h2>
+                    <h2 className='font-semibold'>{order?.giftFormDetails?.message ? order?.giftFormDetails?.message : "None"}</h2>
+                  </div>
                 </div>
               </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Product Rules</h3>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  {order?.product_rules?.map((item) => {
-
-                    return (
-                      <div
-                        key={item?.product_id}
-                        className={`rounded-2xl border p-4 transition border-border`}
-                      >
-                        <div className="mb-2 flex flex-1 items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium">customers must choose {item?.max_weight}{item?.weight_unit} of <span className='font-bold'>{item?.product_name}</span> for this order</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {order?.product_rules?.length <= 0 && <p className="text-sm text-muted-foreground">No Product rules added on this order.</p>}
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Highlights</h3>
-                <div className="grid gap-2">
-                  {order?.highlights?.map((highlight, index) => {
-
-                    return (
-                      <div
-                        key={index}
-                        className={`transition`}
-                      >
-                        <p className="text-sm font-medium">{highlight}</p>
-                      </div>
-                    );
-                  })}
-                  {order?.highlights?.length <= 0 && <p className="text-sm text-muted-foreground">No Highlights was added on this order.</p>}
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Plan Thumbnail</h3>
-                <div className='max-w-80'>
-                  <img
-                    src={order?.image}
-                    alt={order?.name}
-                    className="mb-3 h-48 w-full rounded-xl object-cover"
-                  />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Delivery Address</h3>
+              <div className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Name:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.first_name} {order?.delivery_address_snapshot?.last_name}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Email:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.email}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Phone no:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.phone}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Apartment Suite:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.apartment_suite}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Street Address:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.street_address}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">City:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.city}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">State:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.state}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Zip code:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.zip_code}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Delivery Note:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_note}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Country:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.country}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Delivery Didtance (km):</h2>
+                    <h2 className='font-semibold'>{order?.delivery_distance_km}km</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Latitude:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.latitude}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Longitude:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.longitude}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Address Type:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.address_type}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Address Label:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_address_snapshot?.label}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Delivery Date:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_date ? format(new Date(order?.delivery_date), "dd MMM yyyy") : "N/A"}</h2>
+                  </div>
+                  <div className="flex flex-col">
+                    <h2 className="text-gray-600 font-medium">Delivery Window:</h2>
+                    <h2 className='font-semibold'>{order?.delivery_window_label}</h2>
+                  </div>
                 </div>
               </div>
             </div>

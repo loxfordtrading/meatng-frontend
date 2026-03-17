@@ -22,10 +22,38 @@ import { CustomerType, GiftboxType, PlanType } from '@/types/admin'
 import displayCurrency from '@/utils/displayCurrency'
 import { format } from 'date-fns'
 import { Card } from '../ui/card'
+import { toast } from 'react-toastify'
+import { useState } from 'react'
+import { axiosClient } from '@/GlobalApi'
 
-export const ViewCustomer = ({customer}: { customer: CustomerType}) => {
+export const ViewCustomer = ({customer, getCustomers }: { customer: CustomerType, getCustomers: () => void}) => {
+
+  const [deactivatingCustomerId, setDeactivatingCustomerId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false); 
+
+  const handleActivationstatus = async (id: string, status: string) => {
+    if (!confirm(`${status === "deactivate" ? "Deactivate" : "Activate"} this customer?`)) return;
+
+    try {
+      setDeactivatingCustomerId(id);
+
+      await axiosClient.patch(`/users/${status}-user/${id}`);
+
+      toast.success(`Customer ${status}d successfully`);
+
+      getCustomers();
+
+      setOpen(false);
+
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message);
+    } finally {
+      setDeactivatingCustomerId(null);
+    }
+  };
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <div>
         <DialogTrigger as-child>
           <Button variant="outline" size="sm">
@@ -34,46 +62,74 @@ export const ViewCustomer = ({customer}: { customer: CustomerType}) => {
         </DialogTrigger>
         <DialogContent className="lg:max-w-[1024px] max-h-[95%] bg-white overflow-y-auto scrollbar-rounded">
           <DialogHeader>
-            <DialogTitle>{customer?.name}</DialogTitle>
+            <DialogTitle>{customer?.first_name} {customer?.last_name}</DialogTitle>
           </DialogHeader>
           <div>
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col">
-                <h2 className="text-gray-600 font-medium">Description:</h2>
-                <h2 className='font-semibold'>{customer?.description}</h2>
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Total Weight:</h2>
-                  <h2 className='font-semibold'>{customer?.total_weight}{customer?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">first Name:</h2>
+                  <h2 className='font-semibold'>{customer?.first_name}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Prefilled Total Weight:</h2>
-                  <h2 className='font-semibold'>{customer?.prefilled_items_total_weight}{customer?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">Last Name:</h2>
+                  <h2 className='font-semibold'>{customer?.last_name}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Remaining Weight to fill:</h2>
-                  <h2 className='font-semibold'>{customer?.remaining_weight}{customer?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">Display Name:</h2>
+                  <h2 className='font-semibold'>{customer?.display_name}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Weight Unit:</h2>
-                  <h2 className='font-semibold'>{customer?.weight_unit}</h2>
+                  <h2 className="text-gray-600 font-medium">Email:</h2>
+                  <h2 className='font-semibold'>{customer?.email}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Price:</h2>
-                  <h2 className='font-semibold'>{customer?.pricing_model === "sum_of_items" ? "-" : displayCurrency(customer?.price,"NGN")}</h2>
+                  <h2 className="text-gray-600 font-medium">Phone no:</h2>
+                  <h2 className='font-semibold'>{customer?.phone}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Pricing Model:</h2>
-                  <h2 className='font-semibold'>{customer?.pricing_model}</h2>
+                  <h2 className="text-gray-600 font-medium">Role:</h2>
+                  <h2 className='font-semibold'>{customer?.role}</h2>
                 </div>
                 <div className="flex flex-col">
-                  <h2 className="text-gray-600 font-medium">Pricing Model:</h2>
-                  <h2 className='font-semibold'>{customer?.customer_type}</h2>
+                  <h2 className="text-gray-600 font-medium">Email Verified:</h2>
+                  <h2 className='font-semibold'>{customer?.is_email_verified ? "Yes" : "No"}</h2>
                 </div>
                 <div className="flex flex-col">
                   <h2 className="text-gray-600 font-medium">Status:</h2>
                   <h2 className='font-semibold'>{customer?.is_active ? "Active" : "Inactive"}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Is deleted:</h2>
+                  <h2 className='font-semibold'>{customer?.is_deleted ? "Yes" : "No"}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Total orders:</h2>
+                  <h2 className='font-semibold'>{customer?.total_orders}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Total spent:</h2>
+                  <h2 className='font-semibold'>{displayCurrency(customer?.total_spent, "NGN")}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Plan Name:</h2>
+                  <h2 className='font-semibold'>{customer?.plan_name}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Subscription status:</h2>
+                  <h2 className='font-semibold'>{customer?.subscription_status}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Next delivery date:</h2>
+                  <h2 className='font-semibold'>{customer?.next_delivery_date ? format(new Date(customer?.next_delivery_date), "dd MMM yyyy") : "N/A"}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Member status:</h2>
+                  <h2 className='font-semibold'>{customer?.member_status}</h2>
+                </div>
+                <div className="flex flex-col">
+                  <h2 className="text-gray-600 font-medium">Member since:</h2>
+                  <h2 className='font-semibold'>{customer?.member_since? format(new Date(customer?.member_since), "dd MMM yyyy") : "N/A"}</h2>
                 </div>
                 <div className="flex flex-col">
                   <h2 className="text-gray-600 font-medium">Date created:</h2>
@@ -85,117 +141,35 @@ export const ViewCustomer = ({customer}: { customer: CustomerType}) => {
                 </div>
               </div>
             </div>
-            <div className="mt-4 grid gap-6">
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Prefilled Products</h3>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  {customer?.prefilled_items?.map((item) => {
-
-                    return (
-                      <div
-                        key={item?.product_id}
-                        className={`rounded-2xl border p-4 transition border-border`}
-                      >
-                        <img
-                          src={item?.image}
-                          alt={item.name}
-                          className="mb-3 h-32 w-full rounded-xl object-cover"
-                        />
-                        <div className="mb-2 flex flex-1 items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-semibold">{item?.name}</p>
-                            <p className="text-sm font-semibold">Qty: {item?.quantity}</p>
-                            <div className="mt-1 flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">{item?.weight}{item?.weight_unit}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {customer?.prefilled_items?.length <= 0 && <p className="text-sm text-muted-foreground">No prefilled items added on this customer.</p>}
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Category Rules</h3>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  {customer?.category_rules?.map((item) => {
-
-                    return (
-                      <div
-                        key={item?.category_id}
-                        className={`rounded-2xl border p-4 transition border-border`}
-                      >
-                        <div className="mb-2 flex flex-1 items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium">customers must choose {item?.weight_required}{item?.weight_unit} in product category <span className='font-bold'>{item?.category_name}</span> for this customer</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {customer?.category_rules?.length <= 0 && <p className="text-sm text-muted-foreground">No category rules added on this customer.</p>}
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Product Rules</h3>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  {customer?.product_rules?.map((item) => {
-
-                    return (
-                      <div
-                        key={item?.product_id}
-                        className={`rounded-2xl border p-4 transition border-border`}
-                      >
-                        <div className="mb-2 flex flex-1 items-start justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium">customers must choose {item?.max_weight}{item?.weight_unit} of <span className='font-bold'>{item?.product_name}</span> for this customer</p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {customer?.product_rules?.length <= 0 && <p className="text-sm text-muted-foreground">No Product rules added on this customer.</p>}
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Highlights</h3>
-                <div className="grid gap-2">
-                  {customer?.highlights?.map((highlight, index) => {
-
-                    return (
-                      <div
-                        key={index}
-                        className={`transition`}
-                      >
-                        <p className="text-sm font-medium">{highlight}</p>
-                      </div>
-                    );
-                  })}
-                  {customer?.highlights?.length <= 0 && <p className="text-sm text-muted-foreground">No Highlights was added on this customer.</p>}
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <h3 className="font-semibold text-sm">Plan Thumbnail</h3>
-                <div className='max-w-80'>
-                  <img
-                    src={customer?.image}
-                    alt={customer?.name}
-                    className="mb-3 h-48 w-full rounded-xl object-cover"
-                  />
-                </div>
-              </div>
-            </div>
           </div>
           <DialogFooter className="gap-4">
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline">Pause Subscription</Button>
-              <Button size="sm" variant="outline">Add Credit</Button>
-              <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">Reset Password</Button>
-              <DialogClose>
-                <Button variant="outline">Close</Button>
-              </DialogClose>
-            </div>
+            {customer?.is_active ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline" className="text-destructive hover:text-destructive"
+                  onClick={() => handleActivationstatus(customer.id, "deactivate")}
+                  disabled={deactivatingCustomerId === customer?.id}
+                >
+                  {deactivatingCustomerId === customer?.id ? "Deactivating..." : "Deactivate"}
+                </Button>
+                <DialogClose>
+                  <Button variant="outline">Close</Button>
+                </DialogClose>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline" className="text-destructive hover:text-destructive"
+                  onClick={() => handleActivationstatus(customer.id, "activate")}
+                  disabled={deactivatingCustomerId === customer?.id}
+                >
+                  {deactivatingCustomerId === customer?.id ? "Activating..." : "Activate"}
+                </Button>
+                <DialogClose>
+                  <Button variant="outline">Close</Button>
+                </DialogClose>
+              </div>
+            )}
           </DialogFooter>
         </DialogContent>
       </div>
