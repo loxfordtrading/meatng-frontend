@@ -44,7 +44,7 @@ export const createPlanSchema = z
     max_items: z.number().min(1, "Max items must be at least 1"),
     weight: z.number().min(0.0001, "Weight must be greater than 0"),
     weight_unit: z.enum(["g", "kg"]),
-    temp_image_id: z.string().nonempty("Image is required"),
+    temp_image_id: z.string().optional(),
     is_active: z.boolean(),
 
     plan_type: z.enum(["standard", "custom"]),
@@ -228,6 +228,11 @@ export const EditPlan = () => {
             payload.prefilled_items = payload.prefilled_items?.map(
                 ({ image_url, ...rest }: any) => rest
             );
+
+            if (!payload.temp_image_id) {
+                const { temp_image_id, ...rest } = payload;
+                payload = rest;
+            }
 
             const response = await axiosClient.put(`/plans/${planId}`,payload);
 

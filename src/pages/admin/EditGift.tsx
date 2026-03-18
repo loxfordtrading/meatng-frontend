@@ -17,7 +17,7 @@ const giftboxSchema = z.object({
   price: z.number().min(0.01, "Price must be greater than 0"),
   weight: z.number().min(0.0001, "Weight must be greater than 0"),
   weight_unit: z.enum(["g", "kg"]),
-  temp_id: z.string().nonempty("Image is required"),
+  temp_id: z.string().optional(),
   is_active: z.boolean(),
   products: z
     .array(
@@ -218,14 +218,16 @@ export const EditGift = () => {
         try {
             setIsUpdating(true);
 
+            const { temp_id, ...rest } = form;
+
             const payload = {
-                ...form,
+                ...rest,
                 products: form.products.map(({ product_id, quantity }) => ({
                     product_id,
                     quantity,
                 })),
             };
-
+            
             const response = await axiosClient.put(`/giftboxes/${giftId}`, payload);
 
             toast.success("Gift Box updated successfully");

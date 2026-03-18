@@ -118,7 +118,7 @@ const EditProduct = ({ categories, product, type, getProducts}: {categories: any
         }
     };
 
-      const handleCreate = async () => {
+      const handleEdit = async () => {
 
         if (!createForm.categoryId) {
             toast.error("Some fields are missing");
@@ -139,7 +139,7 @@ const EditProduct = ({ categories, product, type, getProducts}: {categories: any
                 stockQuantity: createForm.stock,
                 description: createForm.description,
                 categories: [createForm.categoryId],
-                temp_id: imageInfo?.temp_id
+                ...(imageInfo?.temp_id && { temp_id: imageInfo?.temp_id })
             };
 
             const response = await axiosClient.put(`/products/${product.id}`,payload);
@@ -336,7 +336,7 @@ const EditProduct = ({ categories, product, type, getProducts}: {categories: any
                 <Button
                     size="sm"
                     className="flex-1"
-                    onClick={handleCreate}
+                    onClick={handleEdit}
                     disabled={updatingProduct || !createForm.name}
                 >
                     {updatingProduct ? "Updating..." : "Update Product"}
