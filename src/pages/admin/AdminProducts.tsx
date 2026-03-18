@@ -6,27 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { products as mockProducts, categories as mockLocalCategories } from "@/data/products";
-import { formatPrice } from "@/data/plans";
-import { tokenStorage } from "@/lib/auth/tokenStorage";
-import {
-    addCategoryToProduct,
-    listProducts,
-    createProduct,
-    updateProduct,
-    updateProductStock,
-    deleteProduct,
-    getProductById,
-    getProductCategoryById,
-    getRootProductCategories,
-    listProductCategories,
-    removeCategoryFromProduct,
-    createProductCategory,
-    updateProductCategory,
-    deleteProductCategory,
-    type Product as ApiProduct,
-    type ProductCategory as ApiCategory,
-} from "@/lib/api/admin";
 import { axiosClient } from "@/GlobalApi";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
@@ -42,6 +21,8 @@ import {
 } from "@/components/ui/pagination";
 import AddProduct from "@/components/admin/AddProduct";
 import EditProduct from "@/components/admin/EditProduct";
+import AddCategory from "@/components/admin/AddCategory";
+import EditCategory from "@/components/admin/EditCategory";
 
 interface UiProduct {
     id: string;
@@ -61,27 +42,19 @@ interface UiProduct {
     stock?: number;
 }
 
-interface UiCategory {
-    id: string;
-    name: string;
-}
-
 const AdminProducts = () => {
 
     const [search, setSearch] = useState("");
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [createForm, setCreateForm] = useState<Partial<UiProduct>>({});
     const [activeTab, setActiveTab] = useState<"products" | "categories">("products");
-    const [editingCategory, setEditingCategory] = useState<ApiCategory | null>(null);
-    const [creatingCategory, setCreatingCategory] = useState(false);
-    const [catForm, setCatForm] = useState<{ name: string; slug: string; description: string }>({ name: "", slug: "", description: "" });
+    
 
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
     const [disablingId, setDisablingId] = useState<string | null>(null);
     const [categories, setCategories] = useState([]);
     const [getCategory, setGetCategory] = useState(true)
-    const [isSavingCategory, setIsSavingCategory] = useState(false)
     const [loadingProducts, setLoadingProducts] = useState(true)
     const [products, setProducts] = useState<ProductType[]>([])
     const [meta, setMeta] = useState<paginationType | null>(null);
@@ -128,56 +101,11 @@ const AdminProducts = () => {
         }
     };
 
-    const openCatCreate = () => {
-        setCreatingCategory(true);
-        setCatForm({ name: "", slug: "", description: "" });
-    };
-
     useEffect(() => {
         if (createForm.name) {
             setCreateForm(f => ({ ...f, slug: autoSlug(f.name) }));
         }
     }, [createForm.name]);
-
-    const openCatEdit = async (cat: ApiCategory) => {
-        setEditingCategory(cat);
-        setCatForm({ name: cat.name || "", slug: cat.slug || "", description: cat.description || "" });
-        // try {
-        //     const detailed = await getProductCategoryById(cat.id, token);
-        //     setEditingCategory(detailed);
-        //     setCatForm({
-        //         name: detailed.name ?? "",
-        //         slug: detailed.slug ?? "",
-        //         description: detailed.description ?? "",
-        //     });
-        // } catch {
-        //     // Keep list payload if detail fetch fails.
-        // }
-    };
-
-    const handleCatSave = async () => {
-        if (!catForm.name) return;
-        setGetCategory(true)
-        try {
-            setIsSavingCategory(true)
-            if (editingCategory) {
-                const res = await axiosClient.put(`/product-categories/${editingCategory.id}`, catForm)
-                toast.success("Category edited successfully")
-            } else {
-                const res = await axiosClient.post(`/product-categories`, catForm)
-                toast.success("Category created successfully")
-            }
-            getProducts()
-            setEditingCategory(null);
-            setCreatingCategory(false)
-        } catch (error) {
-            toast.error(error.response?.data?.message);
-        } finally {
-            setIsSavingCategory(false)
-            setGetCategory(false)
-
-        }
-    };
 
     const handleCatDelete = async (id: string) => {
         if (!confirm("Delete this category? Products in it will lose their category.")) return;
@@ -317,9 +245,7 @@ const AdminProducts = () => {
                 {activeTab === "products" ? (
                     <AddProduct categories={categories} getProducts={getProducts}/>
                 ) : (
-                    <Button size="sm" onClick={openCatCreate}>
-                        <Plus className="mr-2 h-3.5 w-3.5" /> Add Category
-                    </Button>
+                    <AddCategory setGetCategory={setGetCategory} getProducts={getProducts}/>
                 )}
             </div>
 
@@ -568,9 +494,7 @@ const AdminProducts = () => {
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex gap-1">
-                                                            <Button variant="ghost" size="sm" onClick={() => openCatEdit(cat)}>
-                                                                <Edit3 className="h-3.5 w-3.5" />
-                                                            </Button>
+                                                            <EditCategory category={cat} setGetCategory={setGetCategory} getProducts={getProducts}/>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
@@ -601,70 +525,6 @@ const AdminProducts = () => {
                                 </div>
                             </CardContent>
                         </Card>
-                    )}
-
-                    {/* ── Category Create / Edit Modal ──────────────────── */}
-                    {(creatingCategory || editingCategory) && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                            <div className="absolute inset-0 bg-black/50" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }} />
-                            <Card className="admin-card relative z-10 max-w-md w-full animate-fade-in">
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <CardTitle>{editingCategory ? "Edit Category" : "Add Category"}</CardTitle>
-                                        <Button variant="ghost" size="sm" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }}>✕</Button>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label>Name *</Label>
-                                        <Input
-                                            value={catForm.name}
-                                            onChange={(e) => {
-                                                const name = e.target.value;
-                                                setCatForm((f) => ({
-                                                    ...f,
-                                                    name,
-                                                    // slug: editingCategory ? f.slug : autoSlug(name),
-                                                    slug: autoSlug(name),
-                                                }));
-                                            }}
-                                            placeholder="e.g. Chicken"
-                                            className="h-10 rounded-xl"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Slug</Label>
-                                        <Input
-                                            value={catForm.slug}
-                                            onChange={(e) => setCatForm((f) => ({ ...f, slug: autoSlug(e.target.value) }))}
-                                            placeholder="e.g. chicken"
-                                            className="h-10 rounded-xl"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Description</Label>
-                                        <textarea
-                                            value={catForm.description}
-                                            onChange={(e) => setCatForm((f) => ({ ...f, description: e.target.value }))}
-                                            rows={3}
-                                            placeholder="Category description..."
-                                            className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none"
-                                        />
-                                    </div>
-                                    <div className="flex gap-2 pt-2">
-                                        <Button
-                                            size="sm"
-                                            className="flex-1"
-                                            onClick={handleCatSave}
-                                            disabled={isSavingCategory || !catForm.name}
-                                        >
-                                            {(isSavingCategory) ? "Saving..." : editingCategory ? "Save Changes" : "Create Category"}
-                                        </Button>
-                                        <Button size="sm" variant="outline" onClick={() => { setCreatingCategory(false); setEditingCategory(null); }}>Cancel</Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
                     )}
                 </>
             )}
