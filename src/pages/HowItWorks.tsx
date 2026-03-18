@@ -132,8 +132,8 @@ const HowItWorks = () => {
                 <CardContent className="p-5">
                   <div className="relative overflow-hidden rounded-2xl">
                     <img
-                      src={step.image}
-                      alt={step.title}
+                      src={step?.image}
+                      alt={step?.title}
                       className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                     />

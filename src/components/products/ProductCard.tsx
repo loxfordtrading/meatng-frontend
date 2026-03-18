@@ -87,8 +87,8 @@ const ProductCard = ({ product, showAddToBox = false, showAddToCart = false }: P
 
         <Link to={`/product/${product.id}`}>
           <img
-            src={product.image}
-            alt={product.name}
+            src={product?.image}
+            alt={product?.name}
             className="h-full w-full rounded-md object-contain transition-transform duration-300 group-hover:scale-105"
           />
         </Link>

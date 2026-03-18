@@ -203,8 +203,8 @@ const Club = () => {
                 className="group relative min-w-[240px] md:min-w-[320px] snap-start overflow-hidden rounded-3xl"
               >
                 <img
-                  src={item.image}
-                  alt={item.title}
+                  src={item?.image}
+                  alt={item?.title}
                   className="h-64 w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                 />

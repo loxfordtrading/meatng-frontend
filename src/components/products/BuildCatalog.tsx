@@ -92,7 +92,7 @@ export default function BuildCatalog({ products}: {products: any}) {
                 `}
               >
                 <img
-                  src={item?.image || "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200"}
+                  src={item?.image}
                   alt={item.name}
                   className="mb-3 h-32 w-full rounded-xl object-cover"
                 />

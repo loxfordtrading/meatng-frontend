@@ -464,7 +464,7 @@ const BuildBox = () => {
                   {subInfo?.subscription?.attributes?.prefilled_items?.map((item) => (
                     <Card key={item.product_id} className="overflow-hidden border-green-200 shadow-sm">
                       <img
-                        src={"https://images.unsplash.com/photo-1588347818036-558601350947?w=200"}
+                        src={item?.image_url}
                         alt={item.name}
                         className="h-28 w-full object-cover"
                       />

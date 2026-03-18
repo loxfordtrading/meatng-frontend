@@ -467,7 +467,7 @@ const Gifts = () => {
             {giftingOptions.map((option) => (
               <Card key={option.title} className="group rounded-[30px] border-white/40 bg-white/70 backdrop-blur-xl shadow-md transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
                 <div className="relative overflow-hidden rounded-t-[30px]">
-                  <img src={option.image} alt={option.title} className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                  <img src={option?.image} alt={option?.title} className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
                 </div>
                 <CardContent className="p-6">
@@ -490,7 +490,7 @@ const Gifts = () => {
             <div className="mt-6 grid grid-cols-2 gap-4">
               {occasions.map((occasion) => (
                 <div key={occasion.title} className="group relative overflow-hidden rounded-[22px]">
-                  <img src={occasion.image} alt={occasion.title} className="h-36 w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                  <img src={occasion?.image} alt={occasion?.title} className="h-36 w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
                   <p className="absolute bottom-3 left-3 text-sm font-semibold text-white">{occasion.title}</p>
                 </div>

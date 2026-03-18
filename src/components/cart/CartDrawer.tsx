@@ -59,8 +59,8 @@ const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
               {items.map((item) => (
                 <div key={item.id} className="flex gap-3 p-3 bg-muted/50 rounded-lg">
                   <img
-                    src={item.image}
-                    alt={item.name}
+                    src={item?.image}
+                    alt={item?.name}
                     className="w-20 h-20 object-cover rounded-md"
                   />
                   <div className="flex-1 min-w-0">

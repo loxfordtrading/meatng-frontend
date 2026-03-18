@@ -68,9 +68,9 @@ export const SetProduct = ({products, addProduct, loading, meta}: {products: Pro
                         className={`rounded-2xl border p-4 transitio border-border`}
                     >
                         <img
-                        src={item?.image || "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200"}
-                        alt={item.name}
-                        className="mb-3 h-32 w-full rounded-xl object-cover"
+                          src={item?.image}
+                          alt={item.name}
+                          className="mb-3 h-32 w-full rounded-xl object-cover"
                         />
                         <div className="mb-2 flex flex-1 items-start justify-between gap-2">
                         <div>

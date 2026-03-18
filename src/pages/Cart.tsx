@@ -87,8 +87,8 @@ const Cart = () => {
                   <div className="flex gap-4">
                     <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
                       <img
-                        src={item.image}
-                        alt={item.name}
+                        src={item?.image}
+                        alt={item?.name}
                         className="h-full w-full object-cover"
                       />
                     </div>
