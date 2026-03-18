@@ -43,6 +43,11 @@ const AddCategory = ({setGetCategory, getProducts}: {setGetCategory: Dispatch<Re
             toast.success("Category created successfully")
             getProducts()
             setOpen(false)
+            setCatForm({
+                name: "", 
+                slug: "", 
+                description: "" 
+            })
         } catch (error) {
             toast.error(error.response?.data?.message);
         } finally {

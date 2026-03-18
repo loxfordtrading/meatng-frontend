@@ -43,6 +43,11 @@ const EditCategory = ({ category, setGetCategory, getProducts}: {category: any; 
             toast.success("Category updated successfully")
             getProducts()
             setOpen(false)
+            setCatForm({
+                name: "", 
+                slug: "", 
+                description: "" 
+            })
         } catch (error) {
             toast.error(error.response?.data?.message);
         } finally {
