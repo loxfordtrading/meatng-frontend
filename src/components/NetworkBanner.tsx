@@ -9,7 +9,7 @@ export const NetworkBanner = () => {
   if (isOnline || closed) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-red-500 text-white flex items-center justify-between px-4 py-2 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-red-500 text-white flex items-center justify-between px-4 py-2 z-50">
       <span className="font-semibold">⚠️ No Internet Connection</span>
 
       <button

@@ -101,14 +101,14 @@ const Plans = () => {
               Each plan comes pre-packed with quality cuts. Choose your delivery frequency,
               then add optional extras on the next step.
             </p>
-            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+            {/* <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <Button asChild>
                 <Link to={ROUTES.products}>
                   <ShoppingBag className="mr-2 h-4 w-4" />
                   Shop One-time (No Subscription)
                 </Link>
               </Button>
-            </div>
+            </div> */}
           </div>
 
           <Card className="hidden sm:block rounded-[28px] border-white/40 bg-white/70 backdrop-blur-xl shadow-lg">
