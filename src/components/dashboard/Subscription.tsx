@@ -18,29 +18,49 @@ import { axiosClient } from "@/GlobalApi";
 import { useAuthStore } from "@/store/AuthStore";
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { FormattedSubscriptionType } from "@/types/types";
+import { FormattedSubscriptionType, MetaType } from "@/types/types";
 import { getFrequencyWeeksString } from "@/utils/conversion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import displayCurrency from "@/utils/displayCurrency";
 import { format } from "date-fns";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
 
 const Subscription = () => {
 
+    const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate()
     const userInfo = useAuthStore(state => state.userInfo)
     const [subscriptions, setSubscriptions] = useState<FormattedSubscriptionType[]>([]);
     const [loading, setLoading] = useState(true)
+     const [meta, setMeta] = useState<MetaType | null>(null);
     const [pausingId, setPausingId] = useState<string | null>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
+    const currentPage = Number(searchParams.get("page")) || 1;
+
+    const changePage = (page: number) => {
+        const params = new URLSearchParams(searchParams);
+        params.set("page", page.toString());
+
+        setSearchParams(params);
+    };
 
     useEffect(() => {
         getSubscriptions()
-    }, [])
+    }, [currentPage])
 
     const getSubscriptions = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/subscriptions/by-user/${userInfo.userId}`);
+            let url = `/subscriptions/by-user/${userInfo.userId}?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const subs = res.data.data || [];
 
@@ -50,6 +70,7 @@ const Subscription = () => {
             }));
 
             setSubscriptions(formattedSubscriptions);
+            setMeta(res.data?.meta);
 
         } catch (err: any) {
             toast.error(err.response?.data?.message);
@@ -211,6 +232,43 @@ const Subscription = () => {
                     </Button>
                     </CardContent>
                 </Card>
+            )}
+
+             {meta?.totalPages > 1 && !loading && subscriptions?.length > 0 && (
+                <Pagination className="mt-8">
+                    <PaginationContent className="flex-wrap justify-center gap-2">
+
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                        />
+                    </PaginationItem>
+
+                    {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                        const page = i + 1;
+
+                        return (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                isActive={currentPage === page}
+                                onClick={() => changePage(page)}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                        );
+                    })}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                currentPage < meta?.totalPages && changePage(currentPage + 1)
+                            }
+                        />
+                    </PaginationItem>
+
+                    </PaginationContent>
+                </Pagination>
             )}
         </div>
     )

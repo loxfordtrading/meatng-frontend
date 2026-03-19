@@ -56,8 +56,23 @@ export const AddGift = () => {
       const [meta, setMeta] = useState<paginationType | null>(null);
       const [debouncedSearch, setDebouncedSearch] = useState(search);
       const [searchParams, setSearchParams] = useSearchParams();
-          const currentPage = Number(searchParams.get("page")) || 1;
-          const activeCategory = searchParams.get("slug") || "all";
+      const currentPage = Number(searchParams.get("page")) || 1;
+
+    const handleSearch = (value: string) => {
+        setSearch(value);
+
+        setSearchParams({
+            page: "1",
+        });
+    };
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search]);
 
     const handleFile = (selected: File) => {
         setFile(selected);
@@ -107,10 +122,6 @@ export const AddGift = () => {
             setLoadingProducts(true);
         
             let url = `/products?page=${currentPage}&limit=28`;
-        
-            if (activeCategory && activeCategory !== "all") {
-                url += `&slug=${activeCategory}`;
-            }
             
             if (debouncedSearch) {
                 url += `&search=${debouncedSearch}`;
@@ -151,9 +162,9 @@ export const AddGift = () => {
         }
     };
 
-  useEffect(() => {
-    getProducts();
-  }, []);
+    useEffect(() => {
+        getProducts();
+    }, [currentPage, debouncedSearch]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -376,6 +387,8 @@ export const AddGift = () => {
                             <Label className="text-xs">Select</Label>
                             <SetProduct
                                 meta={meta}
+                                search={search}
+                                onSearch={handleSearch}
                                 products={products}
                                 loading={loadingProducts}
                                 addProduct={(p) => {

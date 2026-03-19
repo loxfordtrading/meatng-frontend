@@ -7,16 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { mockAdminSubscriptions, mockKPIs, formatAdminPrice, type AdminSubscription } from "@/data/adminData";
-import { tokenStorage } from "@/lib/auth/tokenStorage";
-import {
-    createBox,
-    deleteBox,
-    getBoxById,
-    listActiveBoxes,
-    listBoxes,
-    updateBox,
-    type Box,
-} from "@/lib/api/admin";
 import { axiosClient } from "@/GlobalApi";
 import { LoadingData } from "@/components/LoadingData";
 import { SubscriptionMetaType, SubscriptionType } from "@/types/admin";
@@ -25,6 +15,15 @@ import displayCurrency from "@/utils/displayCurrency";
 import { getFrequencyWeeks, getFrequencyWeeksString } from "@/utils/conversion";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import { useSearchParams } from "react-router-dom";
 
 type SubFilter = "all" | "Active" | "Paused" | "Cancelled";
 
@@ -35,6 +34,8 @@ const statusColors: Record<string, string> = {
 };
 
 const AdminSubscriptions = () => {
+
+    const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState("");
     const [filter, setFilter] = useState<SubFilter>("all");
     const [subs, setSubs] = useState<AdminSubscription[]>([]);
@@ -42,10 +43,7 @@ const AdminSubscriptions = () => {
     const [meta, setMeta] = useState<SubscriptionMetaType | null>(null);
     const [loading, setLoading] = useState(true)
     const [disablingId, setDisablingId] = useState<string | null>(null);
-
-    const updateStatus = (id: string, status: AdminSubscription["status"]) => {
-        setSubs((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
-    };
+    const currentPage = Number(searchParams.get("page")) || 1;
 
     const tabs: SubFilter[] = ["all", "Active", "Paused", "Cancelled"];
 
@@ -64,14 +62,23 @@ const AdminSubscriptions = () => {
         }
     };
 
+    const changePage = (page: number) => {
+        setSearchParams({
+            page: page.toString(),
+            // slug: activeCategory,
+        });
+    };
+
     useEffect(() => {
         getSubscriptions()
-    }, [])
+    }, [currentPage])
 
     const getSubscriptions = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/subscriptions`);
+            let url = `/subscriptions?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const subs = res.data?.data || [];
 
@@ -235,6 +242,43 @@ const AdminSubscriptions = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {meta?.totalPages > 1 && !loading && subscriptions?.length > 0 && (
+                <Pagination className="mt-8">
+                    <PaginationContent className="flex-wrap justify-center gap-2">
+
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                        />
+                    </PaginationItem>
+
+                    {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                        const page = i + 1;
+
+                        return (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                isActive={currentPage === page}
+                                onClick={() => changePage(page)}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                        );
+                    })}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                currentPage < meta?.totalPages && changePage(currentPage + 1)
+                            }
+                        />
+                    </PaginationItem>
+
+                    </PaginationContent>
+                </Pagination>
+            )}
         </div>
     );
 };

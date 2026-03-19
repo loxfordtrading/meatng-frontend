@@ -44,11 +44,12 @@ interface UiProduct {
 
 const AdminProducts = () => {
 
-    const [search, setSearch] = useState("");
-    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+    const [searchParams, setSearchParams] = useSearchParams();
+    const initialSearch = searchParams.get("search") || "";
+    const [search, setSearch] = useState(initialSearch);
     const [createForm, setCreateForm] = useState<Partial<UiProduct>>({});
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [activeTab, setActiveTab] = useState<"products" | "categories">("products");
-    
 
     const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
     const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
@@ -60,7 +61,6 @@ const AdminProducts = () => {
     const [meta, setMeta] = useState<paginationType | null>(null);
     const [debouncedSearch, setDebouncedSearch] = useState(search);
 
-    const [searchParams, setSearchParams] = useSearchParams();
     const currentPage = Number(searchParams.get("page")) || 1;
     const activeCategory = searchParams.get("slug") || "all";
 
@@ -139,10 +139,17 @@ const AdminProducts = () => {
     };
 
     useEffect(() => {
-        setSearchParams({
-            page: "1",
-            slug: activeCategory,
-        });
+        const params: any = { page: "1" };
+
+        if (activeCategory && activeCategory !== "all") {
+            params.slug = activeCategory;
+        }
+
+        if (debouncedSearch) {
+            params.search = debouncedSearch;
+        }
+
+        setSearchParams(params);
     }, [debouncedSearch]);
 
     const changeCategory = (category: string) => {
@@ -177,7 +184,7 @@ const AdminProducts = () => {
             }
             
             if (debouncedSearch) {
-                url += `&search=${debouncedSearch}`;
+                url += `&search=${encodeURIComponent(debouncedSearch)}`;
             }
 
             const res = await axiosClient.get(url);
@@ -268,7 +275,7 @@ const AdminProducts = () => {
             {/* Filters */}
             {activeTab === "products" && (
                 <div className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1 max-w-md">
+                    <div className="relative w-full max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-9 h-10 rounded-xl" />
                     </div>

@@ -14,15 +14,28 @@ import { AddAdmin } from "@/components/admin/AddAdmin";
 import z from "zod";
 import displayCurrency from "@/utils/displayCurrency";
 import { format } from "date-fns";
+import { Switch } from "@/components/ui/switch";
+import EditDeliveryFee from "@/components/admin/EditDeliveryFee";
+import EditWarehouse from "@/components/admin/EditWarehouse";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import { useSearchParams } from "react-router-dom";
 
 type SettingsTab = "business" | "delivery" | "notifications" | "admins" | "warehouse";
 
 const feeSchema = z.object({
   name: z.string().min(1, "Fee name is required"),
   rate_per_km: z.string().min(1, "Delivery rate (fee) is required"),
+  is_active: z.boolean()
 });
 
-export const warehouseSchema = z.object({
+const warehouseSchema = z.object({
   name: z.string().nonempty("Warehouse name is required"),
 
   street_address: z
@@ -57,9 +70,13 @@ type FeeFormValues = z.infer<typeof feeSchema>
 type WarehouseFormValues = z.infer<typeof warehouseSchema>
 
 const AdminSettings = () => {
+
+    const [searchParams, setSearchParams] = useSearchParams();
     const [tab, setTab] = useState<SettingsTab>("admins");
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSubmittingWarehouse, setIsSubmittingWarehouse] = useState(false)
+    const [loadingDeleteId, setLoadingDeleteId] = useState<string | null>(null);
+    const currentPage = Number(searchParams.get("page")) || 1;
 
     const [admins, setAdmins] = useState<CustomerType[]>([]);
     const [fees, setFees] = useState<any[]>([]);
@@ -68,11 +85,11 @@ const AdminSettings = () => {
     const [feeMeta, setFeeMeta] = useState(null);
     const [warehouseMeta, setWarehouseMeta] = useState(null);
     const [loading, setLoading] = useState(true)
-    const [loadingFee, setLoadingFee] = useState(true)
-    const [loadingWarehouse, setLoadingWarehouse] = useState(true)
+    const [deletingFeeId, setDeletingFeeId] = useState(null)
     const [form, setForm] = useState({
       name: '',
       rate_per_km: '',
+      is_active: true
     })
     const [warehouseForm, setWarehouseForm] = useState({
         name: "",
@@ -91,8 +108,17 @@ const AdminSettings = () => {
         { id: "warehouse", label: "Warehouse", icon: Warehouse },
     ];
 
+    const changePage = (page: number) => {
+        setSearchParams({
+            page: page.toString(),
+        });
+    };
+
     useEffect(() => {
         getAdmins()
+    }, [currentPage])
+
+    useEffect(() => {
         getFees()
         getWarehouses()
     }, [])
@@ -120,15 +146,17 @@ const AdminSettings = () => {
           const newForm = {
             name: form.name,
             rate_per_km: Number(form.rate_per_km),
-            is_active: true
+            is_active: form.is_active
           };
     
           const result = await axiosClient.post("/delivery/pricing", newForm)
-          toast.success(result.data?.data?.attributes?.message);
+          toast.success("Fee added successfully");
+          getFees()
     
           setForm({
             name: "",
             rate_per_km: "",
+            is_active: true
           })
     
         } catch (error: any) {
@@ -137,6 +165,34 @@ const AdminSettings = () => {
           setIsSubmitting(false)
         } 
     }
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Delete this fee? This cannot be undone.")) return;
+        try {
+            setDeletingFeeId(id);
+            const res = await axiosClient.delete(`/delivery/pricing/${id}`)
+            toast.success("Fee deleted successfully")
+            getFees()
+        } catch (error) {
+            toast.error(error.response?.data?.message);
+        } finally {
+            setDeletingFeeId(null);
+        }
+    };
+
+    const handleDeleteWarehouse = async (id: string) => {
+        if (!confirm("Delete this warehouse? This cannot be undone.")) return;
+        try {
+            setLoadingDeleteId(id);
+            await axiosClient.delete(`/delivery/warehouses/${id}`);
+            toast.success("Warehouse Deleted")
+            getWarehouses();
+        } catch (error){
+            toast.error(error.response?.data?.message);
+        } finally {
+            setLoadingDeleteId(null);
+        }
+    };
 
     const handleWarehouseSubmit = async (e: FormEvent) => {
         e.preventDefault()
@@ -159,11 +215,17 @@ const AdminSettings = () => {
           
     
           const result = await axiosClient.post("/delivery/warehouses", warehouseForm)
-          toast.success(result.data?.data?.attributes?.message);
+          toast.success("Warehouse added successfully");
     
-          setForm({
+          setWarehouseForm({
             name: "",
-            rate_per_km: "",
+            street_address: "",
+            apartment_suite: "",
+            city: "",
+            state: "",
+            zip_code: "",
+            country: "Nigeria",
+            is_active: true
           })
     
         } catch (error: any) {
@@ -176,7 +238,9 @@ const AdminSettings = () => {
     const getAdmins = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/users/admins`);
+            let url = `/users/admins?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const admins = res.data.data || [];
 
@@ -197,7 +261,7 @@ const AdminSettings = () => {
 
     const getFees = async () => {
         try {
-            setLoadingFee(true)
+            setLoading(true)
             const res = await axiosClient.get(`/delivery/pricing`);
 
             const feesData = res.data.data || [];
@@ -213,13 +277,13 @@ const AdminSettings = () => {
         } catch (err: any) {
             toast.error(err.response?.data?.message);
         } finally {
-            setLoadingFee(false);
+            setLoading(false)
         }
     };
 
     const getWarehouses = async () => {
         try {
-            setLoadingWarehouse(true)
+            setLoading(true)
             const res = await axiosClient.get(`/delivery/warehouses`);
 
             const warehousesData = res.data.data || [];
@@ -235,7 +299,7 @@ const AdminSettings = () => {
         } catch (err: any) {
             toast.error(err.response?.data?.message);
         } finally {
-            setLoadingWarehouse(false);
+            setLoading(false);
         }
     };
 
@@ -270,7 +334,7 @@ const AdminSettings = () => {
             {tab === "admins" && (
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">{admins?.length} admin users</p>
+                        <p className="text-sm text-muted-foreground">{meta?.total || 0} admin users</p>
                         <AddAdmin getAdmins={getAdmins}/>
                     </div>
                     <Card className="admin-card admin-animate-up" style={{ animationDelay: "120ms" }}>
@@ -300,6 +364,43 @@ const AdminSettings = () => {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {meta?.totalPages > 1 && !loading && admins?.length > 0 && (
+                        <Pagination className="mt-8">
+                            <PaginationContent className="flex-wrap justify-center gap-2">
+
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                                />
+                            </PaginationItem>
+
+                            {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                                const page = i + 1;
+
+                                return (
+                                <PaginationItem key={page}>
+                                    <PaginationLink
+                                        isActive={currentPage === page}
+                                        onClick={() => changePage(page)}
+                                    >
+                                        {page}
+                                    </PaginationLink>
+                                </PaginationItem>
+                                );
+                            })}
+
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() =>
+                                        currentPage < meta?.totalPages && changePage(currentPage + 1)
+                                    }
+                                />
+                            </PaginationItem>
+
+                            </PaginationContent>
+                        </Pagination>
+                    )}
                 </div>
             )}
 
@@ -334,23 +435,22 @@ const AdminSettings = () => {
                                                     </Badge>
                                                 </td>
                                                 <td className="px-4 py-3 flex gap-2 items-center">
-                                                    {/* <ViewPlan plan={fee} /> */}
-                                                    {/* <Button variant="outline" size="sm">
-                                                        Edit
-                                                    </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-destructive hover:text-destructive"
-                                                        onClick={() => handleDelete(fee?.id)}
-                                                        disabled={deletingPlanId === plan?.id}
-                                                    >
-                                                        {deletingPlanId === plan?.id ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                                        ) : (
-                                                            <Trash2 className="h-3.5 w-3.5" />
-                                                        )}
-                                                    </Button> */}
+                                                    <div className="flex gap-1">
+                                                        <EditDeliveryFee delivery={fee} getFees={getFees}/>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-destructive hover:text-destructive"
+                                                            onClick={() => handleDelete(fee?.id)}
+                                                            disabled={deletingFeeId === fee?.id}
+                                                        >
+                                                            {deletingFeeId === fee?.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                            ) : (
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -365,10 +465,10 @@ const AdminSettings = () => {
 
                     <Card className="admin-card admin-animate-up" style={{ animationDelay: "120ms" }}>
                         <CardHeader>
-                            <CardTitle className="text-base">Delivery Settings</CardTitle>
+                            <CardTitle className="text-base">Add New Delivery Fee</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 max-w-xl">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
                                     <Label>Name</Label>
                                     <Input placeholder="Enter fee label" value={form.name} onChange={(e: any) => setForm({ ...form, name: e.target.value})}  className="h-10 rounded-xl" />
@@ -376,6 +476,23 @@ const AdminSettings = () => {
                                 <div className="space-y-2">
                                     <Label>Rate Per Km (Naira)</Label>
                                     <Input className="h-10 rounded-xl" type="number" value={form.rate_per_km} onChange={(e: any) => setForm({ ...form, rate_per_km: e.target.value})}  placeholder="Enter Fee"/>
+                                </div>
+                                <div className="space-y-2 flex flex-col">
+                                    <Label>
+                                        Status:{" "}
+                                        <span className={form.is_active ? "text-green-600" : "text-gray-500"}>
+                                            {form.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </Label>
+                                    <Switch
+                                        checked={form.is_active}
+                                        onCheckedChange={(value) =>
+                                            setForm((f) => ({
+                                                ...f,
+                                                is_active: value
+                                            }))
+                                        }
+                                    />
                                 </div>
                             </div>
                             <Button size="sm" onClick={handleFeeSubmit} disabled={isSubmitting}>
@@ -397,20 +514,26 @@ const AdminSettings = () => {
                                     <div className="flex justify-between mb-3">
 
                                         <div className="flex gap-2 items-center">
-                                        <MapPin className="h-4 w-4 text-primary" />
-                                        <span className="font-semibold">
-                                            {warehouse?.name}
-                                        </span>
+                                            <MapPin className="h-4 w-4 text-primary" />
+                                            <span className="font-semibold">
+                                                {warehouse?.name}
+                                            </span>
                                         </div>
 
-                                        {warehouse?.is_active && (
+                                        {warehouse?.is_active ? (
                                             <Badge variant="secondary">Active</Badge>
+                                        ) : (
+                                           <Badge variant="destructive">Inactive</Badge> 
                                         )}
 
                                     </div>
 
                                     <p className="text-sm text-muted-foreground">
                                         {warehouse?.street_address}
+                                    </p>
+
+                                    <p className="text-sm text-muted-foreground">
+                                        {warehouse?.apartment_suite}
                                     </p>
 
                                     <p className="text-sm text-muted-foreground">
@@ -427,40 +550,22 @@ const AdminSettings = () => {
                                         Last updated: {warehouse?.updatedAt ? format(warehouse?.updatedAt, "MMM dd, yyyy") : "None"}
                                     </p>
 
-                                    {/* <div className="mt-4 flex gap-2">
+                                    <div className="mt-4 flex gap-2">
 
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={() => handleEditAddress(formatAddress(address), address.id)}
-                                        >
-                                        <Edit3 className="mr-1 h-3 w-3" />
-                                            Edit
-                                        </Button>
-
-                                        {!warehouse?.attributes?.is_default && (
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                disabled={(loadingDefaultId === address.id) || isLoadingAddresses}
-                                                onClick={() => handleSetDefault(address.id)}
-                                            >
-                                                {loadingDefaultId === address.id ? "Setting..." : "Set Default"}
-                                            </Button>
-                                        )}
+                                        <EditWarehouse warehouse={warehouse} getWarehouses={getWarehouses}/>
 
                                         <Button
                                             size="sm"
                                             variant="ghost"
                                             className="text-destructive"
-                                            disabled={(loadingDeleteId === address.id) || isLoadingAddresses}
-                                            onClick={() => handleDeleteAddress(address.id)}
+                                            disabled={(loadingDeleteId === warehouse?.id) || loading}
+                                            onClick={() => handleDeleteWarehouse(warehouse?.id)}
                                         >
                                         <Trash2 className="mr-1 h-3 w-3" />
-                                            {loadingDeleteId === address.id ? "Removing..." : "Remove"}
+                                            {loadingDeleteId === warehouse.id ? "Deleting..." : "Delete"}
                                         </Button>
 
-                                    </div> */}
+                                    </div>
 
                                 </CardContent>
                             </Card>
@@ -473,7 +578,7 @@ const AdminSettings = () => {
 
                     <Card className="admin-card admin-animate-up" style={{ animationDelay: "120ms" }}>
                         <CardHeader>
-                            <CardTitle className="text-base">Warehouse Settings</CardTitle>
+                            <CardTitle className="text-base">Add a New Warehouse</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4 max-w-xl">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -502,6 +607,23 @@ const AdminSettings = () => {
                                 <div className="space-y-2">
                                     <Label>Appartment Suite</Label>
                                     <Input className="h-10 rounded-xl" value={warehouseForm.apartment_suite} onChange={(e: any) => setWarehouseForm({ ...warehouseForm, apartment_suite: e.target.value})}  placeholder="Enter apartment"/>
+                                </div>
+                                <div className="space-y-2 flex flex-col">
+                                    <Label>
+                                        Status:{" "}
+                                        <span className={warehouseForm.is_active ? "text-green-600" : "text-gray-500"}>
+                                            {warehouseForm.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </Label>
+                                    <Switch
+                                        checked={warehouseForm.is_active}
+                                        onCheckedChange={(value) =>
+                                            setWarehouseForm((f) => ({
+                                                ...f,
+                                                is_active: value
+                                            }))
+                                        }
+                                    />
                                 </div>
                             </div>
                             <Button size="sm" onClick={handleWarehouseSubmit} disabled={isSubmittingWarehouse}>

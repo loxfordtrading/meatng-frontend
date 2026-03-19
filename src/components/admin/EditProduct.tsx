@@ -171,7 +171,7 @@ const EditProduct = ({ categories, product, type, getProducts}: {categories: any
         <DialogContent className="sm:max-w-[600px] max-h-[95%] overflow-y-auto scrollbar-rounded">
             <DialogHeader>
                 <DialogTitle>Edit Product</DialogTitle>
-                <DialogDescription className="text-gray-300">Edit an existing product</DialogDescription>
+                <DialogDescription className="text-gray-500">Edit an existing product</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
                 <div className="space-y-2">

@@ -68,8 +68,6 @@ export const createPlanSchema = z
     }
 });
 
-type CreatePlanFormValues = z.infer<typeof createPlanSchema>
-
 export const AddPlan = () => {
 
   const [file, setFile] = useState<File | null>(null);
@@ -105,7 +103,22 @@ export const AddPlan = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
     const currentPage = Number(searchParams.get("page")) || 1;
-    const activeCategory = searchParams.get("slug") || "all";
+
+    const handleSearch = (value: string) => {
+        setSearch(value);
+
+        setSearchParams({
+            page: "1",
+        });
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search]);
 
     const handleFile = (selected: File) => {
         setFile(selected);
@@ -194,7 +207,7 @@ export const AddPlan = () => {
 
     useEffect(() => {
         getProducts();
-    }, [currentPage, activeCategory, debouncedSearch]);
+    }, [currentPage, debouncedSearch]);
 
     useEffect(() => {
         getCategories();
@@ -205,10 +218,6 @@ export const AddPlan = () => {
             setLoadingProducts(true);
         
             let url = `/products?page=${currentPage}&limit=28`;
-        
-            if (activeCategory && activeCategory !== "all") {
-                url += `&slug=${activeCategory}`;
-            }
             
             if (debouncedSearch) {
                 url += `&search=${debouncedSearch}`;
@@ -528,6 +537,8 @@ export const AddPlan = () => {
                             products={products}
                             loading={loadingProducts}
                             meta={meta}
+                            search={search}
+                            onSearch={handleSearch}
                             addProduct={(product) => {
                                 setForm((f) => {
                                 const updated = [...f.prefilled_items];
@@ -781,6 +792,8 @@ export const AddPlan = () => {
                             products={products}
                             loading={loadingProducts}
                             meta={meta}
+                            onSearch={handleSearch}
+                            search={search}
                             addProduct={(product) => {
                                 setForm((f) => {
                                 const updated = [...f.product_rules];

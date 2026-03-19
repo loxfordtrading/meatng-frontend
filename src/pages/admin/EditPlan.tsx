@@ -108,7 +108,22 @@ export const EditPlan = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
     const currentPage = Number(searchParams.get("page")) || 1;
-    const activeCategory = searchParams.get("slug") || "all";
+
+    const handleSearch = (value: string) => {
+        setSearch(value);
+
+        setSearchParams({
+            page: "1",
+        });
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search]);
 
     useEffect(() => {
         if (planId) {
@@ -255,7 +270,7 @@ export const EditPlan = () => {
 
     useEffect(() => {
         getProducts();
-    }, [currentPage, activeCategory, debouncedSearch]);
+    }, [currentPage, debouncedSearch]);
 
     useEffect(() => {
         getCategories();
@@ -266,10 +281,6 @@ export const EditPlan = () => {
             setLoadingProducts(true);
         
             let url = `/products?page=${currentPage}&limit=28`;
-        
-            if (activeCategory && activeCategory !== "all") {
-                url += `&slug=${activeCategory}`;
-            }
             
             if (debouncedSearch) {
                 url += `&search=${debouncedSearch}`;
@@ -595,6 +606,8 @@ export const EditPlan = () => {
                             products={products}
                             loading={loadingProducts}
                             meta={meta}
+                            search={search}
+                            onSearch={handleSearch}
                             addProduct={(product) => {
                                 setForm((f) => {
                                 const updated = [...f.prefilled_items];
@@ -848,6 +861,8 @@ export const EditPlan = () => {
                             products={products}
                             loading={loadingProducts}
                             meta={meta}
+                            search={search}
+                            onSearch={handleSearch}
                             addProduct={(product) => {
                                 setForm((f) => {
                                 const updated = [...f.product_rules];

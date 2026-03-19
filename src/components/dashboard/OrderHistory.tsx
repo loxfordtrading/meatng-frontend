@@ -11,27 +11,47 @@ import { toast } from "react-toastify";
 import { axiosClient } from "@/GlobalApi";
 import { useEffect, useState } from "react";
 import { FormattedOrderType, OrderMetaType } from "@/types/types";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { format } from "date-fns";
 import displayCurrency from "@/utils/displayCurrency";
 import OrderStatusBadge from "../OrderStatusBadge";
 import { LoadingData } from "../LoadingData";
 import { ViewOrder } from "../ViewOrder";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
 
 const OrderHistory = () => {
 
+    const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate()
     const [orders, setOrders] = useState<FormattedOrderType[]>([]);
     const [loading, setLoading] = useState(true)
     const [meta, setMeta] = useState<OrderMetaType | null>(null);
+    const currentPage = Number(searchParams.get("page")) || 1;
+
+    const changePage = (page: number) => {
+        const params = new URLSearchParams(searchParams);
+        params.set("page", page.toString());
+
+        setSearchParams(params);
+    };
 
     useEffect(() => {
         getOrders()
-    }, [])
+    }, [currentPage])
 
     const getOrders = async () => {
         try {
-            const res = await axiosClient.get(`/orders/my-orders`);
+            setLoading(true)
+            let url = `/orders/my-orders?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const orders = res.data.data || [];
 
@@ -113,6 +133,43 @@ const OrderHistory = () => {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {meta?.totalPages > 1 && !loading && orders?.length > 0 && (
+                <Pagination className="mt-8">
+                    <PaginationContent className="flex-wrap justify-center gap-2">
+
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                        />
+                    </PaginationItem>
+
+                    {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                        const page = i + 1;
+
+                        return (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                isActive={currentPage === page}
+                                onClick={() => changePage(page)}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                        );
+                    })}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                currentPage < meta?.totalPages && changePage(currentPage + 1)
+                            }
+                        />
+                    </PaginationItem>
+
+                    </PaginationContent>
+                </Pagination>
             )}
         </div>
     )}

@@ -12,6 +12,15 @@ import displayCurrency from "@/utils/displayCurrency";
 import { format } from "date-fns";
 import { toast } from "react-toastify";
 import { ViewDelivery } from "@/components/admin/ViewDelivery";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import { useSearchParams } from "react-router-dom";
 
 const statusColors: Record<string, string> = {
     pending: "bg-amber-500/15 text-amber-700 border-amber-500/20",
@@ -25,6 +34,8 @@ const statusColors: Record<string, string> = {
 const statusTabs: (DeliveryStatus | "all")[] = ["all", "pending", "assigned", "in_transit", "delivered", "failed", "cancelled"];
 
 const AdminDeliveries = () => {
+
+    const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<DeliveryStatus | "all">("all");
     const [deliveries, setDeliveries] = useState<DeliveryType[]>([]);
@@ -32,6 +43,7 @@ const AdminDeliveries = () => {
     const [loading, setLoading] = useState(true)
     const [disablingId, setDisablingId] = useState<string | null>(null);
     const [status, setStatus] = useState<string | null>(null);
+    const currentPage = Number(searchParams.get("page")) || 1;
 
     const handleUpdateStatus = async (id: string, status: string) => {
         try {
@@ -50,14 +62,23 @@ const AdminDeliveries = () => {
         }
     };
 
+    const changePage = (page: number) => {
+        setSearchParams({
+            page: page.toString(),
+            // slug: activeCategory,
+        });
+    };
+
     useEffect(() => {
         getDeliveries()
-    }, [])
+    }, [currentPage])
 
     const getDeliveries = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/delivery/records`);
+            let url = `/delivery/records?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const subs = res.data?.data || [];
 
@@ -153,7 +174,7 @@ const AdminDeliveries = () => {
             {/* Table */}
             <Card className="admin-card admin-animate-up" style={{ animationDelay: "180ms" }}>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-hidden">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-border bg-muted/40">
@@ -246,6 +267,43 @@ const AdminDeliveries = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {meta?.totalPages > 1 && !loading && deliveries?.length > 0 && (
+                <Pagination className="mt-8">
+                    <PaginationContent className="flex-wrap justify-center gap-2">
+
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                        />
+                    </PaginationItem>
+
+                    {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                        const page = i + 1;
+
+                        return (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                isActive={currentPage === page}
+                                onClick={() => changePage(page)}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                        );
+                    })}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                currentPage < meta?.totalPages && changePage(currentPage + 1)
+                            }
+                        />
+                    </PaginationItem>
+
+                    </PaginationContent>
+                </Pagination>
+            )}
         </div>
     );
 };

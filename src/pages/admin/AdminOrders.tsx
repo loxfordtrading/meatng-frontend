@@ -5,9 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { mockAdminOrders, formatAdminPrice, type AdminOrder, type AdminOrderLineItem } from "@/data/adminData";
-import { tokenStorage } from "@/lib/auth/tokenStorage";
-import { createOrder, getOrderById, listOrders, updateOrderStatus, type Order as ApiOrder } from "@/lib/api/admin";
 import { LoadingData } from "@/components/LoadingData";
 import { toast } from "react-toastify";
 import { axiosClient } from "@/GlobalApi";
@@ -15,6 +12,15 @@ import { OrderStatus, OrderType, OrdersMetaType } from "@/types/admin";
 import displayCurrency from "@/utils/displayCurrency";
 import { format } from "date-fns";
 import { ViewOrder } from "@/components/admin/ViewOrder";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import { useSearchParams } from "react-router-dom";
 
 const statusColors: Record<string, string> = {
     pending: "bg-amber-500/15 text-amber-700 border-amber-500/20",
@@ -29,6 +35,7 @@ const statusTabs: (OrderStatus | "all")[] = ["all", "paid", "payment_failed", "p
 
 const AdminOrders = () => {
 
+    const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
     const [orders, setOrders] = useState<OrderType[]>([]);
@@ -36,6 +43,7 @@ const AdminOrders = () => {
     const [loading, setLoading] = useState(true)
     const [disablingId, setDisablingId] = useState<string | null>(null);
     const [status, setStatus] = useState<string | null>(null);
+    const currentPage = Number(searchParams.get("page")) || 1;
 
     const handleUpdateStatus = async (id: string, status: string) => {
         try {
@@ -54,14 +62,24 @@ const AdminOrders = () => {
         }
     };
 
+    const changePage = (page: number) => {
+        setSearchParams({
+            page: page.toString(),
+            // slug: activeCategory,
+        });
+    };
+
     useEffect(() => {
         getOrders()
-    }, [])
+    }, [currentPage])
 
     const getOrders = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/orders`);
+
+            let url = `/orders?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const orders = res.data.data || [];
 
@@ -127,7 +145,7 @@ const AdminOrders = () => {
             {/* Table */}
             <Card className="admin-card admin-animate-up" style={{ animationDelay: "160ms" }}>
                 <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto overflow-y-hidden">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-border bg-muted/40">
@@ -215,6 +233,44 @@ const AdminOrders = () => {
                     </div>
                 </CardContent>
             </Card>
+
+            {meta?.totalPages > 1 && !loading && orders?.length > 0 && (
+                <Pagination className="mt-8">
+                    <PaginationContent className="flex-wrap justify-center gap-2">
+
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                        />
+                    </PaginationItem>
+
+                    {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                        const page = i + 1;
+
+                        return (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                isActive={currentPage === page}
+                                onClick={() => changePage(page)}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                        );
+                    })}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                currentPage < meta?.totalPages && changePage(currentPage + 1)
+                            }
+                        />
+                    </PaginationItem>
+
+                    </PaginationContent>
+                </Pagination>
+            )}
+
         </div>
     );
 };

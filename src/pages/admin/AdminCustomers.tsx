@@ -17,6 +17,15 @@ import { LoadingData } from "@/components/LoadingData";
 import displayCurrency from "@/utils/displayCurrency";
 import { ViewCustomer } from "@/components/admin/ViewCustomer";
 import { cn } from "@/lib/utils";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import { useSearchParams } from "react-router-dom";
 
 const statusBadge: Record<string, string> = {
     true: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
@@ -33,48 +42,34 @@ const formatDate = (iso?: string): string => {
 };
 
 const AdminCustomers = () => {
+
+    const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState("");
-    const [selected, setSelected] = useState<CustomerType | null>(null);
 
     const [customers, setCustomers] = useState<CustomerType[]>([]);
     const [meta, setMeta] = useState<CustomerMeta | null>(null);
     const [loading, setLoading] = useState(true)
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
+    const currentPage = Number(searchParams.get("page")) || 1;
 
-    const token = tokenStorage.getAdminToken();
-    const queryClient = useQueryClient();
-
-    const { data: apiUsers, isLoading } = useQuery({
-        queryKey: ["admin-users"],
-        queryFn: async () => {
-            try { return await listAdminUsers(token); } catch { return null; }
-        },
-        staleTime: 60_000,
-    });
-
-    // const customers: AdminCustomer[] = useMemo(() => {
-    //     if (apiUsers) return apiUsers.map(mapApiUser);
-    //     return [];
-    //     // return mockAdminCustomers;          
-    // }, [apiUsers]);
-
-    // const usingMock = !apiUsers;
-    const deleteMutation = useMutation({
-        mutationFn: (id: string) => deleteAdminUser(id, token),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["admin-users"] });
-            setSelected(null);
-        },
-    });
+      const changePage = (page: number) => {
+        setSearchParams({
+            page: page.toString(),
+            // slug: activeCategory,
+        });
+    };
 
     useEffect(() => {
         getCustomers()
-    }, [])
+    }, [currentPage])
 
     const getCustomers = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/users/all`);
+
+            let url = `/users/all?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const customers = res.data.data || [];
 
@@ -289,6 +284,43 @@ const AdminCustomers = () => {
                     </div>
                 </CardContent>
             </Card>
+
+             {meta?.totalPages > 1 && !loading && customers?.length > 0 && (
+                <Pagination className="mt-8">
+                    <PaginationContent className="flex-wrap justify-center gap-2">
+
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                        />
+                    </PaginationItem>
+
+                    {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                        const page = i + 1;
+
+                        return (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                isActive={currentPage === page}
+                                onClick={() => changePage(page)}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                        );
+                    })}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                currentPage < meta?.totalPages && changePage(currentPage + 1)
+                            }
+                        />
+                    </PaginationItem>
+
+                    </PaginationContent>
+                </Pagination>
+            )}
         </div>
     );
 };

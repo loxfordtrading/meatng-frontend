@@ -60,7 +60,22 @@ export const EditGift = () => {
     const [debouncedSearch, setDebouncedSearch] = useState(search);
     const [searchParams, setSearchParams] = useSearchParams();
     const currentPage = Number(searchParams.get("page")) || 1;
-    const activeCategory = searchParams.get("slug") || "all";
+
+    const handleSearch = (value: string) => {
+        setSearch(value);
+
+        setSearchParams({
+            page: "1",
+        });
+    };
+    
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search]);
 
     useEffect(() => {
         if (giftId) {
@@ -156,10 +171,6 @@ export const EditGift = () => {
             setLoadingProducts(true);
         
             let url = `/products?page=${currentPage}&limit=28`;
-        
-            if (activeCategory && activeCategory !== "all") {
-                url += `&slug=${activeCategory}`;
-            }
             
             if (debouncedSearch) {
                 url += `&search=${debouncedSearch}`;
@@ -200,9 +211,9 @@ export const EditGift = () => {
         }
     };
 
-  useEffect(() => {
-    getProducts();
-  }, []);
+    useEffect(() => {
+        getProducts();
+    }, [currentPage, debouncedSearch]);
 
     const handleSubmit = async (e: FormEvent) => {
   
@@ -442,6 +453,8 @@ export const EditGift = () => {
                             <Label className="text-xs">Select</Label>
                             <SetProduct
                                 meta={meta}
+                                search={search}
+                                onSearch={handleSearch}
                                 products={products}
                                 loading={loadingProducts}
                                 addProduct={(p) => {

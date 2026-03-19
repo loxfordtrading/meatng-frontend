@@ -51,24 +51,24 @@ const Addresses = () => {
   const [isSavingAddress, setIsSavingAddress] = useState(false);
   const [addressError, setAddressError] = useState("");
 
-    const formatAddress = (apiData: AddressType): typeof emptyForm => {
-        const a = apiData.attributes;
-        return {
-            label: a.label || "",
-            addressType: a.address_type as "shipping" | "billing",
-            firstName: a.first_name || "",
-            lastName: a.last_name || "",
-            email: a.email || "",
-            phone: a.phone || "",
-            streetAddress: a.street_address || "",
-            apartmentSuite: a.apartment_suite || "",
-            city: a.city || "",
-            state: a.state || "",
-            zipCode: a.zip_code || "",
-            country: a.country || "",
-            isDefault: a.is_default || false,
-        };
+  const formatAddress = (apiData: AddressType): typeof emptyForm => {
+    const a = apiData.attributes;
+    return {
+        label: a.label || "",
+        addressType: a.address_type as "shipping" | "billing",
+        firstName: a.first_name || "",
+        lastName: a.last_name || "",
+        email: a.email || "",
+        phone: a.phone || "",
+        streetAddress: a.street_address || "",
+        apartmentSuite: a.apartment_suite || "",
+        city: a.city || "",
+        state: a.state || "",
+        zipCode: a.zip_code || "",
+        country: a.country || "",
+        isDefault: a.is_default || false,
     };
+  };
 
   // FETCH ADDRESSES
   const fetchAddresses = async () => {

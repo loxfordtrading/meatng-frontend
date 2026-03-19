@@ -11,25 +11,43 @@ import { GiftboxType, OrderStatus, OrderType, OrdersMetaType, PlanType } from "@
 import displayCurrency from "@/utils/displayCurrency";
 import { format } from "date-fns";
 import { ViewPlan } from "@/components/admin/ViewPlan";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { ViewGift } from "@/components/admin/ViewGift";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationLink,
+} from "@/components/ui/pagination";
 
 const AdminGifts = () => {
 
+    const [searchParams, setSearchParams] = useSearchParams();
     const [giftBoxes, setGiftBoxes] = useState<GiftboxType[]>([]);
     const [meta, setMeta] = useState<OrdersMetaType | null>(null);
     const [loading, setLoading] = useState(true)
     const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
+    const currentPage = Number(searchParams.get("page")) || 1;
+
+    const changePage = (page: number) => {
+        setSearchParams({
+            page: page.toString(),
+        });
+    };
 
     useEffect(() => {
         getGiftboxes()
-    }, [])
+    }, [currentPage])
 
     const getGiftboxes = async () => {
         try {
             setLoading(true)
-            const res = await axiosClient.get(`/giftboxes`);
+            let url = `/giftboxes?page=${currentPage}&limit=20`;
+
+            const res = await axiosClient.get(url);
 
             const gifts = res.data?.data || [];
 
@@ -144,6 +162,43 @@ const AdminGifts = () => {
                     </div>
                 </CardContent>
             </Card>
+
+             {meta?.totalPages > 1 && !loading && giftBoxes?.length > 0 && (
+                <Pagination className="mt-8">
+                    <PaginationContent className="flex-wrap justify-center gap-2">
+
+                    <PaginationItem>
+                        <PaginationPrevious
+                            onClick={() => currentPage > 1 && changePage(currentPage - 1)}
+                        />
+                    </PaginationItem>
+
+                    {Array.from({ length: Number(meta?.totalPages) }).map((_, i) => {
+                        const page = i + 1;
+
+                        return (
+                        <PaginationItem key={page}>
+                            <PaginationLink
+                                isActive={currentPage === page}
+                                onClick={() => changePage(page)}
+                            >
+                                {page}
+                            </PaginationLink>
+                        </PaginationItem>
+                        );
+                    })}
+
+                    <PaginationItem>
+                        <PaginationNext
+                            onClick={() =>
+                                currentPage < meta?.totalPages && changePage(currentPage + 1)
+                            }
+                        />
+                    </PaginationItem>
+
+                    </PaginationContent>
+                </Pagination>
+            )}
         </div>
     );
 };

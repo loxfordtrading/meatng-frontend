@@ -59,7 +59,7 @@ export type FormattedOrderType = {
 
   total_amount: number;
 
-  status: OrderStatus;
+  status: string;
 
   subscriptionDetails: unknown | null;
   subscriptionCycleDetails: unknown | null;
@@ -225,6 +225,20 @@ export type GiftboxType = {
 
 export type OrderMetaType = {
   total: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+}
+
+export type SummaryType = {
+  churn_rate: number;
+  active_subscriptions: number;
+  avg_monthly_subscription: number;
+}
+
+export type MetaType = {
+  total: number;
+  summary: SummaryType;
   totalPages: number;
   currentPage: number;
   pageSize: number;
