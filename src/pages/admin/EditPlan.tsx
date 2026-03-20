@@ -406,8 +406,8 @@ export const EditPlan = () => {
                         }
                         className="w-full border rounded-xl px-3 h-10"
                     >
-                    <option value="fixed">Fixed</option>
-                    <option value="sum_of_items">Sum of items</option>
+                        <option value="fixed">Fixed</option>
+                        {/* <option value="sum_of_items">Sum of items</option> */}
                     </select>
                 </div>
             </div>

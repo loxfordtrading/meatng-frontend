@@ -189,6 +189,7 @@ const Gifts = () => {
   };
 
   const addGiftToCart = async () => {
+    
     const data = {
       sender_name: senderName,
       sender_email: senderEmail,

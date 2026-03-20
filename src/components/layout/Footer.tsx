@@ -3,20 +3,28 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Facebook, Instagram, Twitter, Mail } from "lucide-react";
 import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
 import { ROUTES } from "@/lib/routes";
+import { toast } from "react-toastify";
+import { axiosClient } from "@/GlobalApi";
 
 const Footer = () => {
   const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false)
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email) {
-      toast({
-        title: "Subscribed!",
-        description: "Thank you for subscribing to our newsletter.",
-      });
+    if(!email){
+      return toast.error("Please enter your email")
+    }
+    try {
+      setLoading(true)
+      const response = await axiosClient.post("/newsletter/subscribe", { email })
       setEmail("");
+      toast.success("Thank you for subscribing to our newsletter")
+    } catch (error) {
+      toast.error(error.response.data?.message || "Please try again later")
+    } finally {
+      setLoading(false)
     }
   };
 
@@ -39,7 +47,7 @@ const Footer = () => {
                 className="bg-secondary-foreground/10 border-secondary-foreground/20 text-secondary-foreground placeholder:text-secondary-foreground/50"
               />
               <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <Mail className="h-4 w-4" />
+                {loading ? <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> : <Mail className="h-4 w-4" />}
               </Button>
             </form>
           </div>
