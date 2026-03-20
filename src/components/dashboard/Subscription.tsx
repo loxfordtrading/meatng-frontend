@@ -5,6 +5,7 @@ import {
     Pause,
     Play,
     Loader2,
+    Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,10 +32,16 @@ import {
   PaginationPrevious,
   PaginationLink,
 } from "@/components/ui/pagination";
+import { Input } from "../ui/input";
+import { formatEnums } from "@/utils/formatEnums";
+import { LoadingData } from "../LoadingData";
+
+type SubFilter = "all" | "active" | "paused" | "cancelled" | "expired" | "past_due";
 
 const Subscription = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
+    const [search, setSearch] = useState("");
     const navigate = useNavigate()
     const userInfo = useAuthStore(state => state.userInfo)
     const [subscriptions, setSubscriptions] = useState<FormattedSubscriptionType[]>([]);
@@ -42,7 +49,12 @@ const Subscription = () => {
      const [meta, setMeta] = useState<MetaType | null>(null);
     const [pausingId, setPausingId] = useState<string | null>(null);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
+
     const currentPage = Number(searchParams.get("page")) || 1;
+    const activeStatus = searchParams.get("status") || "all";
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
+
+    const tabs: SubFilter[] = ["all", "active", "paused", "cancelled", "expired", "past_due"];
 
     const changePage = (page: number) => {
         const params = new URLSearchParams(searchParams);
@@ -51,14 +63,59 @@ const Subscription = () => {
         setSearchParams(params);
     };
 
+    const changeStatus = (status: string) => {
+        const params = new URLSearchParams(searchParams);
+
+        params.set("page", "1");
+
+        if (status === "all") {
+            params.delete("status");
+        } else {
+            params.set("status", status);
+        }
+
+        setSearchParams(params);
+    };
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams);
+
+        params.set("page", "1");
+
+        if (debouncedSearch) {
+            params.set("search", debouncedSearch);
+        } else {
+            params.delete("search");
+        }
+
+        setSearchParams(params);
+    }, [debouncedSearch]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search]);
+
     useEffect(() => {
         getSubscriptions()
-    }, [currentPage])
+    }, [currentPage, activeStatus, debouncedSearch])
 
     const getSubscriptions = async () => {
         try {
             setLoading(true)
+
             let url = `/subscriptions/by-user/${userInfo.userId}?page=${currentPage}&limit=20`;
+
+            if (activeStatus && activeStatus !== "all") {
+                url += `&status=${activeStatus}`;
+            }
+            
+            if (debouncedSearch) {
+                url += `&search=${encodeURIComponent(debouncedSearch)}`;
+            }
 
             const res = await axiosClient.get(url);
 
@@ -119,14 +176,6 @@ const Subscription = () => {
         }
     }
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-24 admin-page-bg rounded-3xl">
-                <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
             <div>
@@ -134,7 +183,55 @@ const Subscription = () => {
                 <p className="text-muted-foreground mt-1">Manage your plan, size, and delivery preferences.</p>
             </div>
 
-            {subscriptions?.length > 0 ? (
+             {/* Filters */}
+            <div className="flex flex-col md:flex-row gap-3">
+                <div className="relative flex-1 max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="pl-9 h-10 rounded-xl" />
+                </div>
+                <div className="flex gap-1 flex-wrap bg-muted/60 rounded-xl p-1">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab}
+                            disabled={loading}
+                            onClick={() => changeStatus(tab)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${activeStatus === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                                }`}
+                        >
+                            {tab === "all" ? "All" : formatEnums(tab)}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {loading ? (
+                <LoadingData/>
+            ) : subscriptions?.length === 0 ? (
+                !search && activeStatus === "all" ? (
+                    <Card className="admin-card">
+                        <CardContent className="p-8 text-center">
+                            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold">No Active Subscription</h3>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Start your first subscription to get premium meat delivered.
+                            </p>
+                            <Button className="mt-4" onClick={() => navigate(ROUTES.plans)}>
+                                Choose a Plan <ChevronRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    // FILTERED EMPTY STATE
+                    <Card className="admin-card">
+                        <CardContent className="py-12 text-center">
+                            <Package className="mx-auto h-10 w-10 text-muted-foreground/50" />
+                            <p className="mt-3 text-muted-foreground">
+                                No results found!
+                            </p>
+                        </CardContent>
+                    </Card>
+                )
+            ) : (
                 subscriptions.map((sub) => (
                     <Card key={sub.id} className="admin-card">
                         <CardHeader>
@@ -218,23 +315,10 @@ const Subscription = () => {
                             </div>
                         </CardContent>
                     </Card>
-                    ))
-                ) : (
-                <Card className="admin-card">
-                    <CardContent className="p-8 text-center">
-                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold">No Active Subscription</h3>
-                    <p className="text-sm text-muted-foreground mt-2">
-                        Start your first subscription to get premium meat delivered.
-                    </p>
-                    <Button className="mt-4" onClick={() => navigate(ROUTES.plans)}>
-                        Choose a Plan <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                    </CardContent>
-                </Card>
+                ))
             )}
 
-             {meta?.totalPages > 1 && !loading && subscriptions?.length > 0 && (
+            {meta?.totalPages > 1 && !loading && subscriptions?.length > 0 && (
                 <Pagination className="mt-8">
                     <PaginationContent className="flex-wrap justify-center gap-2">
 

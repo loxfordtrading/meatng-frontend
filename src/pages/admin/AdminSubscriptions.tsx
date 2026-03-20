@@ -38,8 +38,6 @@ const AdminSubscriptions = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState("");
-    const [filter, setFilter] = useState<SubFilter>("all");
-    const [subs, setSubs] = useState<AdminSubscription[]>([]);
     const [subscriptions, setSubscriptions] = useState<SubscriptionType[]>([]);
     const [meta, setMeta] = useState<SubscriptionMetaType | null>(null);
     const [loading, setLoading] = useState(true)
@@ -191,18 +189,18 @@ const AdminSubscriptions = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by customer..." className="pl-9 h-10 rounded-xl" />
                 </div>
-                <div className="flex gap-1 bg-muted/60 rounded-xl p-1">
+                <div className="flex gap-1 flex-wrap bg-muted/60 rounded-xl p-1">
                     {tabs.map((tab) => (
                         <button
                             key={tab}
                             disabled={loading}
                             onClick={() => changeStatus(tab)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${filter === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize ${activeStatus === tab ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                                 }`}
                         >
                             {tab === "all" ? "All" : formatEnums(tab)}

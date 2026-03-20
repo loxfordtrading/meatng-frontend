@@ -196,7 +196,7 @@ const OrderHistory = () => {
                         <CardContent className="py-12 text-center">
                             <Package className="mx-auto h-10 w-10 text-muted-foreground/50" />
                             <p className="mt-3 text-muted-foreground">
-                                No order results found!
+                                No results found!
                             </p>
                         </CardContent>
                     </Card>
