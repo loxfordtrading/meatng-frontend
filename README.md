@@ -79,3 +79,49 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Run with Docker
+
+This project includes a production Docker image that builds the Vite app and serves it with Nginx.
+
+1. Create your env file:
+
+```sh
+cp .env.example .env
+```
+
+2. Build the image:
+
+```sh
+docker build -t meatng-frontend .
+```
+
+3. Run the container:
+
+```sh
+docker run --rm -p 8080:80 meatng-frontend
+```
+
+Then open `http://localhost:8080`.
+
+You can also use Docker Compose:
+
+```sh
+docker compose up --build
+```
+
+## Deploy on Coolify
+
+Use the included `Dockerfile`.
+
+Set these build variables in Coolify before deploying:
+
+- `VITE_API_BASE_URL=https://meatng-api.onrender.com`
+- `VITE_API_BACKEND_URL=https://meatng-api.onrender.com`
+
+Why build variables matter:
+
+- This app is built with Vite.
+- Vite injects `VITE_*` variables at build time, not at normal container runtime.
+
+If your backend URL changes, trigger a new deployment so Coolify rebuilds the image with the new values.
