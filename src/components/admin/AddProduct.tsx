@@ -193,7 +193,7 @@ const AddProduct = ({ categories, getProducts}: {categories: any; getProducts: (
                         <Input
                             type="number"
                             value={createForm.packSize ?? ""}
-                            onChange={(e) => setCreateForm((f) => ({ ...f, packSize: parseInt(e.target.value) || 0 }))}
+                            onChange={(e) => setCreateForm((f) => ({ ...f, packSize: parseFloat(e.target.value) || 0 }))}
                             placeholder="3"
                             className="h-10 rounded-xl"
                         />
