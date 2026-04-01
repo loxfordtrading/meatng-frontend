@@ -266,7 +266,6 @@ const EditProduct = ({ categories, product, type, getProducts}: {categories: any
                 </div>
                 <div className="space-y-2">
                     <Label>Upload product image</Label>
-
                     <div
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={handleDrop}
