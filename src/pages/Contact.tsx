@@ -12,13 +12,13 @@ import { ROUTES } from "@/lib/routes";
 const contactChannels = [
   {
     title: "Email support",
-    detail: "foodingmeatng@gmail.com",
+    detail: "themeatng@gmail.com",
     note: "Best for order updates and account issues.",
     icon: Mail,
   },
   {
     title: "Call center",
-    detail: "+234 708 644 4603",
+    detail: "+234 7086444603",
     note: "Available Mon-Fri, 8am-6pm.",
     icon: PhoneCall,
   },
@@ -31,6 +31,7 @@ const contactChannels = [
 ];
 
 const Contact = () => {
+  
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [order, setOrder] = useState("");

@@ -92,7 +92,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <img
                         src="/Meatng_logo.png"
                         alt="MeatNG"
-                        className="h-8 w-auto"
+                        className="h-4 w-auto"
                     />
                     <div className={cn("border-l border-border pl-3", collapsed && "hidden")}>
                         <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">Admin</p>
@@ -169,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Menu className="h-5 w-5 mr-2" /> Menu
                 </Button>
                 <div className="flex items-center gap-2">
-                    <img src="/Meatng_logo.png" alt="MeatNG" className="h-7 w-auto" />
+                    <img src="/Meatng_logo.png" alt="MeatNG" className="h-4 w-auto" />
                     <span className="text-sm font-bold">Admin</span>
                 </div>
                 <Button variant="ghost" size="icon" className="relative">

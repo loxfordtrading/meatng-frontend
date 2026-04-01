@@ -99,7 +99,7 @@ const AdminLogin = () => {
                     <img
                         src="/Meatng_logo.png"
                         alt="MeatNG"
-                        className="h-12 w-auto mx-auto mb-4 brightness-[2] contrast-125"
+                        className="h-9 w-auto mx-auto mb-4 brightness-[2] contrast-125"
                     />
                     <h1 className="text-2xl font-display font-bold text-secondary-foreground">Admin Panel</h1>
                     <p className="text-secondary-foreground/60 text-sm mt-1">Sign in to access the admin panel</p>
