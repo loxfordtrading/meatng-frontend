@@ -220,6 +220,8 @@ export type GiftboxType = {
     description: string;
     is_active: boolean;
     quantity: number;
+    new_weight: number;
+    new_weight_unit: "g" | "kg";
   }[];
 };
 
