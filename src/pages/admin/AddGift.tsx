@@ -23,6 +23,8 @@ const giftboxSchema = z.object({
       z.object({
         product_id: z.string().nonempty("Product is required"),
         quantity: z.number().min(1, "Quantity must be at least 1"),
+        weight: z.number().min(0.0001, "Weight must be greater than 0"),
+        weight_unit: z.enum(["g", "kg"]),
       })
     )
     .min(1, "At least one product is required"),
@@ -39,7 +41,7 @@ export const AddGift = () => {
     weight_unit: "kg" as "g" | "kg",
     temp_id: "",
     is_active: true,
-    products: [] as { product_id: string; name?: string; quantity: number }[],
+    products: [] as { product_id: string; name?: string; quantity: number, weight: number, weight_unit: "g"| "kg" }[],
   });
 
   const [search, setSearch] = useState("");
@@ -181,9 +183,11 @@ export const AddGift = () => {
 
         const payload = {
             ...form,
-            products: form.products.map(({ product_id, quantity }) => ({
+            products: form.products.map(({ product_id, quantity, weight, weight_unit }) => ({
                 product_id,
                 quantity,
+                weight,
+                weight_unit
             })),
         };
 
@@ -267,8 +271,8 @@ export const AddGift = () => {
                     }
                     className="w-full border rounded-xl px-3 h-10"
                 >
-                <option value="g">g</option>
-                <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="kg">kg</option>
                 </select>
             </div>
           </div>
@@ -367,7 +371,7 @@ export const AddGift = () => {
               onClick={() =>
                 setForm((f) => ({
                   ...f,
-                  products: [...f.products, { product_id: "", quantity: 1 }],
+                  products: [...f.products, { product_id: "", quantity: 1, weight: 1, weight_unit: "g" }],
                 }))
               }
             >
@@ -381,7 +385,7 @@ export const AddGift = () => {
                         {item?.name || "No product selected"}
                     </h2>
                     <div
-                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end"
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end"
                     >
                         <div className="space-y-1">
                             <Label className="text-xs">Select</Label>
@@ -414,6 +418,35 @@ export const AddGift = () => {
                                 setForm({ ...form, products: updated });
                                 }}
                             />
+                        </div>
+
+                        <div className="space-y-1">
+                            <Label className="text-xs">Weight</Label>
+                            <Input
+                                type="number"
+                                value={item.weight}
+                                onChange={(e) => {
+                                    const updated = [...form.products];
+                                    updated[index].weight = Number(e.target.value);
+                                    setForm({ ...form, products: updated });
+                                }}
+                            />
+                        </div>
+
+                        <div className="space-y-1">
+                            <Label className="text-xs">Weight Unit</Label>
+                            <select
+                                value={item.weight_unit}
+                                onChange={(e) => {
+                                    const updated = [...form.products];
+                                    updated[index].weight_unit = e.target.value as "g" | "kg";
+                                    setForm({ ...form, products: updated });
+                                }}
+                                className="w-full border rounded-xl px-3 h-10"
+                            >
+                                <option value="g">g</option>
+                                <option value="kg">kg</option>
+                            </select>
                         </div>
 
                         <Button
