@@ -43,6 +43,9 @@ const CartReview = () => {
   const [loadingProducts, setLoadingProducts] = useState(true)
 
   const totalGransInCart = totalGramWeight()
+
+  const prefilledWeightG = toGrams(subInfo?.subscription?.attributes?.prefilled_items_total_weight, subInfo?.subscription?.attributes?.weight_unit as "kg" | "g")
+  const totalFilled = prefilledWeightG + totalGransInCart
   
   if (!subInfo?.subscription || !subInfo?.selectedFrequency) {
     return <Navigate to={ROUTES.plans} replace />;
@@ -423,7 +426,7 @@ const CartReview = () => {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs text-muted-foreground">
-                {formatWeight(totalGransInCart)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
+                {formatWeight(totalFilled)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
               </p>
               <p className="text-lg font-bold text-primary">{displayCurrency(subInfo?.subscription?.attributes?.price + addonTotal, "NGN")}</p>
             </div>

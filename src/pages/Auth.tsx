@@ -244,7 +244,7 @@ const Auth = () => {
       <div className="container relative z-10 py-8 md:py-12">
         <div className="flex items-center justify-between">
           {/* <Link to={ROUTES.home} className="inline-flex items-center">
-            <img src="/Fooding_Meat_Logo.png" alt="MeatNG" className="h-9 w-auto" />
+            <img src="/Meatng_logo.png" alt="MeatNG" className="h-9 w-auto" />
           </Link> */}
           <Button asChild variant="outline" size="sm">
             <Link to={ROUTES.home}>Back to home</Link>

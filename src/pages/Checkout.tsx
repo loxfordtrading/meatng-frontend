@@ -9,23 +9,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useSubscription } from "@/contexts/SubscriptionContext";
-import { useCart } from "@/contexts/CartContext";
-import { getDisplayFrequency, getPlanById, formatPrice as formatPlanPrice, formatWeight } from "@/data/plans";
-import { getProductById } from "@/data/products";
 import { lagosAreas, findLagosZoneByArea, deliveryStates, getDeliveryState } from "@/data/deliveryZones";
 import { ROUTES } from "@/lib/routes";
 import type { Address } from "@/lib/api/customer/addresses";
-import { getErrorMessage } from "@/lib/api/errors";
-import { tokenStorage } from "@/lib/auth/tokenStorage";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
-import { useCartStore } from "@/store/cartStore";
 import { axiosClient } from "@/GlobalApi";
 import displayCurrency from "@/utils/displayCurrency";
 import { getFrequencyWeeks } from "@/utils/conversion";
-import { useAddonStore } from "@/store/addonStore";
 import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
-import { useAuthStore } from "@/store/AuthStore";
 import Skeleton from "@/components/Skeleton";
 import { toast } from "react-toastify";
 
@@ -449,13 +441,6 @@ const Checkout = () => {
                   <p className="flex justify-between"><span className="text-muted-foreground">Add-ons</span><span>{displayCurrency(cartItems?.attributes?.addonTotal, "NGN")}</span></p>
                 )}
               </>
-              {/* {isOneTimeCheckout && (
-                <p className="flex justify-between"><span className="text-muted-foreground">Items</span><span>{cart.itemCount}</span></p>
-              )} */}
-              {/* <p className="flex justify-between">
-                <span className="text-muted-foreground">Delivery</span>
-                <span>{deliveryResolved ? formatPlanPrice(deliveryFee) : "—"}</span>
-              </p> */}
             </div>
           </details>
         </div>
@@ -679,7 +664,7 @@ const Checkout = () => {
                     <Label htmlFor="airplane-mode">Enable Auto Debit</Label>
                     <Switch id="airplane-mode" checked={autoDebit} onCheckedChange={setAutoDebit}/>
                   </div> */}
-                  <p className="text-justify">By continuing with your payment, you agree to our <Link className="underline font-semibold" to={"/"}>Terms of Use</Link>and <Link className="underline font-semibold" to={"/"}>Privacy Policy</Link>, you agree that one or more items in your cart is a deferred or recurring purchase, you agree to purchase a continuous subscription, and you agree that your payment method will automatically be charged at the price and frequency listed on this page until it ends or you cancel. Prices are subject to change. All cancellations are subject to our cancellation policy. Cancel your subscription through your account or by emailing <a className="underline font-semibold" href="mailto:support@meatng.com">support@meatng.com</a></p>
+                  <p className="text-justify">By continuing with your payment, you agree to our <a className="underline font-semibold" href="/Meat NG Terms and Conditions.pdf">Terms of Use</a>and <a className="underline font-semibold" href={"/Meat NG Privacy Policy.pdf"}>Privacy Policy</a>, you agree that one or more items in your cart is a deferred or recurring purchase, you agree to purchase a continuous subscription, and you agree that your payment method will automatically be charged at the price and frequency listed on this page until it ends or you cancel. Prices are subject to change. All cancellations are subject to our cancellation policy. Cancel your subscription through your account or by emailing <a className="underline font-semibold" href="mailto:themeatng@gmail.com">themeatng@gmail.com</a></p>
                 </CardContent>
               </Card>
             )}
@@ -689,17 +674,7 @@ const Checkout = () => {
                 <CardTitle>Payment Method</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-               
-                {/* paymentMethod === "paystack" info box removed */}
-                {/* {paymentMethod === "bank-transfer" && (
-                  <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
-                    <p><strong>Bank:</strong> Example Bank</p>
-                    <p><strong>Account:</strong> MeatNG Foods Ltd</p>
-                    <p><strong>Account Number:</strong> 0123456789</p>
-                    <p><strong>Amount:</strong> {formatPlanPrice(totalDue)}</p>
-                    <p><strong>Reference:</strong> {paymentReference}</p>
-                  </div>
-                )} */}
+              
                 {Object.keys(formErrors).length > 0 && (
                   <div className="text-sm text-destructive space-y-1">
                     {Object.values(formErrors).map((error, index) => (
@@ -762,22 +737,6 @@ const Checkout = () => {
                             </div>
                           ))}
 
-                          {/* Offal selections */}
-                          {/* {plan?.offalSelection && state.selectedOffals.length > 0 && (
-                            <>
-                              <p className="text-xs font-semibold uppercase tracking-wider text-primary pt-1">Your offal picks</p>
-                              {state.selectedOffals.map((name) => {
-                                const opt = plan.offalSelection!.options.find((o) => o.name === name);
-                                return opt ? (
-                                  <div key={name} className="flex items-center justify-between gap-2">
-                                    <span className="text-sm font-medium text-foreground">{opt.name}</span>
-                                    <span className="text-xs text-muted-foreground">{formatWeight(opt.weightG)}</span>
-                                  </div>
-                                ) : null;
-                              })}
-                            </>
-                          )} */}
-
                           <Button variant="link" className="h-auto p-0 text-primary" asChild>
                             <Link to={ROUTES.buildBox}>Edit full box</Link>
                           </Button>
@@ -812,34 +771,8 @@ const Checkout = () => {
                                 <span className="text-xs text-right text-muted-foreground">{item?.productId?.formattedWeight}</span>
                             </div>
                           ))}
-                          {/* <Button variant="link" className="h-auto p-0 text-primary" asChild>
-                            <Link to={ROUTES.cartReview}>Manage add-ons</Link>
-                          </Button> */}
                         </div>
                       )}
-                      
-                      {/* {cartItems?.attributes?.items.filter((s) => s.item_type === 'addon').length > 0 && (
-                        <div className="rounded-lg border border-border bg-background p-3 space-y-2">
-                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add-ons</p>
-                          {cartItems?.attributes?.items.filter((s) => s.item_type === 'addon').map((item) => (
-                            <div key={item?.productId?.id} className="flex items-start justify-between gap-2">
-                              <div className="leading-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-foreground">{item?.productId?.name}</span>
-                                  <Badge variant="outline" className="text-xs">{item?.quantity}x</Badge>
-                                </div>
-                                <span className="text-xs text-muted-foreground">{item?.productId?.formattedWeight}</span>
-                              </div>
-                              <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => setAddonQty(item, item?.quantity - 1)}>
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ))}
-                          <Button variant="link" className="h-auto p-0 text-primary" asChild>
-                            <Link to={ROUTES.cartReview}>Manage add-ons</Link>
-                          </Button>
-                        </div>
-                      )} */}
 
                       <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Plan</span><span>{subInfo?.subscription?.attributes?.name}</span></p>
                       <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Weight</span><span>{subInfo?.subscription?.attributes?.weight}</span></p>
@@ -864,94 +797,17 @@ const Checkout = () => {
                     </>
                   )}
 
-                  {/* {isOneTimeCheckout && (
-                    <>
-                      <Badge variant="secondary" className="w-full justify-center">One-time order</Badge>
-                      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                        {cart.items.map((item) => (
-                          <div key={item.id} className="space-y-1 border-b border-border/50 pb-2 last:border-b-0 last:pb-0">
-                            <div className="flex items-center justify-between gap-2 text-sm">
-                              <span className="truncate">{item.name} x{item.quantity}</span>
-                              <span>{formatPlanPrice(item.price * item.quantity)}</span>
-                            </div>
-                            {item.type === "gift-box" && item.giftDetails?.recipientName && (
-                              <p className="text-xs text-muted-foreground">
-                                For {item.giftDetails.recipientName}
-                                {item.giftDetails.occasion ? ` • ${item.giftDetails.occasion}` : ""}
-                              </p>
-                            )}
-                            {item.type === "gift-box" && item.giftDetails?.message && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                Card: \"{item.giftDetails.message}\"
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Order type</span><span>One-time</span></p>
-                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Items</span><span>{cart.itemCount}</span></p>
-                    </>
-                  )} */}
-
-                  {/* <p className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Truck className="h-3.5 w-3.5" /> Delivery
-                    </span>
-                    <span>{deliveryResolved ? formatPlanPrice(deliveryFee) : "Select location"}</span>
-                  </p> */}
                   <Separator />
                   <p className="flex items-center justify-between text-lg font-bold">
                     <span>Total due now</span>
                     <span className="text-primary">{displayCurrency((cartItems?.attributes?.totalPrice || 0) + deliveryFee, "NGN")}</span>
                   </p>
-                  {/* <Badge variant="outline" className="w-full justify-center">Ref: {paymentReference}</Badge> */}
                 </CardContent>
               )}
             </Card>
           </div>
         </div>
       </div>
-
-      {/* {showSuccessModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-background p-6 shadow-2xl">
-            <div className="mb-4 flex items-center gap-2 text-primary">
-              <CheckCircle2 className="h-6 w-6" />
-              <h2 className="text-2xl font-display font-bold">{isSubscriptionCheckout ? "Payment Successful" : "Order Received"}</h2>
-            </div>
-            <p className="text-muted-foreground">
-              {isSubscriptionCheckout ? "Subscription activated. Membership is now active." : "Your one-time order has been placed."}
-            </p>
-            <div className="mt-4 space-y-2 rounded-lg border border-border bg-muted/30 p-4 text-sm">
-              {isSubscriptionCheckout && (
-                <>
-                  <p><strong>Plan:</strong> {plan?.name}</p>
-                  <p><strong>Weight:</strong> {selectedWeightLabel}</p>
-                  <p><strong>Frequency:</strong> {state.frequency ? getDisplayFrequency(state.frequency) : "-"}</p>
-                  {billingDate && <p><strong>Next billing:</strong> {formatDate(billingDate)}</p>}
-                  {deliveryWindow && <p><strong>Delivery window:</strong> {deliveryWindow}</p>}
-                  {cutoffDate && <p><strong>Edit cutoff:</strong> {formatDateTime(cutoffDate)}</p>}
-                </>
-              )}
-              {isOneTimeCheckout && <p><strong>Order type:</strong> One-time purchase</p>}
-              <p><strong>Payment reference:</strong> {paymentReference}</p>
-            </div>
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {isSubscriptionCheckout ? (
-                <Button asChild><Link to={ROUTES.dashboard}>Go to My Account</Link></Button>
-              ) : (
-                <Button onClick={handleSuccessContinue}>View Confirmation Page</Button>
-              )}
-              <Button variant="outline" onClick={() => navigate(ROUTES.home)}>Continue Browsing</Button>
-              {isSubscriptionCheckout && (
-                <Button variant="secondary" className="sm:col-span-2" onClick={handleSuccessContinue}>
-                  View Confirmation Page
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )} */}
 
     </div>
   );

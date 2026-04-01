@@ -2,14 +2,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { ShoppingCart, Menu, X, User, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useCart } from "@/contexts/CartContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import CartDrawer from "@/components/cart/CartDrawer";
 import { ROUTES } from "@/lib/routes";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { useCartStore } from "@/store/cartStore";
 import { useAddonStore } from "@/store/addonStore";
-import { useAuthStore } from "@/store/AuthStore";
+import { useAuthStore } from "@/store/AuthStore"; 
 
 const Header = () => {
 
@@ -44,9 +43,9 @@ const Header = () => {
           <div className="flex flex-1 items-center gap-3">
             <Link to={ROUTES.home} className="flex items-center gap-3">
               <img
-                src="/Fooding_Meat_Logo.png"
+                src="/Meatng_logo.png"
                 alt="MeatNG"
-                className="h-8 w-auto sm:h-9"
+                className="h-4 w-auto sm:h-6"
               />
             </Link>
           </div>

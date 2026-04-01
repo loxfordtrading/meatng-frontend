@@ -98,15 +98,14 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4 text-primary">Contact</h3>
             <ul className="space-y-2 text-secondary-foreground/80">
-              <li>+234 708 644 4603</li>
-              <li>foodingmeatng@gmail.com</li>
-              <li>Available nationwide</li>
+              <li>+234 7086444603</li>
+              <li>themeatng@gmail.com</li>
             </ul>
             <div className="flex gap-4 mt-4">
               <a href="#" className="text-secondary-foreground/80 hover:text-primary transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="text-secondary-foreground/80 hover:text-primary transition-colors">
+              <a href="https://www.instagram.com/meat_ng?igsh=a3RlMGM2ZGE5azRm" className="text-secondary-foreground/80 hover:text-primary transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
               <a href="#" className="text-secondary-foreground/80 hover:text-primary transition-colors">
@@ -119,8 +118,8 @@ const Footer = () => {
         <div className="border-t border-secondary-foreground/20 mt-8 pt-8 text-center text-secondary-foreground/60 text-sm space-y-2">
           <p>&copy; {new Date().getFullYear()} MeatNG. All rights reserved.</p>
           <div className="flex flex-wrap justify-center gap-4 text-xs text-secondary-foreground/60">
-            <a href="#" className="hover:text-primary transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="/Meat NG Terms and Conditions.pdf" className="hover:text-primary transition-colors">Terms of Service</a>
+            <a href="/Meat NG Privacy Policy.pdf" className="hover:text-primary transition-colors">Privacy Policy</a>
             <a href="#" className="hover:text-primary transition-colors">Shipping Policy</a>
             <span className="text-secondary-foreground/20">|</span>
             <Link to={ROUTES.adminLogin} className="hover:text-primary transition-colors">Admin</Link>

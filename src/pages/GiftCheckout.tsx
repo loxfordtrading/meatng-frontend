@@ -10,22 +10,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useCart } from "@/contexts/CartContext";
-import { getDisplayFrequency, getPlanById, formatPrice as formatPlanPrice, formatWeight } from "@/data/plans";
-import { getProductById } from "@/data/products";
 import { lagosAreas, findLagosZoneByArea, deliveryStates, getDeliveryState } from "@/data/deliveryZones";
 import { ROUTES } from "@/lib/routes";
 import type { Address } from "@/lib/api/customer/addresses";
-import { getErrorMessage } from "@/lib/api/errors";
-import { tokenStorage } from "@/lib/auth/tokenStorage";
-import { useSubscriptionStore } from "@/store/subscriptionStore";
-import { useCartStore } from "@/store/cartStore";
 import { axiosClient } from "@/GlobalApi";
 import displayCurrency from "@/utils/displayCurrency";
-import { getFrequencyWeeks } from "@/utils/conversion";
-import { useAddonStore } from "@/store/addonStore";
 import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
-import { useAuthStore } from "@/store/AuthStore";
 import Skeleton from "@/components/Skeleton";
 import { toast } from "react-toastify";
 import { GiftboxType } from "@/types/types";
@@ -618,19 +609,6 @@ const GiftCheckout = () => {
                         <p className="text-sm text-destructive">{formErrors.city}</p>
                       )}
                     </div>
-                    {/* <div className="md:col-span-2">
-                      <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/[0.03] p-3">
-                        <Truck className="h-5 w-5 shrink-0 text-primary" />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold">{selectedState} delivery</p>
-                          <p className="text-xs text-muted-foreground">Flat rate — statewide</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm font-bold text-primary">{formatPlanPrice(deliveryFee)}</p>
-                          <p className="text-[10px] text-muted-foreground">delivery fee</p>
-                        </div>
-                      </div>
-                    </div> */}
                   </>
                 )}
 
@@ -772,35 +750,6 @@ const GiftCheckout = () => {
                     </>
                   )}
 
-                  {/* {isOneTimeCheckout && (
-                    <>
-                      <Badge variant="secondary" className="w-full justify-center">One-time order</Badge>
-                      <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
-                        {cart.items.map((item) => (
-                          <div key={item.id} className="space-y-1 border-b border-border/50 pb-2 last:border-b-0 last:pb-0">
-                            <div className="flex items-center justify-between gap-2 text-sm">
-                              <span className="truncate">{item.name} x{item.quantity}</span>
-                              <span>{formatPlanPrice(item.price * item.quantity)}</span>
-                            </div>
-                            {item.type === "gift-box" && item.giftDetails?.recipientName && (
-                              <p className="text-xs text-muted-foreground">
-                                For {item.giftDetails.recipientName}
-                                {item.giftDetails.occasion ? ` • ${item.giftDetails.occasion}` : ""}
-                              </p>
-                            )}
-                            {item.type === "gift-box" && item.giftDetails?.message && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                Card: \"{item.giftDetails.message}\"
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Order type</span><span>One-time</span></p>
-                      <p className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Items</span><span>{cart.itemCount}</span></p>
-                    </>
-                  )} */}
-
                   <p className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-1.5 text-muted-foreground">
                       Box Price
@@ -827,47 +776,6 @@ const GiftCheckout = () => {
           </div>
         </div>
       </div>
-
-      {/* {showSuccessModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-background p-6 shadow-2xl">
-            <div className="mb-4 flex items-center gap-2 text-primary">
-              <CheckCircle2 className="h-6 w-6" />
-              <h2 className="text-2xl font-display font-bold">{isSubscriptionCheckout ? "Payment Successful" : "Order Received"}</h2>
-            </div>
-            <p className="text-muted-foreground">
-              {isSubscriptionCheckout ? "Subscription activated. Membership is now active." : "Your one-time order has been placed."}
-            </p>
-            <div className="mt-4 space-y-2 rounded-lg border border-border bg-muted/30 p-4 text-sm">
-              {isSubscriptionCheckout && (
-                <>
-                  <p><strong>Plan:</strong> {plan?.name}</p>
-                  <p><strong>Weight:</strong> {selectedWeightLabel}</p>
-                  <p><strong>Frequency:</strong> {state.frequency ? getDisplayFrequency(state.frequency) : "-"}</p>
-                  {billingDate && <p><strong>Next billing:</strong> {formatDate(billingDate)}</p>}
-                  {deliveryWindow && <p><strong>Delivery window:</strong> {deliveryWindow}</p>}
-                  {cutoffDate && <p><strong>Edit cutoff:</strong> {formatDateTime(cutoffDate)}</p>}
-                </>
-              )}
-              {isOneTimeCheckout && <p><strong>Order type:</strong> One-time purchase</p>}
-              <p><strong>Payment reference:</strong> {paymentReference}</p>
-            </div>
-            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {isSubscriptionCheckout ? (
-                <Button asChild><Link to={ROUTES.dashboard}>Go to My Account</Link></Button>
-              ) : (
-                <Button onClick={handleSuccessContinue}>View Confirmation Page</Button>
-              )}
-              <Button variant="outline" onClick={() => navigate(ROUTES.home)}>Continue Browsing</Button>
-              {isSubscriptionCheckout && (
-                <Button variant="secondary" className="sm:col-span-2" onClick={handleSuccessContinue}>
-                  View Confirmation Page
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )} */}
 
     </div>
   );
