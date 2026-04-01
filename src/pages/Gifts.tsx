@@ -171,7 +171,9 @@ const Gifts = () => {
           formatted_weight:  p.product_id.formattedWeight,
           description: p.product_id.description,
           is_active: p.product_id.is_active,
-          quantity:  p.quantity
+          quantity:  p.quantity,
+          new_weight: p.weight,
+          new_weight_unit: p.weight_unit
         })),
       }));
 
@@ -414,7 +416,7 @@ const Gifts = () => {
                                 key={line?.id}
                                 className="text-xs text-muted-foreground flex items-center justify-between gap-2"
                               >
-                                <span>{line?.name} - {line?.weight}{line?.weight_unit}</span>
+                                <span>{line?.name} - {line?.new_weight}{line?.new_weight_unit}</span>
                                 <span>{line?.quantity}x</span>
                               </p>
                             ))}
