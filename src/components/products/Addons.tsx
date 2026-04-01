@@ -25,7 +25,7 @@ export default function Addons({ products}: {products: any}) {
 
             return (
               <div
-                key={item.name}
+                key={item?.name}
                 className={`rounded-2xl border p-4 transition ${
                   qty > 0 ? "border-primary/40 bg-primary/[0.03] ring-1 ring-primary/20" : "border-border"
                 }
@@ -38,7 +38,7 @@ export default function Addons({ products}: {products: any}) {
                 />
                 <div className="mb-2 flex flex-1 items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold">{item.name}</p>
+                    <p className="text-sm font-semibold">{item?.name}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{item?.weight}{item?.weight_unit}</span>
                       <Badge variant="secondary" className={`px-1.5 py-0 text-[10px]}`}>

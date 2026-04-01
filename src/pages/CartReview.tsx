@@ -37,6 +37,7 @@ const CartReview = () => {
   const { addonItems, addAddon, setAddonQty, totalAddonItems, totalAddonPrice } = useAddonStore();
   const addonTotal = totalAddonPrice();
   const [products, setProducts] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false)
   const { userInfo } = useAuthStore();
   const [loadingProducts, setLoadingProducts] = useState(true)
@@ -75,20 +76,32 @@ const CartReview = () => {
     try {
       const res = await axiosClient.get("/products");
 
-      const formattedProducts = res.data.data.map((item: any) => ({
+      const productInfo = res.data.data || []
+
+      const formattedProducts = productInfo.map((item: any) => ({
         id: item.id,
         name: item.attributes.name,
-        price: item.attributes.price,
+        nameSlug: item.attributes.slug,
+        description: item.attributes.description,
         status: item.attributes.status,
         isActive: item.attributes.is_active,
+        image: item.attributes.image,
+        sku: item.attributes.sku,
+        isBestSelling: item.attributes.isBestSeller,
+        displayType: item.attributes.displayType,
+        price: item.attributes.price,
         weight: item.attributes.mainValue,
         weight_unit: item.attributes.unit,
         formatted_weight: item.attributes.formattedWeight,
-        category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
+        categoryId: item.relationships?.categoryDetails?.data?.[0]?.id || "other",
+        category: item.relationships?.categoryDetails?.data?.[0]?.attributes?.name || "other",
+        categorySlug: item.relationships?.categoryDetails?.data?.[0]?.attributes?.slug || "other",
         stock: item.attributes.stockQuantity,
       }));
 
       setProducts(formattedProducts);
+      setTotalPages(Math.ceil(Number(res.data.meta.totalPages)));
+      
     } catch (err) {
       toast.error(err.response.data?.message);
     } finally {
