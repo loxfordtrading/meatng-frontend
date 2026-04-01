@@ -132,7 +132,7 @@ const AdminInvitationSetup = () => {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <img
-                        src="/Fooding_Meat_Logo.png"
+                        src="/Meatng_logo.png"
                         alt="MeatNG"
                         className="h-12 w-auto mx-auto mb-4 brightness-[2] contrast-125"
                     />

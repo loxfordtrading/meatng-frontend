@@ -90,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="p-5 border-b border-border/60">
                 <Link to="/admin" className={cn("flex items-center", collapsed ? "justify-center" : "gap-3")}>
                     <img
-                        src="/Fooding_Meat_Logo.png"
+                        src="/Meatng_logo.png"
                         alt="MeatNG"
                         className="h-8 w-auto"
                     />
@@ -169,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Menu className="h-5 w-5 mr-2" /> Menu
                 </Button>
                 <div className="flex items-center gap-2">
-                    <img src="/Fooding_Meat_Logo.png" alt="MeatNG" className="h-7 w-auto" />
+                    <img src="/Meatng_logo.png" alt="MeatNG" className="h-7 w-auto" />
                     <span className="text-sm font-bold">Admin</span>
                 </div>
                 <Button variant="ghost" size="icon" className="relative">

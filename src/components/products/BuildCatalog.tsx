@@ -8,6 +8,16 @@ import { useCartStore } from "@/store/cartStore";
 import { formatWeight, toGrams } from "@/utils/conversion";
 import { useSubscriptionStore } from "@/store/subscriptionStore";
 
+const CATEGORY_COLORS = [
+  "bg-red-100 text-red-700",
+  "bg-green-100 text-green-700",
+  "bg-blue-100 text-blue-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-purple-100 text-purple-700",
+  "bg-pink-100 text-pink-700",
+  "bg-indigo-100 text-indigo-700",
+];
+      
 export default function BuildCatalog({ products}: {products: any}) {
 
   const { items, add, setQty, totalItems, totalGramWeight } = useCartStore();
@@ -23,6 +33,21 @@ export default function BuildCatalog({ products}: {products: any}) {
 
   // const cantAdd = total >= products?.max_items;
   // const cantIncrease = total >= products?.max_items;
+
+  const categoryColorMap = (() => {
+    const map: Record<string, string> = {};
+    let colorIndex = 0;
+
+    products.forEach((item: any) => {
+      if (!map[item.category]) {
+        map[item.category] =
+          CATEGORY_COLORS[colorIndex % CATEGORY_COLORS.length];
+        colorIndex++;
+      }
+    });
+
+    return map;
+  })();
 
   return (
     <Card className="border-primary/20 shadow-sm">
@@ -101,7 +126,7 @@ export default function BuildCatalog({ products}: {products: any}) {
                     <p className="text-sm font-semibold">{item.name}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{item?.weight}{item?.weight_unit}</span>
-                      <Badge variant="secondary" className={`px-1.5 py-0 text-[10px]}`}>
+                      <Badge variant="secondary" className={`px-1.5 py-0 text-[10px] ${categoryColorMap[item.category]}`}>
                         {item.category}
                       </Badge>
                     </div>

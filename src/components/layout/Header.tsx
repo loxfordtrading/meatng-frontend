@@ -44,7 +44,7 @@ const Header = () => {
           <div className="flex flex-1 items-center gap-3">
             <Link to={ROUTES.home} className="flex items-center gap-3">
               <img
-                src="/Fooding_Meat_Logo.png"
+                src="/Meatng_logo.png"
                 alt="MeatNG"
                 className="h-8 w-auto sm:h-9"
               />

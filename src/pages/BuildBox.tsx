@@ -24,47 +24,6 @@ import {
 } from "@/components/ui/pagination";
 import { ProductType } from "@/types/admin";
 
-// const PRODUCT_IMAGES: Record<string, string> = {
-//   "Boneless Beef": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Bone-in Beef": "https://images.unsplash.com/photo-1588347818036-558601350947?w=200",
-//   "Bone in Beef": "https://images.unsplash.com/photo-1588347818036-558601350947?w=200",
-//   "Agemawo (Beef + Skin)": "https://images.unsplash.com/photo-1603048297172-c92544798d5a?w=200",
-//   "Plain Beef": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Torso Beef": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Minced Meat": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   Shin: "https://images.unsplash.com/photo-1588347818036-558601350947?w=200",
-//   "Whole Chicken": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   Breast: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   Thigh: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   Drumstick: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   Wings: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   "Minced Chicken": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   Gizzard: "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   "Cut 4": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   "Laps (Thigh & Drumstick)": "https://images.unsplash.com/photo-1587593810167-a84920ea0781?w=200",
-//   Sausages: "https://images.unsplash.com/photo-1603048297172-c92544798d5a?w=200",
-//   Liver: "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Cow Skin (Ponmo)": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Ponmo (White & Brown)": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   Shaki: "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   Roundabout: "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Roundabout (Small Intestine)": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   Lungs: "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Fuku (Lungs)": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   Abodi: "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Abodi (Large Intestine)": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Cow Leg": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   Kidney: "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   "Tail (Oxtail)": "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-//   Tongue: "https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=200",
-// };
-
-// const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
-//   beef: { label: "Beef", color: "bg-red-100 text-red-700" },
-//   chicken: { label: "Chicken", color: "bg-amber-100 text-amber-700" },
-//   offals: { label: "Offals", color: "bg-violet-100 text-violet-700" },
-// };
-
 const BuildBox = () => {
 
   const { subInfo } = useSubscriptionStore();
@@ -609,12 +568,6 @@ const BuildBox = () => {
                       <span>Plan price</span>
                       <span className="font-medium">{displayCurrency(plan?.price, "NGN")}</span>
                     </div>
-                    {/* {addOnsTotal > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span>Add-ons</span>
-                        <span className="font-medium">{formatPrice(addOnsTotal)}</span>
-                      </div>
-                    )} */}
                     <div className="flex justify-between border-t pt-2 text-lg font-bold">
                       <span>Total</span>
                       <span className="text-primary">{displayCurrency(plan?.price, "NGN")}</span>
@@ -630,17 +583,6 @@ const BuildBox = () => {
                       {error}
                     </p>
                   )}
-
-                  {/* {!canProceed && hasOffalSelection && (
-                    <p className="mt-2 text-center text-xs text-amber-600">
-                      Fill remaining {formatWeight(offalBudgetG - currentOffalWeightG)} of offals to continue
-                    </p>
-                  )}
-                  {!canProceed && hasBuildYourBox && plan?.buildYourBox && (
-                    <p className="mt-2 text-center text-xs text-amber-600">
-                      Fill remaining {formatWeight(plan.buildYourBox.remainingWeightG - buildWeightG)} to continue
-                    </p>
-                  )} */}
                 </CardContent>
               )}
             </Card>
@@ -648,30 +590,27 @@ const BuildBox = () => {
         </div>
       </div>
 
-      {/* <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-4 backdrop-blur-lg lg:hidden">
+      {/* Mobile sticky footer */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 p-4 backdrop-blur-lg lg:hidden">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-xs text-muted-foreground">
-              {formatWeight(fullBoxWeightG)} / {formatWeight((plan?.weightKg ?? 0) * 1000)}
+              {formatWeight(totalFilled)} / {subInfo?.subscription?.attributes?.weight}{subInfo?.subscription?.attributes?.weight_unit}
             </p>
-            <p className="text-lg font-bold text-primary">{formatPrice(grandTotal)}</p>
+            <p className="text-lg font-bold text-primary">{displayCurrency(plan?.price, "NGN")}</p>
           </div>
-          <Button size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!canProceed} className="max-w-[200px] flex-1">
+          <Button size="lg" onClick={() => navigate(ROUTES.cartReview)} disabled={!products || (totalGransInCart != remainingWeightG)} className="max-w-[200px] flex-1">
             <ShoppingCart className="mr-2 h-4 w-4" />
             Review Cart
           </Button>
         </div>
-        {!canProceed && hasOffalSelection && (
+        {error && (
           <p className="mt-2 text-center text-xs text-amber-600">
-            Fill remaining {formatWeight(offalBudgetG - currentOffalWeightG)} of offals
+            {error}
           </p>
         )}
-        {!canProceed && hasBuildYourBox && plan?.buildYourBox && (
-          <p className="mt-2 text-center text-xs text-amber-600">
-            Fill remaining {formatWeight(plan.buildYourBox.remainingWeightG - buildWeightG)} to continue
-          </p>
-        )}
-      </div> */}
+      </div>
+
     </div>
   );
 };
