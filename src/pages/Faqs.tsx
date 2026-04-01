@@ -23,7 +23,7 @@ const generalFaqs = [
 const shippingFaqs = [
   {
     question: "Do you deliver nationwide?",
-    answer: "Yes. Delivery is available across all eligible U.S. addresses on our network.",
+    answer: "No. Delivery is only available in Nigeria, Lagos and Ogun state only.",
   },
   {
     question: "How is meat kept fresh during delivery?",
