@@ -2,14 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { AdminProvider, useAdmin } from "@/contexts/AdminContext";
+import { AdminProvider } from "@/contexts/AdminContext";
 import { ProductCatalogProvider } from "@/contexts/ProductCatalogContext";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import AdminLayout from "@/components/admin/AdminLayout";
 import { ROUTES } from "@/lib/routes";
 import { ToastContainer } from 'react-toastify';
 
@@ -43,30 +42,10 @@ import Dashboard from "@/pages/Dashboard";
 import NotFound from "@/pages/NotFound";
 import { NetworkBanner } from "@/components/NetworkBanner";
 
-// Admin Pages
-import AdminLogin from "@/pages/admin/AdminLogin";
-import AdminDashboard from "@/pages/admin/AdminDashboard";
-import AdminOrders from "@/pages/admin/AdminOrders";
-import AdminCustomers from "@/pages/admin/AdminCustomers";
-import AdminProducts from "@/pages/admin/AdminProducts";
-import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
-import AdminDeliveries from "@/pages/admin/AdminDeliveries";
-import AdminAnalytics from "@/pages/admin/AdminAnalytics";
-import AdminSettings from "@/pages/admin/AdminSettings";
 import VerifyPayment from "./pages/VerifyPayment";
 import VerificationEmailSent from "./pages/VerificationEmailSent";
 import UserGuard from "./protect/UserGuard";
-import { useAuthStore } from "./store/AuthStore";
-import AdminGuard from "./protect/AdminGuard";
-import AdminPlans from "./pages/admin/AdminPlans";
-import AdminInvitationSetup from "./pages/admin/AdminInvitationSetup";
-import { AddPlan } from "./pages/admin/AddPlan";
 import GiftCheckout from "./pages/GiftCheckout";
-import { EditPlan } from "./pages/admin/EditPlan";
-import AdminGifts from "./pages/admin/AdminGifts";
-import { AddGift } from "./pages/admin/AddGift";
-import { EditGift } from "./pages/admin/EditGift";
-import AdminContacts from "./pages/admin/AdminContacts";
 
 const queryClient = new QueryClient();
 
@@ -81,24 +60,6 @@ const App = () => (
             <Sonner />
             <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <Routes>
-                {/* ─── Admin Routes (no Header/Footer) ─── */}
-                <Route path={ROUTES.adminLogin} element={<AdminLogin />} />
-                <Route path={ROUTES.adminInvitationSetup} element={<AdminInvitationSetup />} />
-                <Route path={ROUTES.admin} element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-                <Route path={ROUTES.adminOrders} element={<AdminGuard><AdminOrders /></AdminGuard>} />
-                <Route path={ROUTES.adminCustomers} element={<AdminGuard><AdminCustomers /></AdminGuard>} />
-                <Route path={ROUTES.adminPlans} element={<AdminGuard><AdminPlans /></AdminGuard>} />
-                <Route path={ROUTES.adminGifts} element={<AdminGuard><AdminGifts /></AdminGuard>} />
-                <Route path={ROUTES.addPlan} element={<AdminGuard><AddPlan /></AdminGuard>} />
-                <Route path={ROUTES.addGift} element={<AdminGuard><AddGift /></AdminGuard>} />
-                <Route path={ROUTES.editPlan} element={<AdminGuard><EditPlan /></AdminGuard>} />
-                <Route path={ROUTES.editGift} element={<AdminGuard><EditGift /></AdminGuard>} />
-                <Route path={ROUTES.adminProducts} element={<AdminGuard><AdminProducts /></AdminGuard>} />
-                <Route path={ROUTES.adminSubscriptions} element={<AdminGuard><AdminSubscriptions /></AdminGuard>} />
-                <Route path={ROUTES.adminDeliveries} element={<AdminGuard><AdminDeliveries /></AdminGuard>} />
-                <Route path={ROUTES.adminContacts} element={<AdminGuard><AdminContacts /></AdminGuard>} />
-                <Route path={ROUTES.adminAnalytics} element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
-                <Route path={ROUTES.adminSettings} element={<AdminGuard><AdminSettings /></AdminGuard>} />
 
                 {/* ─── Customer Routes (with Header/Footer) ─── */}
                 <Route path="*" element={

@@ -43,6 +43,8 @@ const VerifyPayment = () => {
                     msg: "Payment successful",
                     status: true,
                 });
+                localStorage.removeItem("cart");
+                localStorage.removeItem("cart-addon");
 
                 setTimeout(() => {
                     navigate(ROUTES.dashboard, { replace: true });

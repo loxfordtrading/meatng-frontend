@@ -117,9 +117,8 @@ const Footer = () => {
           <p>&copy; {new Date().getFullYear()} MeatNG. All rights reserved.</p>
           <div className="flex flex-wrap justify-center gap-4 text-xs text-secondary-foreground/60">
             <a href="/MeatNG_Terms_and_Conditions.pdf" className="hover:text-primary transition-colors">Terms of Service</a>
-            <a href="/MeatNG_Privacy_Policy.pdf" className="hover:text-primary transition-colors">Privacy Policy</a>
             <span className="text-secondary-foreground/20">|</span>
-            <Link to={ROUTES.adminLogin} className="hover:text-primary transition-colors">Admin</Link>
+            <a href="/MeatNG_Privacy_Policy.pdf" className="hover:text-primary transition-colors">Privacy Policy</a>
           </div>
         </div>
       </div>
