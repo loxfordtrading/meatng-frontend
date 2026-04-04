@@ -44,7 +44,6 @@ const BuildBox = () => {
   const [products, setProducts] = useState<ProductType[]>([])
   const [categories, setCategories] = useState([]);
   const [plan, setPlan] = useState(storePlan || null)
-  // const [activeCategory, setActiveCategory] = useState("all")
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [loadingCategories, setLoadingCategories] = useState(true)
   const [loadingPlan, setLoadingPlan] = useState(true)
@@ -52,7 +51,7 @@ const BuildBox = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const currentPage = Number(searchParams.get("page")) || 1;
-  const activeCategory = searchParams.get("slug") || "all";
+  const activeCategory = searchParams.get("categorySlug") || "all";
   const [totalPages, setTotalPages] = useState(1);
 
   const categoryId = searchParams.get("categoryId");
@@ -79,7 +78,7 @@ const BuildBox = () => {
   const changePage = (page: number) => {
     setSearchParams({
       page: page.toString(),
-      slug: activeCategory,
+      categorySlug: activeCategory,
     });
   };
 
@@ -88,7 +87,7 @@ const BuildBox = () => {
       // reset to fetch all products
       setSearchParams({ page: "1" });
     } else {
-      setSearchParams({ page: "1", slug: category });
+      setSearchParams({ page: "1", categorySlug: category });
     }
   };
 
@@ -155,7 +154,7 @@ const BuildBox = () => {
       let url = `/products?page=${currentPage}&limit=30`;
 
       if (activeCategory && activeCategory !== "all") {
-        url += `&slug=${activeCategory}`;
+        url += `&categorySlug=${activeCategory}`;
       }
 
       if (categoryId) {

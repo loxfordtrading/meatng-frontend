@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Eye, ChevronDown, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,10 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { LoadingData } from "@/components/LoadingData";
 import { toast } from "react-toastify";
 import { axiosClient } from "@/GlobalApi";
-import { OrderStatus, OrderType, OrdersMetaType } from "@/types/admin";
-import displayCurrency from "@/utils/displayCurrency";
+import { ContactStatus, ContactType, OrdersMetaType } from "@/types/admin";
 import { format } from "date-fns";
-import { ViewOrder } from "@/components/admin/ViewOrder";
 import {
   Pagination,
   PaginationContent,
@@ -31,21 +28,18 @@ import {
 import { Viewcontact } from "@/components/admin/ViewContact";
 
 const statusColors: Record<string, string> = {
-    pending: "bg-amber-500/15 text-amber-700 border-amber-500/20",
-    shipped: "bg-blue-500/15 text-blue-700 border-blue-500/20",
-    delivered: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
-    paid: "bg-emerald-500/15 text-emerald-700 border-emerald-500/20",
-    payment_failed: "bg-red-500/15 text-red-700 border-red-500/20",
-    cancelled: "bg-red-500/15 text-red-700 border-red-500/20",
-};
+    pending: "bg-amber-500/15 text-amber-700 bcontact-amber-500/20",
+    in_progress: "bg-blue-500/15 text-blue-700 bcontact-blue-500/20",
+    resolved: "bg-emerald-500/15 text-emerald-700 bcontact-emerald-500/20",
+}
 
-const statusTabs: (OrderStatus | "all")[] = ["all", "paid", "payment_failed", "pending", "shipped", "delivered", "cancelled"];
+const statusTabs: (ContactStatus | "all")[] = ["all", "pending", "in_progress", "resolved"];
 
-const AdminOrders = () => {
+const AdminContacts = () => {
 
     const [searchParams, setSearchParams] = useSearchParams();
     const [search, setSearch] = useState("");
-    const [orders, setOrders] = useState<OrderType[]>([]);
+    const [Contacts, setContacts] = useState<ContactType[]>([]);
     const [meta, setMeta] = useState<OrdersMetaType | null>(null);
     const [loading, setLoading] = useState(true)
     const [disablingId, setDisablingId] = useState<string | null>(null);
@@ -60,10 +54,10 @@ const AdminOrders = () => {
             setDisablingId(id);
             setStatus(status)
 
-            await axiosClient.patch(`/orders/${id}/status`, { status });
-            toast.success(`Order marked as ${status}`)
+            await axiosClient.patch(`/contact/${id}`, { status });
+            toast.success(`contact marked as ${status}`)
 
-            getOrders()
+            getContacts()
         } catch (error) {
             toast.error(error.response?.data?.message);
         } finally {
@@ -99,9 +93,9 @@ const AdminOrders = () => {
         params.set("page", "1");
 
         if (debouncedSearch) {
-            params.set("search", debouncedSearch);
+            params.set("email", debouncedSearch);
         } else {
-            params.delete("search");
+            params.delete("email");
         }
 
         setSearchParams(params);
@@ -116,38 +110,34 @@ const AdminOrders = () => {
     }, [search]);
 
     useEffect(() => {
-        getOrders()
+        getContacts()
     }, [currentPage, activeStatus, debouncedSearch])
 
-    const getOrders = async () => {
+    const getContacts = async () => {
         try {
             setLoading(true)
 
-            let url = `/orders?page=${currentPage}&limit=20`;
+            let url = `/contact?page=${currentPage}&limit=20`;
 
             if (activeStatus && activeStatus !== "all") {
                 url += `&status=${activeStatus}`;
             }
             
             if (debouncedSearch) {
-                url += `&search=${encodeURIComponent(debouncedSearch)}`;
+                url += `&email=${encodeURIComponent(debouncedSearch)}`;
             }
 
             const res = await axiosClient.get(url);
 
-            const orders = res.data.data || [];
+            const Contacts = res.data.data || [];
 
-            const flattenedOrders = orders.map((order: any) => ({
-                id: order.id,
-                ...order.attributes,
-                status: order.attributes.status,
-                user: order.relationships?.userDetails?.data?.attributes || null,
-                plan: order.relationships?.planDetails?.data?.attributes || null,
-                giftBoxDetails: order.relationships?.giftBoxDetails?.data?.attributes || null,
-                giftFormDetails: order.relationships?.giftDetails?.data?.attributes || null,
+            const flattenedContacts = Contacts.map((contact: any) => ({
+                id: contact.id,
+                ...contact.attributes,
+                status: contact.attributes.status
             }));
 
-            setOrders(flattenedOrders);
+            setContacts(flattenedContacts);
             setMeta(res.data.meta);  
 
         } catch (err: any) {
@@ -160,9 +150,9 @@ const AdminOrders = () => {
     return (
         <div className="space-y-6 animate-fade-in admin-page-bg rounded-3xl p-4 sm:p-5">
             <div>
-                <h1 className="text-2xl font-display font-bold text-foreground">Order Management</h1>
+                <h1 className="text-2xl font-display font-bold text-foreground">Contacts</h1>
                 <p className="text-muted-foreground text-sm mt-1">
-                    View, track, and manage all customer orders.
+                    View, track, and manage all contacts.
                 </p>
             </div>
 
@@ -173,7 +163,7 @@ const AdminOrders = () => {
                     <Input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search by order type or reference..."
+                        placeholder="Search by email..."
                         className="pl-9 h-10 rounded-xl"
                     />
                 </div>
@@ -198,40 +188,35 @@ const AdminOrders = () => {
                     {/* Table */}
                     <Card className="admin-card admin-animate-up" style={{ animationDelay: "160ms" }}>
                         <CardContent className="p-0">
-                            <div className="overflow-x-auto overflow-y-hidden">
+                            <div className="overflow-x-auto overflow-y-visible">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b border-border bg-muted/40">
-                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Reference</th>
-                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Order Type</th>
-                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Customer</th>
-                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Date</th>
-                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Plan</th>
-                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Total</th>
+                                        <tr className="bcontact-b bcontact-bcontact bg-muted/40">
+                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Name</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Email</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Order ID</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Priority</th>
+                                            <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Date Created</th>
                                             <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
                                             <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {orders.map((order) => (
-                                            <tr key={order?.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                                                <td className="px-4 py-3 font-mono font-medium">{order?.id}</td>
-                                                <td className="px-4 py-3 font-mono font-medium">{order?.order_type}</td>
+                                        {Contacts.map((contact) => (
+                                            <tr key={contact?.id} className="bcontact-b bcontact-bcontact/50 hover:bg-muted/20 transition-colors">
+                                                <td className="px-4 py-3 font-mono font-medium">{contact?.name}</td>
+                                                <td className="px-4 py-3 font-mono font-medium">{contact?.email}</td>
+                                                <td className="px-4 py-3">{contact?.orderNumber ? contact?.orderNumber : "-"}</td>
+                                                <td className="px-4 py-3"><Badge variant="secondary">{contact?.isHighPriority ? "Yes" : "No"}</Badge></td>
+                                                <td className="px-4 py-3 text-muted-foreground">{contact?.createdAt ? format(contact?.createdAt, "MMM dd, yyyy hh:mm a") : "None"}</td>
                                                 <td className="px-4 py-3">
-                                                    <p className="font-medium">{order?.user?.first_name} {order?.user?.last_name}</p>
-                                                    <p className="text-xs text-muted-foreground">{order?.user?.email}</p>
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">{order?.createdAt ? format(order?.createdAt, "MMM dd, yyyy") : "None"}</td>
-                                                <td className="px-4 py-3"><Badge variant="secondary">{order?.plan?.name}</Badge></td>
-                                                <td className="px-4 py-3 font-semibold">{displayCurrency(order?.total_amount, "NGN")}</td>
-                                                <td className="px-4 py-3">
-                                                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusColors[order?.status]}`}>
-                                                        {order?.status}
+                                                    <span className={`inline-flex items-center rounded-full bcontact px-2.5 py-0.5 text-xs font-semibold ${statusColors[contact?.status]}`}>
+                                                        {contact?.status}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex gap-1">
-                                                        <ViewOrder order={order} />
+                                                        <Viewcontact contact={contact} />
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild>
                                                                 <Button variant="ghost" size="sm" className="h-8 w-8 rounded-lg border border-border/70 p-0">
@@ -240,54 +225,34 @@ const AdminOrders = () => {
                                                             </DropdownMenuTrigger>
 
                                                             <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem disabled={disablingId === order?.id} onSelect={(e) => {
+                                                                <DropdownMenuItem disabled={disablingId === contact?.id} onSelect={(e) => {
                                                                     e.preventDefault();
-                                                                    handleUpdateStatus(order.id, "pending")
+                                                                    handleUpdateStatus(contact.id, "pending")
                                                                 }}>
-                                                                    {(disablingId === order?.id) && (status == "pending") ? (
+                                                                    {(disablingId === contact?.id) && (status == "pending") ? (
                                                                         "Updating..."
                                                                     ) : (
                                                                         "→ Pending"
                                                                     )}
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem disabled={disablingId === order?.id} onSelect={(e) => {
+                                                                <DropdownMenuItem disabled={disablingId === contact?.id} onSelect={(e) => {
                                                                     e.preventDefault();
-                                                                    handleUpdateStatus(order.id, "paid")
+                                                                    handleUpdateStatus(contact.id, "in_progress")
                                                                 }}>
-                                                                    {(disablingId === order?.id) && (status == "paid") ? (
+                                                                    {(disablingId === contact?.id) && (status == "in_progress") ? (
                                                                         "Updating..."
                                                                     ) : (
-                                                                        "→ Paid"
+                                                                        "→ In Progress"
                                                                     )}
                                                                 </DropdownMenuItem>
-                                                                <DropdownMenuItem disabled={disablingId === order?.id} onSelect={(e) => {
+                                                                <DropdownMenuItem disabled={disablingId === contact?.id} onSelect={(e) => {
                                                                     e.preventDefault();
-                                                                    handleUpdateStatus(order.id, "shipped")
+                                                                    handleUpdateStatus(contact.id, "resolved")
                                                                 }}>
-                                                                    {(disablingId === order?.id) && (status == "shipped") ? (
+                                                                    {(disablingId === contact?.id) && (status == "resolved") ? (
                                                                         "Updating..."
                                                                     ) : (
-                                                                        "→ Shipped"
-                                                                    )}
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem disabled={disablingId === order?.id} onSelect={(e) => {
-                                                                    e.preventDefault();
-                                                                    handleUpdateStatus(order.id, "delivered")
-                                                                }}>
-                                                                    {(disablingId === order?.id) && (status == "delivered") ? (
-                                                                        "Updating..."
-                                                                    ) : (
-                                                                        "→ Delivered"
-                                                                    )}
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem disabled={disablingId === order?.id} onSelect={(e) => {
-                                                                    e.preventDefault();
-                                                                    handleUpdateStatus(order.id, "cancelled")
-                                                                }}>
-                                                                    {(disablingId === order?.id) && (status == "cancelled") ? (
-                                                                        "Updating..."
-                                                                    ) : (
-                                                                        "→ Cancel"
+                                                                        "→ Resolved"
                                                                     )}
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuContent>
@@ -298,14 +263,14 @@ const AdminOrders = () => {
                                         ))}
                                     </tbody>
                                 </table>
-                                {orders.length <= 0 && (
-                                    <div className="flex items-center justify-center py-12 text-muted-foreground">No orders found.</div>
+                                {Contacts?.length <= 0 && (
+                                    <div className="flex items-center justify-center py-12 text-muted-foreground">No Contacts yet.</div>
                                 )}
                             </div>
                         </CardContent>
                     </Card>
 
-                    {meta?.totalPages > 1 && !loading && orders?.length > 0 && (
+                    {meta?.totalPages > 1 && !loading && Contacts?.length > 0 && (
                         <Pagination className="mt-8">
                             <PaginationContent className="flex-wrap justify-center gap-2">
 
@@ -347,4 +312,4 @@ const AdminOrders = () => {
     );
 };
 
-export default AdminOrders;
+export default AdminContacts;

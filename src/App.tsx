@@ -66,6 +66,7 @@ import { EditPlan } from "./pages/admin/EditPlan";
 import AdminGifts from "./pages/admin/AdminGifts";
 import { AddGift } from "./pages/admin/AddGift";
 import { EditGift } from "./pages/admin/EditGift";
+import AdminContacts from "./pages/admin/AdminContacts";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ const App = () => (
                 <Route path={ROUTES.adminProducts} element={<AdminGuard><AdminProducts /></AdminGuard>} />
                 <Route path={ROUTES.adminSubscriptions} element={<AdminGuard><AdminSubscriptions /></AdminGuard>} />
                 <Route path={ROUTES.adminDeliveries} element={<AdminGuard><AdminDeliveries /></AdminGuard>} />
+                <Route path={ROUTES.adminContacts} element={<AdminGuard><AdminContacts /></AdminGuard>} />
                 <Route path={ROUTES.adminAnalytics} element={<AdminGuard><AdminAnalytics /></AdminGuard>} />
                 <Route path={ROUTES.adminSettings} element={<AdminGuard><AdminSettings /></AdminGuard>} />
 

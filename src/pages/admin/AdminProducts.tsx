@@ -62,7 +62,7 @@ const AdminProducts = () => {
     const [debouncedSearch, setDebouncedSearch] = useState(search);
 
     const currentPage = Number(searchParams.get("page")) || 1;
-    const activeCategory = searchParams.get("slug") || "all";
+    const activeCategory = searchParams.get("categorySlug") || "all";
 
     const handleActive = async (id: string) => {
         try {
@@ -134,7 +134,7 @@ const AdminProducts = () => {
     const changePage = (page: number) => {
         setSearchParams({
             page: page.toString(),
-            slug: activeCategory,
+            categorySlug: activeCategory,
         });
     };
 
@@ -142,7 +142,7 @@ const AdminProducts = () => {
         const params: any = { page: "1" };
 
         if (activeCategory && activeCategory !== "all") {
-            params.slug = activeCategory;
+            params.categorySlug = activeCategory;
         }
 
         if (debouncedSearch) {
@@ -157,7 +157,7 @@ const AdminProducts = () => {
             // reset to fetch all products
             setSearchParams({ page: "1" });
         } else {
-            setSearchParams({ page: "1", slug: category });
+            setSearchParams({ page: "1", categorySlug: category });
         }
     };
 
@@ -180,7 +180,7 @@ const AdminProducts = () => {
             let url = `/products?page=${currentPage}&limit=28`;
         
             if (activeCategory && activeCategory !== "all") {
-                url += `&slug=${activeCategory}`;
+                url += `&categorySlug=${activeCategory}`;
             }
             
             if (debouncedSearch) {
