@@ -37,6 +37,7 @@ const sidebarLinks: SidebarLink[] = [
     { href: "/admin/deliveries", label: "Deliveries", icon: MapPin },
     { href: "/admin/plans", label: "Plans", icon: Repeat },
     { href: "/admin/gifts", label: "GiftBoxes", icon: Gift },
+    { href: "/admin/contacts", label: "Contacts", icon: Users },
     { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
     { href: "/admin/settings", label: "Settings", icon: Settings }
 ];

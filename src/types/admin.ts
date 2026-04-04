@@ -6,6 +6,11 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
+export type ContactStatus =
+   "pending"
+  | "in_progress"
+  | "resolved"
+
 export type DeliveryStatus =
   "pending" | "assigned" | "in_transit" | "delivered" | "failed" | "cancelled";
 
@@ -408,6 +413,18 @@ export type GiftboxType = {
   weight_unit: "g" | "kg";
   products: GiftboxProductItem[];
   is_active: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ContactType = {
+  id: string;
+  name: string;
+  email: string;
+  orderNumber: string;
+  message: string;
+  status: string;
+  isHighPriority: boolean;
   createdAt: string;
   updatedAt: string;
 };
