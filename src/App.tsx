@@ -84,7 +84,7 @@ const App = () => (
                         <Route path={ROUTES.verifyPayment} element={<VerifyPayment />} />
                         <Route path={ROUTES.verificationEmailSent} element={<VerificationEmailSent />} />
                         <Route path={ROUTES.confirmation} element={<Confirmation />} />
-                        <Route path={ROUTES.products} element={<Products />} />
+                        {/* <Route path={ROUTES.products} element={<Products />} /> */}
                         <Route path="/product/:id" element={<ProductDetail />} />
                         <Route path="/cart" element={<Cart />} />
                         <Route path={ROUTES.howItWorks} element={<HowItWorks />} />

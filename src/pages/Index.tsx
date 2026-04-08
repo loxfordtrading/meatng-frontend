@@ -627,11 +627,11 @@ const Index = () => {
               </Card>
             ))}
           </div>
-          <div className="mt-10 flex justify-center">
+          {/* <div className="mt-10 flex justify-center">
             <Button variant="outline" asChild>
               <Link to={ROUTES.products}>Full Cut List</Link>
             </Button>
-          </div>
+          </div> */}
         </div>
       </section>
 

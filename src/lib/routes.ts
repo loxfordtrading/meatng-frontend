@@ -19,7 +19,7 @@ export const ROUTES = {
   authVerifyEmail: "/verify-email",
   authResetPassword: "/reset-password",
   authAcceptInvitation: "/accept-invitation",
-  products: "/products",
+  // products: "/products",
   howItWorks: "/how-it-works",
   sourcing: "/sourcing",
   farmLocator: "/farm-locator",
