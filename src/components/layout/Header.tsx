@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { ShoppingCart, Menu, X, User, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -52,21 +52,33 @@ const Header = () => {
 
           <nav className="relative z-20 hidden lg:flex flex-1 items-center justify-center gap-6">
             {navLinks.map((link) => (
-              <Link
+              <NavLink
                 key={link.href}
                 to={link.href}
-                className="text-sm font-medium text-foreground transition-colors hover:text-primary whitespace-nowrap"
+                className={({ isActive }) =>
+                  `text-sm font-medium transition-colors whitespace-nowrap ${
+                    isActive
+                      ? "text-primary font-semibold"
+                      : "text-foreground hover:text-primary"
+                  }`
+                }
               >
                 {link.label}
-              </Link>
+              </NavLink>
             ))}
 
-            <Link
+            <NavLink
               to={ROUTES.contact}
-              className="text-sm font-medium text-foreground transition-colors hover:text-primary whitespace-nowrap"
+               className={({ isActive }) =>
+                `text-sm font-medium transition-colors whitespace-nowrap ${
+                  isActive
+                    ? "text-primary font-semibold"
+                    : "text-foreground hover:text-primary"
+                }`
+              }
             >
               Contact
-            </Link>
+            </NavLink>
           </nav>
 
           <div className="flex flex-1 items-center justify-end gap-3">
@@ -157,22 +169,34 @@ const Header = () => {
           <div className="relative z-10 lg:hidden border-t border-border bg-background">
             <nav className="container flex flex-col py-4">
               {navLinks.map((link) => (
-                <Link
+                <NavLink
                   key={link.href}
                   to={link.href}
-                  className="py-3 text-sm font-medium text-foreground transition-colors hover:text-primary"
+                  className={({ isActive }) =>
+                    `py-3 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "text-primary font-semibold"
+                        : "text-foreground hover:text-primary"
+                    }`
+                  }
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.label}
-                </Link>
+                </NavLink>
               ))}
-              <Link
+              <NavLink
                 to={ROUTES.contact}
-                className="py-3 text-sm font-medium text-foreground transition-colors hover:text-primary border-t border-border mt-2"
+                className={({ isActive }) =>
+                  `py-3 text-sm font-medium transition-colors border-t border-border mt-2 ${
+                    isActive
+                      ? "text-primary font-semibold"
+                      : "text-foreground hover:text-primary"
+                  }`
+                }
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 Contact
-              </Link>
+              </NavLink>
               <div className="pt-4 border-t border-border flex flex-col gap-2">
                 {subscription.state.user ? (
                   <>
