@@ -6,19 +6,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { toast } from "@/hooks/use-toast";
+import { toast as shadcnToast } from "@/hooks/use-toast";
 import { ROUTES } from "@/lib/routes";
+import z from "zod";
+import { toast } from "react-toastify";
+import { axiosClient } from "@/GlobalApi";
+
+const contactSchema = z.object({
+  name: z
+    .string()
+    .min(2, "Name is required"),
+
+  email: z
+    .string()
+    .email("Invalid email"),
+
+  order_id: z
+    .string().optional(),
+
+  message: z
+    .string().min(10, "Message must be at least 10 characters")
+    .max(1000, "Message must be less than 1000 characters")
+});
 
 const contactChannels = [
   {
     title: "Email support",
-    detail: "foodingmeatng@gmail.com",
+    detail: "themeatng@gmail.com",
     note: "Best for order updates and account issues.",
     icon: Mail,
   },
   {
     title: "Call center",
-    detail: "+234 708 644 4603",
+    detail: "+234 7086444603",
     note: "Available Mon-Fri, 8am-6pm.",
     icon: PhoneCall,
   },
@@ -31,30 +51,49 @@ const contactChannels = [
 ];
 
 const Contact = () => {
+  
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [order, setOrder] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!name || !email || !message) {
-      toast({
-        title: "Missing details",
-        description: "Please add your name, email, and message.",
+    try {
+      setLoading(true);
+      const data = {
+        name,
+        email,
+        orderNumber: order,
+        message,
+      };
+      
+      const result = contactSchema.safeParse(data);
+
+      if (!result.success) {
+        toast.error(result.error.errors[0].message);
+        return;
+      }
+
+      await axiosClient.post(`/contact`, data);
+
+      shadcnToast({
+        title: "Message sent",
+        description: "Thanks for reaching out. We will reply in your email soon.",
+        className: "bg-green-700 text-white border-none"
       });
-      return;
+
+      setName("");  
+      setEmail("");
+      setOrder("");
+      setMessage("");
+
+    } catch (error) {
+      toast.error(error.response?.data?.message);
+    } finally {
+      setLoading(false);
     }
-
-    toast({
-      title: "Message sent",
-      description: "Thanks for reaching out. We will reply soon.",
-    });
-
-    setName("");
-    setEmail("");
-    setOrder("");
-    setMessage("");
   };
 
   return (
@@ -159,7 +198,7 @@ const Contact = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="order">Order # (optional)</Label>
+                  <Label htmlFor="order">Order ID (optional)</Label>
                   <Input
                     id="order"
                     value={order}
@@ -177,8 +216,18 @@ const Contact = () => {
                     className="rounded-2xl bg-background/80"
                   />
                 </div>
-                <Button type="submit" className="w-full rounded-xl">
-                  Send message
+                <Button type="submit" className="w-full rounded-xl" disabled={loading}>
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      Sending...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      Send message
+                    </span>
+                  )}
+                  {/* {loading ? "Sending..." : "Send message"} */}
                 </Button>
               </form>
             </CardContent>

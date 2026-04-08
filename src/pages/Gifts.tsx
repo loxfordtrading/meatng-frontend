@@ -171,7 +171,9 @@ const Gifts = () => {
           formatted_weight:  p.product_id.formattedWeight,
           description: p.product_id.description,
           is_active: p.product_id.is_active,
-          quantity:  p.quantity
+          quantity:  p.quantity,
+          new_weight: p.weight,
+          new_weight_unit: p.weight_unit
         })),
       }));
 
@@ -414,7 +416,7 @@ const Gifts = () => {
                                 key={line?.id}
                                 className="text-xs text-muted-foreground flex items-center justify-between gap-2"
                               >
-                                <span>{line?.name} - {line?.weight}{line?.weight_unit}</span>
+                                <span>{line?.name} - {line?.new_weight}{line?.new_weight_unit}</span>
                                 <span>{line?.quantity}x</span>
                               </p>
                             ))}
@@ -456,32 +458,6 @@ const Gifts = () => {
           </div>
         </section>
       )}
-
-      <section className="py-16 bg-muted/40">
-        <div className="container">
-          <div className="text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Gift options</p>
-            <h2 className="mt-3 text-3xl md:text-4xl font-display font-bold">Choose your gifting style</h2>
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 md:grid-cols-3 gap-6">
-            {giftingOptions.map((option) => (
-              <Card key={option.title} className="group rounded-[30px] border-white/40 bg-white/70 backdrop-blur-xl shadow-md transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
-                <div className="relative overflow-hidden rounded-t-[30px]">
-                  <img src={option?.image} alt={option?.title} className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
-                </div>
-                <CardContent className="p-6">
-                  <span className="icon-chip"><option.icon className="h-5 w-5" /></span>
-                  <h3 className="mt-4 text-xl font-semibold">{option.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">{option.description}</p>
-                  <p className="mt-4 text-sm font-semibold text-primary">{option.price}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
 
       <section className="py-16">
         <div className="container grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-8 items-start">

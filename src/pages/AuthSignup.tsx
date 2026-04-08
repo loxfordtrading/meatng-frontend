@@ -293,7 +293,7 @@ const AuthSignup = () => {
                     onChange={(e: any) => setForm({ ...form, phone: e.target.value})} 
                     onBlur={() => setTouched((prev) => ({ ...prev, phone: true }))}
                     placeholder="E.g 08123456789"
-                    className="h-12 rounded-xl bg-white"
+                    className="h-12 rounded-xl bg-white appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   {touched.phone && errors.phone && (
                     <p className="text-xs text-destructive">{errors.phone}</p>

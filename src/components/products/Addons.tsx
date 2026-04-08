@@ -7,6 +7,16 @@ import displayCurrency from "@/utils/displayCurrency";
 import { useCartStore } from "@/store/cartStore";
 import { useAddonStore } from "@/store/addonStore";
 
+const CATEGORY_COLORS = [
+  "bg-red-100 text-red-700",
+  "bg-green-100 text-green-700",
+  "bg-blue-100 text-blue-700",
+  "bg-yellow-100 text-yellow-700",
+  "bg-purple-100 text-purple-700",
+  "bg-pink-100 text-pink-700",
+  "bg-indigo-100 text-indigo-700",
+];
+
 export default function Addons({ products}: {products: any}) {
 
   const { addonItems, addAddon, setAddonQty, totalAddonItems } = useAddonStore();
@@ -15,6 +25,21 @@ export default function Addons({ products}: {products: any}) {
 
   // const cantAdd = total >= products?.max_items;
   // const cantIncrease = total >= products?.max_items;
+
+  const categoryColorMap = (() => {
+    const map: Record<string, string> = {};
+    let colorIndex = 0;
+
+    products.forEach((item: any) => {
+      if (!map[item.category]) {
+        map[item.category] =
+          CATEGORY_COLORS[colorIndex % CATEGORY_COLORS.length];
+        colorIndex++;
+      }
+    });
+
+    return map;
+  })();
 
   return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -25,7 +50,7 @@ export default function Addons({ products}: {products: any}) {
 
             return (
               <div
-                key={item.name}
+                key={item?.name}
                 className={`rounded-2xl border p-4 transition ${
                   qty > 0 ? "border-primary/40 bg-primary/[0.03] ring-1 ring-primary/20" : "border-border"
                 }
@@ -38,10 +63,10 @@ export default function Addons({ products}: {products: any}) {
                 />
                 <div className="mb-2 flex flex-1 items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold">{item.name}</p>
+                    <p className="text-sm font-semibold">{item?.name}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">{item?.weight}{item?.weight_unit}</span>
-                      <Badge variant="secondary" className={`px-1.5 py-0 text-[10px]}`}>
+                      <Badge variant="secondary" className={`px-1.5 py-0 text-[10px] ${categoryColorMap[item.category]}`}>
                         {item.category}
                       </Badge>
                     </div>

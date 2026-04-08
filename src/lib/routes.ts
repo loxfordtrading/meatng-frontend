@@ -19,7 +19,7 @@ export const ROUTES = {
   authVerifyEmail: "/verify-email",
   authResetPassword: "/reset-password",
   authAcceptInvitation: "/accept-invitation",
-  products: "/products",
+  // products: "/products",
   howItWorks: "/how-it-works",
   sourcing: "/sourcing",
   farmLocator: "/farm-locator",
@@ -47,6 +47,7 @@ export const ROUTES = {
   adminProducts: "/admin/products",
   adminSubscriptions: "/admin/subscriptions",
   adminDeliveries: "/admin/deliveries",
+  adminContacts: "/admin/contacts",
   adminAnalytics: "/admin/analytics",
   adminSettings: "/admin/settings",
 } as const;
