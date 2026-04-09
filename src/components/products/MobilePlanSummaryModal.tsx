@@ -25,14 +25,13 @@ export const MobilePlanSummaryModal = ({
     <Dialog>
       <div className='lg:hidden'>
         <DialogTrigger as-child>
-          <Button size="sm" disabled={!plan || !selectedFrequency} className="flex-1 max-w-[200px]" > Continue <ArrowRight className="ml-2 h-4 w-4" /> </Button>
+          <Button disabled={!plan || !selectedFrequency} className="flex-1 w-full" > Continue <ArrowRight className="ml-2 h-4 w-4" /> </Button>
         </DialogTrigger>
         <DialogContent className="lg:max-w-[1024px] max-h-[95%] bg-white overflow-y-auto scrollbar-rounded">
           <DialogHeader>
             <DialogTitle>Summary</DialogTitle>
           </DialogHeader>
-          <div className="p-6">
-
+          <div>
               {plan && (
                 <>
                   <div className="space-y-2 text-sm">
@@ -89,12 +88,12 @@ export const MobilePlanSummaryModal = ({
             </div>
           <DialogFooter className="gap-4">
             <Button
-                className="w-full mt-6"
-                disabled={!selectedFrequency || !plan}
-                onClick={handleContinue}
+              className="w-full mt-6"
+              disabled={!selectedFrequency || !plan}
+              onClick={handleContinue}
             >
-                Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
+              Continue
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </DialogFooter>
         </DialogContent>
