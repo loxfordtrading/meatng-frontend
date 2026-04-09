@@ -41,7 +41,7 @@ export const MobilePlanFrequencyModal = ({
     <Dialog>
       <div>
         <DialogTrigger as-child>
-          <Button size="sm" disabled={!plan} className="flex-1 max-w-[200px]" > Continue <ArrowRight className="ml-2 h-4 w-4" /> </Button>
+          <Button disabled={!plan} className="flex-1 max-w-[200px]" > Continue <ArrowRight className="ml-2 h-4 w-4" /> </Button>
         </DialogTrigger>
         <DialogContent className="lg:max-w-[1024px] max-h-[95%] bg-white overflow-y-auto scrollbar-rounded">
           <DialogHeader>
@@ -81,9 +81,6 @@ export const MobilePlanFrequencyModal = ({
               })}
             </div>
           <DialogFooter className="gap-2 flex-row items-center">
-            <DialogClose>
-              <Button variant="outline" size='sm'>Close</Button>
-            </DialogClose>
             {!isDesktop && (
               <MobilePlanSummaryModal
                 plan={plan}
