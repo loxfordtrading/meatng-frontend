@@ -21,6 +21,7 @@ import { useSubscriptionStore } from "@/store/subscriptionStore";
 import { useCartStore } from "@/store/cartStore";
 import { useAddonStore } from "@/store/addonStore";
 import { LoadingData } from "@/components/LoadingData";
+import { MobilePlanFrequencyModal } from "@/components/products/MobilePlanFrequencyModal";
 
 const planIcons: Record<string, any> = {
   "value-pack": Layers3,
@@ -38,6 +39,8 @@ const Plans = () => {
 
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [isDesktop, setIsDesktop] = useState(false);
 
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [selectedFrequency, setSelectedFrequency] = useState<string | null>(
@@ -86,6 +89,13 @@ const Plans = () => {
 
     navigate(url);
   };
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 1024);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -158,11 +168,11 @@ const Plans = () => {
             </div>
 
             {/* Frequency */}
-            <h2 className="text-xl font-bold mt-10 mb-4">
+            <h2 className="text-xl font-bold mt-10 mb-4 hidden lg:block">
               2. Delivery frequency
             </h2>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="sm:grid-cols-2 lg:grid-cols-3 gap-4 hidden lg:grid">
               {allowedFrequencies.map((option) => {
                 const selected = option.id === selectedFrequency;
 
@@ -277,14 +287,22 @@ const Plans = () => {
             </CardContent>
           </Card>
 
+          {/* mobile */}
           <div className="fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur-lg p-4 lg:hidden"> 
             <div className="flex items-center justify-between gap-4"> 
               <div> 
                 <p className="text-xs text-muted-foreground">{selectedPlan?.attributes?.name} &middot; {selectedPlan?.attributes.weight}{selectedPlan?.attributes.weight_unit}</p> 
                 <p className="text-lg font-bold text-primary">{displayCurrency(selectedPlan?.attributes?.price, "NGN") }</p> 
               </div> 
-              <Button size="lg" disabled={!selectedFrequency || !selectedPlan} onClick={handleContinue} className="flex-1 max-w-[200px]" > Continue <ArrowRight className="ml-2 h-4 w-4" /> 
-              </Button> 
+              {!isDesktop && (
+                <MobilePlanFrequencyModal
+                  plan={selectedPlan}
+                  frequencies={allowedFrequencies}
+                  selectedFrequency={selectedFrequency}
+                  setSelectedFrequency={setSelectedFrequency}
+                  handleContinue={handleContinue}
+                />
+              )}
             </div>
           </div>
         </div>
