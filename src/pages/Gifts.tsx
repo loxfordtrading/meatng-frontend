@@ -19,6 +19,7 @@ import { GiftboxType } from "@/types/types";
 import displayCurrency from "@/utils/displayCurrency";
 import { useAuthStore } from "@/store/AuthStore";
 import { z } from "zod";
+import { BackButton } from "@/components/BackButton";
 
 export const giftSchema = z.object({
   sender_name: z
@@ -230,6 +231,7 @@ const Gifts = () => {
 
         <div className="container relative z-10 grid gap-8 sm:gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">
           <div className="animate-fade-in">
+            <BackButton />
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Gifts</p>
             <h1 className="mt-4 text-4xl md:text-6xl font-display font-bold leading-tight">Send a gift worth sharing.</h1>
             <p className="mt-5 text-lg text-foreground/80 max-w-xl">
@@ -240,9 +242,9 @@ const Gifts = () => {
               <Button size="lg" asChild>
                 <a href="#gift-builder">Build a gift order</a>
               </Button>
-              <Button asChild size="lg" variant="outline">
+              {/* <Button asChild size="lg" variant="outline">
                 <Link to={ROUTES.products}>Shop all products</Link>
-              </Button>
+              </Button> */}
             </div>
           </div>
 

@@ -22,6 +22,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useAddonStore } from "@/store/addonStore";
 import { LoadingData } from "@/components/LoadingData";
 import { MobilePlanFrequencyModal } from "@/components/products/MobilePlanFrequencyModal";
+import { BackButton } from "@/components/BackButton";
 
 const planIcons: Record<string, any> = {
   "value-pack": Layers3,
@@ -103,6 +104,7 @@ const Plans = () => {
       <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(33,130,37,0.14),_transparent_56%)] py-10 sm:py-16">
         <div className="container relative z-10 grid gap-6 lg:gap-8 lg:grid-cols-[1.05fr_0.95fr] items-start">
           <div>
+            <BackButton />
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Subscription</p>
             <h1 className="mt-3 sm:mt-4 text-3xl sm:text-4xl md:text-6xl font-display font-bold leading-tight">
               Pick a plan, build your box.

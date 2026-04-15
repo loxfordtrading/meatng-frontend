@@ -3,6 +3,7 @@ import { ChefHat, Flame, Users, Sparkles, MessageCircle, ShieldCheck } from "luc
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/lib/routes";
+import { BackButton } from "@/components/BackButton";
 
 const clubBenefits = [
   {
@@ -80,6 +81,7 @@ const Club = () => {
 
         <div className="container relative z-10 grid gap-8 sm:gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">
           <div className="animate-fade-in">
+            <BackButton />
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Meat Lovers Club</p>
             <h1 className="mt-4 text-4xl md:text-6xl font-display font-bold leading-tight">
               Where better cooks level up fast.

@@ -50,9 +50,9 @@ const CartDrawer = ({ open, onOpenChange }: CartDrawerProps) => {
             <div className="flex flex-col items-center justify-center h-full text-center">
               <ShoppingBag className="h-16 w-16 text-muted-foreground/50 mb-4" />
               <p className="text-muted-foreground">Your cart is empty</p>
-              <Button asChild className="mt-4" onClick={() => onOpenChange(false)}>
+              {/* <Button asChild className="mt-4" onClick={() => onOpenChange(false)}>
                 <Link to={ROUTES.products}>Start Shopping</Link>
-              </Button>
+              </Button> */}
             </div>
           ) : (
             <div className="space-y-4">
