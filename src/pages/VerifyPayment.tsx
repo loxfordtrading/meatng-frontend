@@ -57,8 +57,7 @@ const VerifyPayment = () => {
                 clearSubInfo()
 
                 setTimeout(() => {
-                    window.location.replace(ROUTES.dashboard);
-                    // navigate(ROUTES.dashboard, { replace: true });
+                    navigate(ROUTES.dashboard, { replace: true });
                 }, 4000);
             }else{
                 setMessage({
