@@ -29,11 +29,11 @@ const Cart = () => {
               Add products for a one-time order or start a subscription to build a recurring box.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild size="lg">
+              {/* <Button asChild size="lg">
                 <Link to="/products">
                   Shop Products <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
-              </Button>
+              </Button> */}
               <Button asChild size="lg" variant="outline">
                 <Link to="/plans">Start Subscription</Link>
               </Button>

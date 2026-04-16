@@ -3,6 +3,7 @@ import { BadgeCheck, Leaf, ShieldCheck, Sprout, Truck, CheckCircle2 } from "luci
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/lib/routes";
+import { BackButton } from "@/components/BackButton";
 
 const sourcingPrinciples = [
   {
@@ -50,6 +51,7 @@ const Sourcing = () => {
 
         <div className="container relative z-10 grid gap-8 sm:gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">
           <div className="animate-fade-in">
+            <BackButton />
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Sourcing</p>
             <h1 className="mt-4 text-4xl md:text-6xl font-display font-bold leading-tight">From trusted source to table.</h1>
             <p className="mt-5 text-lg text-foreground/80 max-w-xl">

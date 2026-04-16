@@ -100,7 +100,7 @@ const Footer = () => {
             <h3 className="font-semibold mb-4 text-primary">Contact</h3>
             <ul className="space-y-2 text-secondary-foreground/80">
               <li>+234 7086444603</li>
-              <li>themeatng@gmail.com</li>
+              <li>support@meatng.com</li>
             </ul>
             <div className="flex gap-4 mt-4">
               <a href="https://www.instagram.com/meat_ng?igsh=a3RlMGM2ZGE5azRm" className="text-secondary-foreground/80 hover:text-primary transition-colors">

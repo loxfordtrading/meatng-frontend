@@ -11,6 +11,7 @@ import { ROUTES } from "@/lib/routes";
 import z from "zod";
 import { toast } from "react-toastify";
 import { axiosClient } from "@/GlobalApi";
+import { BackButton } from "@/components/BackButton";
 
 const contactSchema = z.object({
   name: z
@@ -32,7 +33,7 @@ const contactSchema = z.object({
 const contactChannels = [
   {
     title: "Email support",
-    detail: "themeatng@gmail.com",
+    detail: "support@meatng.com",
     note: "Best for order updates and account issues.",
     icon: Mail,
   },
@@ -104,6 +105,7 @@ const Contact = () => {
 
         <div className="container relative z-10 grid gap-8 sm:gap-10 lg:grid-cols-[1.05fr_0.95fr] items-center">
           <div className="animate-fade-in">
+            <BackButton />
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">Contact</p>
             <h1 className="mt-4 text-4xl md:text-6xl font-display font-bold leading-tight">Real support from a real team.</h1>
             <p className="mt-5 text-lg text-foreground/80 max-w-xl">

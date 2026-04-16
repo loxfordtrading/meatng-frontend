@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { Box, Calendar, Truck, Users, CheckCircle2, Flame, Sparkles } from "lucide-react";
+import { Box, Calendar, Truck, Users, CheckCircle2, Flame, Sparkles, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ROUTES } from "@/lib/routes";
+import { BackButton } from "@/components/BackButton";
 
 const steps = [
   {
@@ -51,6 +52,7 @@ const HowItWorks = () => {
 
         <div className="container relative z-10 grid gap-8 sm:gap-12 lg:grid-cols-[1.05fr_0.95fr] items-center">
           <div className="animate-fade-in">
+            <BackButton />
             <p className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">How it works</p>
             <h1 className="mt-4 text-4xl md:text-6xl font-display font-bold leading-tight">
               Your premium meat routine, redesigned.

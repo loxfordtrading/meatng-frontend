@@ -583,7 +583,7 @@ const GiftCheckout = () => {
                       <option value="">Select your area</option>
                       {lagosAreas.map((item) => (
                         <option key={`${item.zoneId}-${item.area}`} value={item.area}>
-                          {item.area} {deliveryFee &&  `— ${displayCurrency(deliveryFee)}`}
+                          {item.area}
                         </option>
                       ))}
                     </select>
