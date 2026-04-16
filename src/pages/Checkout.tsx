@@ -90,8 +90,6 @@ type cartType = {
 
 const Checkout = () => {
 
-  const navigate = useNavigate();
-
   const { subInfo } = useSubscriptionStore();
   const [cartItems, setCartItems] = useState<cartType | null>(null)
 
@@ -133,11 +131,9 @@ const Checkout = () => {
     return `MN-${suffix}`;
   });
 
-  useEffect(() => {
-    if (!subInfo) {
-      navigate(ROUTES.plans, { replace: true });
-    }
-  }, [subInfo, navigate]);
+  if (!subInfo?.subscription || !subInfo?.selectedFrequency) {
+    return <Navigate to={ROUTES.plans} replace />;
+  }
 
   const normalize = (v: string) => v?.trim().toLowerCase();
 
