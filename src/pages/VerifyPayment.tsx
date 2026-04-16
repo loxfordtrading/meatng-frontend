@@ -6,8 +6,15 @@ import Lottie from "lottie-react";
 import { ROUTES } from "@/lib/routes";
 import paymentCheck from "@/assets/payment-check.json"
 import paymentError from "@/assets/payment-error.json"
+import { useCartStore } from "@/store/cartStore";
+import { useAddonStore } from "@/store/addonStore";
+import { useSubscriptionStore } from "@/store/subscriptionStore";
 
 const VerifyPayment = () => {
+
+  const { clearCart } = useCartStore();
+  const { clearAddon } = useAddonStore();
+  const { clearSubInfo } = useSubscriptionStore();
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState({
     msg: '',
@@ -43,8 +50,11 @@ const VerifyPayment = () => {
                     msg: "Payment successful",
                     status: true,
                 });
-                localStorage.removeItem("cart");
-                localStorage.removeItem("cart-addon");
+                // localStorage.removeItem("cart");
+                // localStorage.removeItem("cart-addon");
+                clearCart()
+                clearAddon()
+                clearSubInfo()
 
                 setTimeout(() => {
                     navigate(ROUTES.dashboard, { replace: true });
