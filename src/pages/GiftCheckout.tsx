@@ -518,28 +518,36 @@ const GiftCheckout = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="first-name">First name <span className="text-destructive">*</span></Label>
-                  <Input id="first-name" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
+                  <Input id="first-name" placeholder="John" value={firstName} onChange={(e) => setFirstName(e.target.value)} 
+                  // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                  />
                   {formErrors.firstName && (
                     <p className="text-sm text-destructive">{formErrors.firstName}</p>
                   )}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="last-name">Last name <span className="text-destructive">*</span></Label>
-                  <Input id="last-name" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
+                  <Input id="last-name" placeholder="Doe" value={lastName} onChange={(e) => setLastName(e.target.value)} 
+                  // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                  />
                   {formErrors.lastName && (
                     <p className="text-sm text-destructive">{formErrors.lastName}</p>
                   )}
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
-                  <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
+                  <Input id="email" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} 
+                  // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                  />
                   {formErrors.email && (
                     <p className="text-sm text-destructive">{formErrors.email}</p>
                   )}
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="phone">Phone number <span className="text-destructive">*</span></Label>
-                  <Input id="phone" placeholder="08012345678" value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
+                  <Input id="phone" placeholder="08012345678" value={phone} onChange={(e) => setPhone(e.target.value)} 
+                  // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                  />
                   {formErrors.phone && (
                     <p className="text-sm text-destructive">{formErrors.phone}</p>
                   )}
@@ -557,7 +565,7 @@ const GiftCheckout = () => {
                       setSelectedArea("");
                       setCity("");
                     }}
-                    disabled={!!selectedAddressId}
+                    // disabled={!!selectedAddressId}
                   >
                     <option value="">Select your state</option>
                     {deliveryStates.map((s) => (
@@ -578,7 +586,7 @@ const GiftCheckout = () => {
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                       value={selectedArea}
                       onChange={(e) => setSelectedArea(e.target.value)}
-                      disabled={!!selectedAddressId}
+                      // disabled={!!selectedAddressId}
                     >
                       <option value="">Select your area</option>
                       {lagosAreas.map((item) => (
@@ -603,7 +611,7 @@ const GiftCheckout = () => {
                         placeholder={`Enter your city in ${selectedState}`}
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
-                        disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                        // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
                       />
                       {formErrors.city && (
                         <p className="text-sm text-destructive">{formErrors.city}</p>
@@ -620,7 +628,9 @@ const GiftCheckout = () => {
 
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="street-address">Street address <span className="text-destructive">*</span></Label>
-                  <Input id="street-address" placeholder="12 Adeniyi Jones Avenue" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
+                  <Input id="street-address" placeholder="12 Adeniyi Jones Avenue" value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} 
+                  // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                  />
                   {formErrors.streetAddress && (
                     <p className="text-sm text-destructive">{formErrors.streetAddress}</p>
                   )}
@@ -628,7 +638,9 @@ const GiftCheckout = () => {
 
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="apartment">Apartment<span className="text-destructive">*</span></Label>
-                  <Input id="apartment" placeholder="e.g First Floor, Room 10" value={apartment} onChange={(e) => setApartment(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
+                  <Input id="apartment" placeholder="e.g First Floor, Room 10" value={apartment} onChange={(e) => setApartment(e.target.value)} 
+                  // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                  />
                   {formErrors.apartment && (
                     <p className="text-sm text-destructive">{formErrors.apartment}</p>
                   )}
@@ -636,7 +648,9 @@ const GiftCheckout = () => {
 
                 <div className="space-y-2 col-span-2">
                   <Label htmlFor="zip-code">Zip Code (optional)</Label>
-                  <Input id="zip-code" placeholder="102045" value={zipCode} onChange={(e) => setZipCode(e.target.value)} disabled={!!selectedAddressId} readOnly={!!selectedAddressId}/>
+                  <Input id="zip-code" placeholder="102045" value={zipCode} onChange={(e) => setZipCode(e.target.value)} 
+                  // disabled={!!selectedAddressId} readOnly={!!selectedAddressId}
+                  />
                   {formErrors.zipCode && (
                     <p className="text-sm text-destructive">{formErrors.zipCode}</p>
                   )}
