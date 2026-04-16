@@ -90,7 +90,7 @@ type cartType = {
 
 const Checkout = () => {
 
-  const subscription = useSubscription();
+  const navigate = useNavigate();
 
   const { subInfo } = useSubscriptionStore();
   const [cartItems, setCartItems] = useState<cartType | null>(null)
@@ -132,6 +132,12 @@ const Checkout = () => {
     const suffix = Math.floor(100000 + Math.random() * 900000).toString();
     return `MN-${suffix}`;
   });
+
+  useEffect(() => {
+    if (!subInfo) {
+      navigate(ROUTES.plans, { replace: true });
+    }
+  }, [subInfo, navigate]);
 
   const normalize = (v: string) => v?.trim().toLowerCase();
 
